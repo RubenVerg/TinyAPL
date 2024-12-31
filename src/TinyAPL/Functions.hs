@@ -1407,3 +1407,45 @@ table f = atRank2 (atRank2 f (0, 0)) (0, likePositiveInfinity)
 
 innerProduct :: MonadError Error m => (Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 innerProduct f g = atRank2 (atop f (atRank2 (atRank2 g (0, 0)) (-1, -1))) (1, likePositiveInfinity)
+
+onInfixes :: MonadError Error m => (Noun -> m Noun) -> [(Natural, Natural, Integer, [ScalarValue])] -> Noun -> m Noun
+onInfixes _ [] y = pure y
+onInfixes f ((size, skip, 1, _) : specs) y = do
+  let cells = majorCells y
+  let howMany = let n = 1 + ((genericLength cells - size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength cells then n + 1 else n
+  let slices = (\i -> genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
+  fromMajorCells <$> mapM ((if null specs then f else onInfixes f specs) . fromMajorCells) slices
+onInfixes f ((size, skip, -1, _) : specs) y = do
+  let cells = Prelude.reverse $ majorCells y
+  let howMany = let n = 1 + ((genericLength cells - size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength cells then n + 1 else n
+  let slices = Prelude.reverse $ filter (Prelude.not . null) $ (\i -> Prelude.reverse $ genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
+  fromMajorCells <$> mapM ((if null specs then f else onInfixes f specs) . fromMajorCells) slices
+onInfixes f ((size, skip, 2, _) : specs) y = do
+  let cells = majorCells y
+  let howMany = 1 + ((genericLength cells - size) `div` skip)
+  let slices = (\i -> genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
+  fromMajorCells <$> mapM ((if null specs then f else onInfixes f specs) . fromMajorCells) slices
+onInfixes f ((size, skip, -2, _) : specs) y = do
+  let cells = Prelude.reverse $ majorCells y
+  let howMany = 1 + ((genericLength cells - size) `div` skip)
+  let slices = Prelude.reverse $ filter (Prelude.not . null) $ (\i -> Prelude.reverse $ genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
+  fromMajorCells <$> mapM ((if null specs then f else onInfixes f specs) . fromMajorCells) slices
+onInfixes _ ((_, _, other, _) : _) _ = throwError $ DomainError $ "On Infixes: invalid mode " ++ show other
+
+onInfixes' :: MonadError Error m => (Noun -> m Noun) -> Noun -> Noun -> m Noun
+onInfixes' f x y = do
+  let err = DomainError "On Infixes: invalid arguments"
+  unScalarX <- if isScalar x then do { xs <- asScalar err x; x' <- asNumber err xs >>= asInt err; if x' > 0 then pure $ vector [ xs, Number 1 ] else pure $ vector [ Number $ fromIntegral $ Prelude.abs x', Number $ fromIntegral $ Prelude.abs x' ] } else pure x
+  unVectorX <- if arrayRank unScalarX == 2 then pure unScalarX else if arrayRank unScalarX <= 1 then rerank 2 unScalarX else throwError err
+  let rows = majorCells unVectorX
+  specs <- mapM (\row -> do
+    vec <- asVector err row
+    when (null vec) $ throwError $ DomainError "On Infixes left argument must provide at the very least the window size"
+    size <- asNumber err >=> asNat err $ headPromise vec
+    when (size == 0) $ throwError $ DomainError "On Infixes size cannot be zero"
+    skip <- if length vec < 2 then pure 1 else asNumber err >=> asNat err $ vec !! 1
+    when (skip == 0) $ throwError $ DomainError "On Infixes skip cannot be zero"
+    mode <- if length vec < 3 then pure 2 else asNumber err >=> asInt err $ vec !! 2
+    args <- if length vec < 4 then pure [] else asVector err $ fromScalar $ vec !! 3
+    pure (size, skip, mode, args)) rows
+  onInfixes f specs y

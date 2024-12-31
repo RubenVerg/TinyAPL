@@ -11,7 +11,7 @@ planned: true
 * if `x` is a negative scalar, it is interpreted as `⟨|x⋄|x⟩`;
 * if `x` is a vector, it is interpreted as `∧x`;
 
-Each row of `x` corresponds to an axis of `y` and defines the windowing along that axis. In its most general form, each row of `x` is of the form `⟨size⋄skip⋄mode⟩⍪args`. `skip` defaults to `1`; `mode` defaults to `1`; `args` defaults to `⟨⟩`.
+Each row of `x` corresponds to an axis of `y` and defines the windowing along that axis. In its most general form, each row of `x` is of the form `⟨size⋄skip⋄mode⟩⍪args`. `skip` defaults to `1`; `mode` defaults to `2`; `args` defaults to `⟨⟩`.
 
 ## Modes
 
@@ -27,11 +27,11 @@ The last window ends at the end of the array `¯1+≢y`; the second-to-last wind
 
 ### `2`: Drop Shorter at End; args = `⟨⟩`
 
-Like mode `1`, except that if the last window is shorter it is excluded.
+Like mode `1`, except that the last shorter windows are excluded.
 
 ### `¯2`: Drop Shorter at Beginning; args = `⟨⟩`
 
-Like mode `¯1`, except that if the first window is shorter it is excluded.
+Like mode `¯1`, except that if the first shorter windows are excluded.
 
 ### `3`: Transform at End; args = `⟨fill⟩⍪params`
 
