@@ -14,6 +14,7 @@ import TinyAPL.Complex ( Complex((:+)) )
 import Data.Char
 import Data.Maybe (fromJust, fromMaybe)
 import Data.List (elemIndex, genericLength, genericTake, genericDrop, genericReplicate, nub, genericIndex, sortOn, sort, find, singleton)
+import qualified Data.List.NonEmpty as NE
 import Numeric.Natural (Natural)
 import Control.Monad
 import Control.Monad.State (MonadIO)
@@ -1408,6 +1409,14 @@ table f = atRank2 (atRank2 f (0, 0)) (0, likePositiveInfinity)
 innerProduct :: MonadError Error m => (Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 innerProduct f g = atRank2 (atop f (atRank2 (atRank2 g (0, 0)) (-1, -1))) (1, likePositiveInfinity)
 
+onInfixesFill :: MonadError Error m => Natural -> [ScalarValue] -> Integer -> NE.NonEmpty Noun -> m [Noun]
+onInfixesFill 0 [fill] count ys = pure $ genericTake (Prelude.abs count) $ Prelude.repeat $ arrayReshapedNE (arrayShape $ NE.head ys) (NE.singleton fill)
+onInfixesFill 1 [] count ys
+  | count > 0 = pure $ genericTake count $ Prelude.repeat $ NE.last ys
+  | count < 0 = pure $ genericTake (Prelude.abs count) $ Prelude.repeat $ NE.head ys
+  | otherwise = pure []
+onInfixesFill _ _ _ _ = throwError $ DomainError "On Infixes: invalid fill mode or parameters"
+
 onInfixes :: MonadError Error m => (Noun -> m Noun) -> [(Natural, Natural, Integer, [ScalarValue])] -> Noun -> m Noun
 onInfixes _ [] y = pure y
 onInfixes f ((size, skip, 1, _) : specs) y = do
@@ -1430,10 +1439,27 @@ onInfixes f ((size, skip, -2, _) : specs) y = do
   let howMany = 1 + ((genericLength cells - size) `div` skip)
   let slices = Prelude.reverse $ filter (Prelude.not . null) $ (\i -> Prelude.reverse $ genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
   fromMajorCells <$> mapM ((if null specs then f else onInfixes f specs) . fromMajorCells) slices
+onInfixes f ((size, skip, 3, (mode' : params)) : specs) y = do
+  let modeErr = DomainError "On Infixes: invalid mode"
+  mode <- asNumber modeErr mode' >>= asNat modeErr
+  let originalCells = majorCells y
+  let padSize = let n = 1 + ((genericLength originalCells - size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength originalCells then (fromIntegral n * fromIntegral skip - genericLength originalCells) `mod` fromIntegral size else 0
+  padCells <- onInfixesFill mode params padSize (NE.fromList originalCells)
+  let cells = originalCells ++ padCells
+  onInfixes f ((size, skip, 2, []) : specs) (fromMajorCells cells)
+onInfixes f ((size, skip, -3, (mode' : params)) : specs) y = do
+  let modeErr = DomainError "On Infixes: invalid mode"
+  mode <- asNumber modeErr mode' >>= asNat modeErr
+  let originalCells = majorCells y
+  let padSize = let n = 1 + ((genericLength originalCells - size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength originalCells then (fromIntegral n * fromIntegral skip - genericLength originalCells) `mod` fromIntegral size else 0
+  padCells <- onInfixesFill mode params (negate padSize) (NE.fromList originalCells)
+  let cells = padCells ++ originalCells
+  onInfixes f ((size, skip, -2, []) : specs) (fromMajorCells cells)
 onInfixes _ ((_, _, other, _) : _) _ = throwError $ DomainError $ "On Infixes: invalid mode " ++ show other
 
 onInfixes' :: MonadError Error m => (Noun -> m Noun) -> Noun -> Noun -> m Noun
 onInfixes' f x y = do
+  when (null $ arrayContents y) $ throwError $ DomainError "On Infixes: empty array"
   let err = DomainError "On Infixes: invalid arguments"
   unScalarX <- if isScalar x then do { xs <- asScalar err x; x' <- asNumber err xs >>= asInt err; if x' > 0 then pure $ vector [ xs, Number 1 ] else pure $ vector [ Number $ fromIntegral $ Prelude.abs x', Number $ fromIntegral $ Prelude.abs x' ] } else pure x
   unVectorX <- if arrayRank unScalarX == 2 then pure unScalarX else if arrayRank unScalarX <= 1 then rerank 2 unScalarX else throwError err
