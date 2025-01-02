@@ -45,13 +45,21 @@ Like mode `¯1`, except that if the first window is shorter, it is padded using 
 
 The first window starts such that the first element is in the middle, if `size` is odd, or the first two elements are in the middle, if `size` is even; and continues until the last element or tow eleemnts are reached at or past the middle.
 
-### `5`: Continue at End; args = `⟨fill⟩⍪params`
+### `5`: Transform Continuing at End; args = `⟨fill⟩⍪params`
 
 Like mode `3`, except that it doesn't stop when the last window encounters the last item of the array anywhere, but only at the beginning.
 
-### `¯5`: Continue at Beginning; args = `⟨fill⟩⍪params`
+### `¯5`: Transform Continuing at Beginning; args = `⟨fill⟩⍪params`
 
 Like mode `¯3`, except that it doesn't stop where the first window encounters the first item of the array anywhere, but only at the end.
+
+### `6`: Keep Continuing at End; args = `⟨⟩`
+
+Like mode `2`, except that it doesn't stop when the last window encounters the last item of the array anywhere, but only at the beginning.
+
+### `¯6`: Keep Continuing at Beginning; args = `⟨⟩`
+
+Like mode `¯2`, except that it doesn't stop where the first window encounters the first item of the array anywhere, but only at the end.
 
 ## Fill modes
 
