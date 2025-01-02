@@ -23,6 +23,8 @@ import qualified Data.Matrix as M
 import qualified TinyAPL.Gamma.Gamma as Gamma
 import Data.Foldable (foldlM, foldrM)
 
+import Debug.Trace
+
 -- * Functions
 
 expectedNumber = DomainError "Expected number"
@@ -1417,45 +1419,56 @@ onInfixesFill 1 [] count ys
   | otherwise = pure []
 onInfixesFill _ _ _ _ = throwError $ DomainError "On Infixes: invalid fill mode or parameters"
 
-onInfixes :: MonadError Error m => (Noun -> m Noun) -> [(Natural, Natural, Integer, [ScalarValue])] -> Noun -> m Noun
-onInfixes _ [] y = pure y
-onInfixes f ((size, skip, 1, _) : specs) y = do
-  let cells = majorCells y
+encloseAnAxis :: MonadError Error m => Natural -> Noun -> m [Noun]
+encloseAnAxis n arr = do
+  move <- gradeUp $ n : filter (/= n) [0..arrayRank arr - 1]
+  majorCells <$> reorderAxes move arr
+
+mixAnAxis :: MonadError Error m => Natural -> [Noun] -> m Noun
+mixAnAxis n arrs = do
+  let am = fromMajorCells arrs
+  let move = n : filter (/= n) [0..arrayRank am - 1]
+  reorderAxes (traceWith (\_ -> "mix " ++ show n ++ ": move = " ++ show move ++ ", am = " ++ show am ++ "; arrs = " ++ show arrs) move) am
+
+onInfixes :: MonadError Error m => Natural -> (Noun -> m Noun) -> [(Natural, Natural, Integer, [ScalarValue])] -> Noun -> m Noun
+onInfixes _ _ [] y = pure y
+onInfixes axis f ((size, skip, 1, _) : specs) y = do
+  cells <- encloseAnAxis axis y
   let howMany = let n = 1 + ((genericLength cells - size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength cells then n + 1 else n
   let slices = (\i -> genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM ((if null specs then f else onInfixes f specs) . fromMajorCells) slices
-onInfixes f ((size, skip, -1, _) : specs) y = do
-  let cells = Prelude.reverse $ majorCells y
+  mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices >>= mixAnAxis axis
+onInfixes axis f ((size, skip, -1, _) : specs) y = do
+  cells <- Prelude.reverse <$> encloseAnAxis axis y
   let howMany = let n = 1 + ((genericLength cells - size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength cells then n + 1 else n
   let slices = Prelude.reverse $ filter (Prelude.not . null) $ (\i -> Prelude.reverse $ genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM ((if null specs then f else onInfixes f specs) . fromMajorCells) slices
-onInfixes f ((size, skip, 2, _) : specs) y = do
-  let cells = majorCells y
+  mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices >>= mixAnAxis axis
+onInfixes axis f ((size, skip, 2, _) : specs) y = do
+  cells <- encloseAnAxis axis y
   let howMany = 1 + ((genericLength cells - size) `div` skip)
   let slices = (\i -> genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM ((if null specs then f else onInfixes f specs) . fromMajorCells) slices
-onInfixes f ((size, skip, -2, _) : specs) y = do
-  let cells = Prelude.reverse $ majorCells y
+  fromMajorCells <$> mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices
+onInfixes axis f ((size, skip, -2, _) : specs) y = do
+  cells <- Prelude.reverse <$> encloseAnAxis axis y
   let howMany = 1 + ((genericLength cells - size) `div` skip)
   let slices = Prelude.reverse $ filter (Prelude.not . null) $ (\i -> Prelude.reverse $ genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM ((if null specs then f else onInfixes f specs) . fromMajorCells) slices
-onInfixes f ((size, skip, 3, (mode' : params)) : specs) y = do
+  mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices >>= mixAnAxis axis
+onInfixes axis f ((size, skip, 3, (mode' : params)) : specs) y = do
   let modeErr = DomainError "On Infixes: invalid mode"
   mode <- asNumber modeErr mode' >>= asNat modeErr
-  let originalCells = majorCells y
+  originalCells <- encloseAnAxis axis y
   let padSize = let n = 1 + ((genericLength originalCells - size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength originalCells then (fromIntegral n * fromIntegral skip - genericLength originalCells) `mod` fromIntegral size else 0
   padCells <- onInfixesFill mode params padSize (NE.fromList originalCells)
   let cells = originalCells ++ padCells
-  onInfixes f ((size, skip, 2, []) : specs) (fromMajorCells cells)
-onInfixes f ((size, skip, -3, (mode' : params)) : specs) y = do
+  onInfixes axis f ((size, skip, 2, []) : specs) (fromMajorCells cells)
+onInfixes axis f ((size, skip, -3, (mode' : params)) : specs) y = do
   let modeErr = DomainError "On Infixes: invalid mode"
   mode <- asNumber modeErr mode' >>= asNat modeErr
-  let originalCells = majorCells y
+  originalCells <- encloseAnAxis axis y
   let padSize = let n = 1 + ((genericLength originalCells - size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength originalCells then (fromIntegral n * fromIntegral skip - genericLength originalCells) `mod` fromIntegral size else 0
   padCells <- onInfixesFill mode params (negate padSize) (NE.fromList originalCells)
   let cells = padCells ++ originalCells
-  onInfixes f ((size, skip, -2, []) : specs) (fromMajorCells cells)
-onInfixes _ ((_, _, other, _) : _) _ = throwError $ DomainError $ "On Infixes: invalid mode " ++ show other
+  onInfixes axis f ((size, skip, -2, []) : specs) (fromMajorCells cells)
+onInfixes _ _ ((_, _, other, _) : _) _ = throwError $ DomainError $ "On Infixes: invalid mode " ++ show other
 
 onInfixes' :: MonadError Error m => (Noun -> m Noun) -> Noun -> Noun -> m Noun
 onInfixes' f x y = do
@@ -1474,4 +1487,4 @@ onInfixes' f x y = do
     mode <- if length vec < 3 then pure 2 else asNumber err >=> asInt err $ vec !! 2
     args <- if length vec < 4 then pure [] else asVector err $ fromScalar $ vec !! 3
     pure (size, skip, mode, args)) rows
-  onInfixes f specs y
+  onInfixes 0 f specs y
