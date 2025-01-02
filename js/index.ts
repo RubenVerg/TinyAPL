@@ -241,6 +241,32 @@ async function fancyShow(result: tinyapl.Value, depth: number = 0): Promise<Node
 			}
 		}
 		return table;
+	} else if (result.type === 'array' && result.shape.length === 3 && result.contents.length !== 0) {
+		const [a, b, c] = result.shape;
+		const table = document.createElement('table');
+		table.className = 'cube';
+		const tbody = document.createElement('tbody');
+		table.appendChild(tbody);
+		for (let y = 0; y < b + a - 1; y++) {
+			const tr = document.createElement('tr');
+			tbody.appendChild(tr);
+			for (let x = 0; x < a * c; x++) {
+				const c0 = Math.floor(x / c);
+				const c1 = y - c0;
+				const c2 = x % c;
+				const td = document.createElement('td');
+				if (0 <= c0 && c0 < a && 0 <= c1 && c1 < b && 0 <= c2 && c2 < c) {
+					const el = result.contents[c0 * b * c + c1 * c + c2];
+					td.appendChild(await fsScalar(el));
+					if (c2 == 0) td.classList.add('left-edge');
+					else if (c2 == c - 1) td.classList.add('right-edge');
+				} else {
+					td.classList.add('filler');
+				}
+				tr.appendChild(td);
+			}
+		}
+		return table;
 	} else if (result.type === 'array' && result.shape.length === 0 && typeof result.contents[0] === 'object' && !Array.isArray(result.contents[0]) && (result.contents[0] as tinyapl.ScalarValue & { type: string }).type === 'struct') {
 		const struct = result.contents[0] as tinyapl.Struct;
 		const details = document.createElement('details');

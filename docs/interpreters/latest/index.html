@@ -159,6 +159,18 @@
 			border-collapse: collapse;
 		}
 
+		table.cube {
+			border-collapse: collapse;
+		}
+
+		table.cube td:not(.filler) {
+			border: 2px solid black;
+		}
+
+		table.cube .right-edge:not(:last-child):not(:has(+ .filler)) {
+			border-right: 5px double black !important;
+		}
+
 		.dictionary td:first-child {
 			text-align: right;
 		}
