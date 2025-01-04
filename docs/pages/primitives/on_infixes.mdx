@@ -2,7 +2,6 @@
 glyph: '↡'
 pattern: 'r←x(F↡)y'
 name: On Infixes
-planned: true
 ---
 
 `x` is a scalar integer, vector of integers or matrix. `r` is the result of applying `F` to *infixes* of `y` as defined by `x`:
@@ -42,6 +41,8 @@ Like mode `1`, except that if the last window is shorter, it is padded using fil
 Like mode `¯1`, except that if the first window is shorter, it is padded using fill mode `fill` with params `params`.
 
 ### `4`: Stencil; args = `⟨fill⟩⍪params`
+
+<planned />
 
 The first window starts such that the first element is in the middle, if `size` is odd, or the first two elements are in the middle, if `size` is even; and continues until the last element or tow eleemnts are reached at or past the middle.
 
@@ -86,5 +87,7 @@ If extending the end of the array, items of the init of the array in reverse ord
 Both edges are extended by selecting items of the array.
 
 ### `⊏Fn`: Custom, params = `⟨⟩`
+
+<planned />
 
 `Fn` is called with the array as right argument and the required amount of extra elements as the left argument.
