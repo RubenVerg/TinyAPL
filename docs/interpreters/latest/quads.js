@@ -26,9 +26,9 @@ function monad(fn, repr) {
     return {
         type: 'function',
         repr,
-        monad: async (y) => {
+        monad: async (ea, y) => {
             try {
-                return await fn(y);
+                return await fn(ea, y);
             }
             catch (ex) {
                 return handleEx(ex);
@@ -40,9 +40,9 @@ function dyad(fn, repr) {
     return {
         type: 'function',
         repr,
-        dyad: async (x, y) => {
+        dyad: async (ea, x, y) => {
             try {
-                return await fn(x, y);
+                return await fn(ea, x, y);
             }
             catch (ex) {
                 return handleEx(ex);
@@ -54,17 +54,17 @@ function ambivalent(m, d, repr) {
     return {
         type: 'function',
         repr,
-        monad: async (x) => {
+        monad: async (ea, x) => {
             try {
-                return await m(x);
+                return await m(ea, x);
             }
             catch (ex) {
                 return handleEx(ex);
             }
         },
-        dyad: async (x, y) => {
+        dyad: async (ea, x, y) => {
             try {
-                return await d(x, y);
+                return await d(ea, x, y);
             }
             catch (ex) {
                 return handleEx(ex);
@@ -79,9 +79,9 @@ function adverbArr(adv, repr) {
     return {
         type: 'adverb',
         repr,
-        array: async (n) => {
+        array: async (ea, n) => {
             try {
-                return await adv(n);
+                return await adv(ea, n);
             }
             catch (ex) {
                 return handleEx(ex);
@@ -93,9 +93,9 @@ function adverbFun(adv, repr) {
     return {
         type: 'adverb',
         repr,
-        function: async (f) => {
+        function: async (ea, f) => {
             try {
-                return await adv(f);
+                return await adv(ea, f);
             }
             catch (ex) {
                 return handleEx(ex);
@@ -107,17 +107,17 @@ function adverb(arr, fn, repr) {
     return {
         type: 'adverb',
         repr,
-        array: async (n) => {
+        array: async (ea, n) => {
             try {
-                return await arr(n);
+                return await arr(ea, n);
             }
             catch (ex) {
                 return handleEx(ex);
             }
         },
-        function: async (f) => {
+        function: async (ea, f) => {
             try {
-                return await fn(f);
+                return await fn(ea, f);
             }
             catch (ex) {
                 return handleEx(ex);
@@ -142,7 +142,7 @@ function makeAmbivalent(m, d, repr) {
     const done = () => { listeners = []; };
     const runListeners = async (...args) => { for (const l of listeners)
         await l(...args); };
-    return { register, done, fn: ambivalent(y => m(runListeners, y), (x, y) => d(runListeners, x, y), repr) };
+    return { register, done, fn: ambivalent((ea, y) => m(runListeners, ea, y), (ea, x, y) => d(runListeners, ea, x, y), repr) };
 }
 function makeAmbivalent1(fn, repr) {
     return makeAmbivalent(fn, fn, repr);
@@ -153,7 +153,7 @@ function makeAdverb(arr, fn, repr) {
     const done = () => { listeners = []; };
     const runListeners = async (...args) => { for (const l of listeners)
         await l(...args); };
-    return { register, done, fn: adverb(n => arr(runListeners, n), f => fn(runListeners, f), repr) };
+    return { register, done, fn: adverb((ea, n) => arr(runListeners, ea, n), (ea, f) => fn(runListeners, ea, f), repr) };
 }
 function makeAdverb1(arr, repr) {
     return makeAdverb(arr, arr, repr);
@@ -193,7 +193,7 @@ function toImageData(a, name) {
     return data;
 }
 let imageId = 0;
-export const { register: rCreateImage, done: dCreateImage, fn: qCreateImage } = makeDyad(async (runListeners, x, y) => {
+export const { register: rCreateImage, done: dCreateImage, fn: qCreateImage } = makeDyad(async (runListeners, _ea, x, y) => {
     if (y.type !== 'array')
         throw { code: tinyapl.errors.domain, message: '⎕CreateImage expects arrays' };
     if (x.type !== 'array')
@@ -208,7 +208,7 @@ export const { register: rCreateImage, done: dCreateImage, fn: qCreateImage } = 
     await runListeners(id, width, height);
     return { type: 'array', shape: [], contents: [[id, 0]] };
 }, '⎕CreateImage');
-export const { register: rDisplayImage, done: dDisplayImage, fn: qDisplayImage } = makeAmbivalent1(async (runListeners, x, y) => {
+export const { register: rDisplayImage, done: dDisplayImage, fn: qDisplayImage } = makeAmbivalent1(async (runListeners, _ea, x, y) => {
     let id, a;
     if (x.type !== 'array')
         throw { code: tinyapl.errors.domain, message: '⎕DisplayImage expects arrays' };
@@ -226,7 +226,7 @@ export const { register: rDisplayImage, done: dDisplayImage, fn: qDisplayImage }
     await runListeners(id, data);
     return { type: 'array', shape: [0], contents: [] };
 }, '⎕DisplayImage');
-export const { register: rPlayAnimation, done: dPlayAnimation, fn: qPlayAnimation } = makeAmbivalent1(async (runListeners, x, y) => {
+export const { register: rPlayAnimation, done: dPlayAnimation, fn: qPlayAnimation } = makeAmbivalent1(async (runListeners, _ea, x, y) => {
     let delay, arr;
     if (x.type !== 'array')
         throw { code: tinyapl.errors.domain, message: '⎕PlayAnimation expects arrays' };
@@ -252,7 +252,7 @@ export const { register: rPlayAnimation, done: dPlayAnimation, fn: qPlayAnimatio
     await runListeners(delay, datas);
     return { type: 'array', shape: [0], contents: [] };
 }, '⎕PlayAnimation');
-export const { register: rScatterPlot, done: dScatterPlot, fn: qScatterPlot } = makeAmbivalent1(async (runListeners, x, y) => {
+export const { register: rScatterPlot, done: dScatterPlot, fn: qScatterPlot } = makeAmbivalent1(async (runListeners, _ea, x, y) => {
     let mode = 'markers', arr;
     if (x.type !== 'array')
         throw { code: tinyapl.errors.domain, message: '⎕ScatterPlot expects arrays' };
@@ -292,7 +292,7 @@ export const { register: rScatterPlot, done: dScatterPlot, fn: qScatterPlot } = 
     await runListeners(xs, ys, mode);
     return { type: 'array', shape: [0], contents: [] };
 }, '⎕ScatterPlot');
-export const { register: rGraph, done: dGraph, fn: qGraph } = makeAdverb1(async (runListeners, u) => {
+export const { register: rGraph, done: dGraph, fn: qGraph } = makeAdverb1(async (runListeners, _ea, u) => {
     const graphCounts = 500;
     let fns = [], labels = [];
     if (u.type === 'function') {
@@ -321,26 +321,26 @@ export const { register: rGraph, done: dGraph, fn: qGraph } = makeAdverb1(async 
             }
         }
     }
-    const graph = async (start, end) => {
+    const graph = async (ea, start, end) => {
         let results = [];
         for (const f of fns) {
             results.push([]);
             for (let n = start; n < end; n += (end - start) / graphCounts) {
-                results.at(-1).push([n, (await callErr(f.monad, { type: 'array', shape: [], contents: [[n, 0]] })).contents[0][0]]);
+                results.at(-1).push([n, (await callErr(f.monad, ea, { type: 'array', shape: [], contents: [[n, 0]] })).contents[0][0]]);
             }
         }
         console.log(results);
         await runListeners(results, labels);
     };
-    return ambivalent(async (y) => {
+    return ambivalent(async (ea, y) => {
         if (y.type !== 'array')
             throw { code: tinyapl.errors.domain, message: '⎕Graph expects arrays' };
         if (y.shape.length !== 0)
             throw { code: tinyapl.errors.rank, message: '⎕Graph arguments must be scalar reals' };
         const end = y.contents[0][0];
-        await graph(0, end);
+        await graph(ea, 0, end);
         return { type: 'array', shape: [0], contents: [] };
-    }, async (x, y) => {
+    }, async (ea, x, y) => {
         if (x.type !== 'array')
             throw { code: tinyapl.errors.domain, message: '⎕Graph expects arrays' };
         if (y.type !== 'array')
@@ -351,11 +351,11 @@ export const { register: rGraph, done: dGraph, fn: qGraph } = makeAdverb1(async 
             throw { code: tinyapl.errors.rank, message: '⎕Graph arguments must be scalar reals' };
         const start = x.contents[0][0];
         const end = y.contents[0][0];
-        await graph(start, end);
+        await graph(ea, start, end);
         return { type: 'array', shape: [0], contents: [] };
     }, '(' + await tinyapl.show(u) + ')' + '⎕_Graph');
 }, '⎕_Graph');
-export const { register: rPlayAudio, done: dPlayAudio, fn: qPlayAudio } = makeAmbivalent1(async (runListeners, x, y) => {
+export const { register: rPlayAudio, done: dPlayAudio, fn: qPlayAudio } = makeAmbivalent1(async (runListeners, _ea, x, y) => {
     let sampleRate, arr;
     if (x.type !== 'array')
         throw { code: tinyapl.errors.domain, message: '⎕PlayAudio expects arrays' };
@@ -382,7 +382,7 @@ export const { register: rPlayAudio, done: dPlayAudio, fn: qPlayAudio } = makeAm
     await runListeners(wav.encode(sampleRate, bufs));
     return { type: 'array', shape: [0], contents: [] };
 }, '⎕PlayAudio');
-export const qFetch = ambivalent(async (u) => {
+export const qFetch = ambivalent(async (_ea, u) => {
     if (u.type !== 'array')
         throw { code: tinyapl.errors.domain, message: '⎕Fetch expects arrays' };
     if (u.shape.length > 1)
@@ -390,7 +390,7 @@ export const qFetch = ambivalent(async (u) => {
     const url = await tinyapl.joinString(u.contents);
     const text = await fetch(url).then(res => res.text());
     return { type: 'array', shape: [text.length], contents: await tinyapl.splitString(text) };
-}, async (m, u) => {
+}, async (_ea, m, u) => {
     if (u.type !== 'array')
         throw { code: tinyapl.errors.domain, message: '⎕Fetch expects arrays' };
     if (m.type !== 'array')

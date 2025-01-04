@@ -96,6 +96,8 @@ data Token
   | TokenStruct [NonEmpty Token] SourcePos
   | TokenTie (NonEmpty Token) SourcePos
   | TokenTernary (NonEmpty Token) (NonEmpty Token) (NonEmpty Token) SourcePos
+  | TokenExtraArgs [(NonEmpty Token, NonEmpty Token)] SourcePos
+  | TokenSpreadExtraArgs (NonEmpty Token) SourcePos
 
 instance Eq Token where
   (TokenNumber x _) == (TokenNumber y _) = x == y
@@ -144,6 +146,8 @@ instance Eq Token where
   (TokenStruct x _) == (TokenStruct y _) = x == y
   (TokenTie x _) == (TokenTie y _) = x == y
   (TokenTernary xh xt xf _) == (TokenTernary yh yt yf _) = xh == yh && xt == yt && xf == yf
+  (TokenExtraArgs xes _) == (TokenExtraArgs yes _) = xes == yes
+  (TokenSpreadExtraArgs x _) == (TokenSpreadExtraArgs y _) = x == y
   _ == _ = False
 
 instance Show Token where
@@ -193,6 +197,8 @@ instance Show Token where
   show (TokenStruct xs _) = "(struct " ++ [fst G.struct] ++ intercalate [' ', G.separator, ' '] (unwords . NE.toList . fmap show <$> xs) ++ [snd G.struct] ++ ")"
   show (TokenTie xs _) = "(tie " ++ intercalate [G.tie] (NE.toList $ fmap show xs) ++ ")"
   show (TokenTernary xh xt xf _) = "(ternary " ++ unwords (NE.toList $ show <$> xh) ++ [' ', fst G.ternary, ' '] ++ unwords (NE.toList $ show <$> xt) ++ [' ', snd G.ternary, ' '] ++ unwords (NE.toList $ show <$> xf) ++ ")"
+  show (TokenExtraArgs xs _) = "(extra args " ++ [fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> unwords (NE.toList $ show <$> k) ++ [G.guard] ++ unwords (NE.toList $ show <$> v)) <$> xs) ++ [snd G.extraArgs] ++ ")"
+  show (TokenSpreadExtraArgs x _) = "(spread extra args " ++ [fst G.extraArgs] ++ unwords (NE.toList $ show <$> x) ++ [snd G.extraArgs] ++ ")"
 
 tokenPos :: Token -> SourcePos
 tokenPos (TokenNumber _ pos) = pos
@@ -241,6 +247,8 @@ tokenPos (TokenUnwrapConjunction _ pos) = pos
 tokenPos (TokenStruct _ pos) = pos
 tokenPos (TokenTie _ pos) = pos
 tokenPos (TokenTernary _ _ _ pos) = pos
+tokenPos (TokenExtraArgs _ pos) = pos
+tokenPos (TokenSpreadExtraArgs _ pos) = pos
 
 emptyPos :: SourcePos
 emptyPos = SourcePos "<empty>" (mkPos 1) (mkPos 1)
@@ -296,7 +304,7 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
   assign' con name = withPos $ liftA2 ($) (commitOn' con (lexeme name) assignArrow) bits
 
   arrayName :: Parser String
-  arrayName = try (liftA3 (\x y z -> x : y : z) (char G.quad) (oneOf arrayStart) (many $ oneOf identifierRest)) <|> try (string [G.alpha, G.alpha]) <|> try (string [G.omega, G.omega]) <|> try (string [G.alpha]) <|> try (string [G.omega]) <|> try (string [G.quad]) <|> try (string [G.quadQuote]) <|> liftA2 (:) (oneOf arrayStart) (many $ oneOf identifierRest)
+  arrayName = try (liftA3 (\x y z -> x : y : z) (char G.quad) (oneOf arrayStart) (many $ oneOf identifierRest)) <|> try (string [G.alpha, G.alpha]) <|> try (string [G.omega, G.omega]) <|> try (string [G.alpha]) <|> try (string [G.omega]) <|> try (string [G.epsilon, G.epsilon]) <|> try (string [G.epsilon]) <|> try (string [G.quad]) <|> try (string [G.quadQuote]) <|> liftA2 (:) (oneOf arrayStart) (many $ oneOf identifierRest)
 
   functionName :: Parser String
   functionName = try (liftA3 (\x y z -> x : y : z) (char G.quad) (oneOf functionStart) (many $ oneOf identifierRest)) <|> try (string [G.del]) <|> try (string [G.alphaBar, G.alphaBar]) <|> try (string [G.omegaBar, G.omegaBar]) <|> liftA2 (:) (oneOf functionStart) (many $ oneOf identifierRest)
@@ -466,6 +474,20 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
     conjunctionAssign :: Parser Token
     conjunctionAssign = assign' TokenConjunctionAssign conjunctionName
 
+  extraArgs :: Parser Token
+  extraArgs = withPos $ do
+    lexeme $ char $ fst G.extraArgs
+    choice [TokenExtraArgs [] <$ lexeme (char $ snd G.extraArgs), do
+      firstKey <- bits
+      choice [TokenSpreadExtraArgs firstKey <$ lexeme (char $ snd G.extraArgs), do
+        lexeme $ char G.guard
+        firstValue <- bits
+        choice [TokenExtraArgs [(firstKey, firstValue)] <$ lexeme (char $ snd G.extraArgs), do
+          separator
+          otherEntries <- sepBy1 (liftA2 (,) (bits <* lexeme (char G.guard)) bits) separator
+          lexeme $ char $ snd G.extraArgs
+          pure $ TokenExtraArgs $ (firstKey, firstValue) : otherEntries]]]
+
   bracketed :: Parser Token
   bracketed = withPos $ TokenParens <$> between (char $ fst G.parens) (char $ snd G.parens) bits
 
@@ -483,7 +505,7 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
       , (TokenQualifiedAdverbName, TokenQualifiedAdverbAssign, adverbName)
       , (TokenQualifiedFunctionName, TokenQualifiedFunctionAssign, functionName)
       , (TokenQualifiedArrayName, TokenQualifiedArrayAssign, arrayName) ]
-    <|> conjunction' <|> adverb' <|> function' <|> array'
+    <|> conjunction' <|> adverb' <|> function' <|> array' <|> extraArgs
 
   bitsMaybe :: Parser [Token]
   bitsMaybe = spaceConsumer *> option [] (NE.toList <$> bits)
@@ -514,7 +536,7 @@ isArrayName [] = False
 isArrayName [x] | x `elem` [G.quad, G.quadQuote] = True
 isArrayName (x : xs)
   | x == G.quad = isArrayName xs
-  | otherwise = x `elem` ['a'..'z'] ++ [G.alpha, G.omega, G.delta]
+  | otherwise = x `elem` ['a'..'z'] ++ [G.alpha, G.omega, G.delta, G.epsilon]
 
 isFunctionName :: String -> Bool
 isFunctionName [] = False
@@ -542,6 +564,7 @@ data Category
   | CatAppliedFunction
   | CatAdverb
   | CatConjunction
+  | CatExtraArgs
   deriving (Enum, Bounded, Eq, Ord)
 
 instance Show Category where
@@ -550,6 +573,7 @@ instance Show Category where
   show CatAppliedFunction = "applied function"
   show CatAdverb          = "monadic operator"
   show CatConjunction     = "dyadic operator"
+  show CatExtraArgs       = "extra args"
 
 data Tree
   = Leaf { leafCategory :: Category, leafToken :: Token }
@@ -574,6 +598,8 @@ data Tree
   | UnwrapBranch { unwrapBranchCategory :: Category, unwrapBranchValue :: Tree }
   | StructBranch { structBranchStatements :: [Tree] }
   | TernaryBranch { ternaryBranchCondition :: Tree, ternaryBranchTrue :: Tree, ternaryBranchFalse :: Tree }
+  | UnboundExtraArgsBranch { unboundExtraArgsBranchArgs :: Tree }
+  | ExtraArgsBranch { extraArgsBranchCategory :: Category, extraArgsModified :: Tree, extraArgsBranchArgs :: Tree }
   deriving (Eq)
 
 instance Show Tree where
@@ -603,6 +629,8 @@ instance Show Tree where
       (UnwrapBranch c fn)                -> (indent ++ (if c == CatFunction then "" else "_") ++ "⊐" ++ (if c == CatConjunction then "_" else "")) : go (i + 1) fn
       (StructBranch ts)                  -> (indent ++ "⦃⦄") : concatMap (go (i + 1)) ts
       (TernaryBranch c t f)              -> (indent ++ "⍰⍠") : go (i + 1) c ++ go (i + 1) t ++ go (i + 1) f
+      (UnboundExtraArgsBranch es)        -> (indent ++ "⦋⦌") : go (i + 1) es
+      (ExtraArgsBranch _ m es)           -> (indent ++ "⦋⦌") : go (i + 1) m ++ go (i + 1) es
 
 treeCategory :: Tree -> Category
 treeCategory (Leaf c _)                        = c
@@ -627,16 +655,21 @@ treeCategory (WrapBranch _)                    = CatArray
 treeCategory (UnwrapBranch c _)                = c
 treeCategory (StructBranch _)                  = CatArray
 treeCategory (TernaryBranch _ _ _)             = CatArray
+treeCategory (UnboundExtraArgsBranch _)        = CatExtraArgs
+treeCategory (ExtraArgsBranch c _ _)           = c
 
 bindingMap :: [((Category, Category), (Int, Tree -> Tree -> Tree))]
 bindingMap =
-  [ ((CatArray,           CatFunction), (2, DyadCallBranch))
-  , ((CatFunction,        CatArray),    (1, MonadCallBranch))
-  , ((CatAppliedFunction, CatArray),    (1, MonadCallBranch))
-  , ((CatFunction,        CatAdverb),   (3, AdverbCallBranch))
-  , ((CatArray,           CatAdverb),   (3, AdverbCallBranch))
-  , ((CatConjunction,     CatArray),    (3, ConjunctionCallBranch))
-  , ((CatConjunction,     CatFunction), (3, ConjunctionCallBranch)) ]
+  [ ((CatArray,           CatFunction),  (2, DyadCallBranch))
+  , ((CatFunction,        CatArray),     (1, MonadCallBranch))
+  , ((CatAppliedFunction, CatArray),     (1, MonadCallBranch))
+  , ((CatFunction,        CatAdverb),    (3, AdverbCallBranch))
+  , ((CatArray,           CatAdverb),    (3, AdverbCallBranch))
+  , ((CatConjunction,     CatArray),     (3, ConjunctionCallBranch))
+  , ((CatConjunction,     CatFunction),  (3, ConjunctionCallBranch))
+  , ((CatFunction,        CatExtraArgs), (4, ExtraArgsBranch CatFunction))
+  , ((CatAdverb,          CatExtraArgs), (4, ExtraArgsBranch CatAdverb))
+  , ((CatConjunction,     CatExtraArgs), (4, ExtraArgsBranch CatConjunction)) ]
 
 pairs :: [Tree] -> [(Int, Tree -> Tree -> Tree)]
 pairs = mapAdjacent $ fromMaybe (0, undefined) .: (curry (`lookup` bindingMap) `on` treeCategory)
@@ -789,6 +822,10 @@ categorize name source = tokenize name source >>= mapM (\xs -> case NE.nonEmpty 
   tokenToTree (TokenStruct es pos)                          = struct es pos
   tokenToTree (TokenTie es pos)                             = vector (NE.toList $ fmap NE.singleton $ es) pos
   tokenToTree (TokenTernary c t f _)                        = ternary c t f
+  tokenToTree (TokenExtraArgs es pos)                       = UnboundExtraArgsBranch <$> dictionary es pos
+  tokenToTree (TokenSpreadExtraArgs es _)                   = categorizeAndBind es >>= (\e -> case treeCategory e of
+    CatArray -> pure $ UnboundExtraArgsBranch e
+    _ -> throwError $ makeSyntaxError (tokenPos $ NE.head es) source $ "Extra args must be arrays")
 
 parse :: String -> String -> Result [Maybe Tree]
 parse name = categorize name >=> mapM (\xs -> case NE.nonEmpty xs of

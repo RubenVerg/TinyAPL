@@ -93,45 +93,45 @@ lastQuads l = let readLast = (!! l) <$> (liftToSt $ readIORef lasts) in
     case l of
       Just (VNoun arr) -> return arr
       _ -> throwError noLast
-  ) Nothing (quad : "last") Nothing] [PrimitiveFunction (Just $ \y -> do
+  ) Nothing (quad : "last") Nothing] [PrimitiveFunction (Just $ \ea y -> do
     l <- readLast
     case l of
-      Just (VFunction f) -> callMonad f y
+      Just (VFunction f) -> callMonad f ea y
       _ -> throwError noLast
-  ) (Just $ \x y -> do
+  ) (Just $ \ea x y -> do
     l <- readLast
     case l of
-      Just (VFunction f) -> callDyad f x y
+      Just (VFunction f) -> callDyad f ea x y
       _ -> throwError noLast
-  ) (quad : "Last") Nothing] [PrimitiveAdverb (Just $ \u -> do
+  ) (quad : "Last") Nothing] [PrimitiveAdverb (Just $ \ea u -> do
     l <- readLast
     case l of
-      Just (VAdverb adv) -> callOnNoun adv u
+      Just (VAdverb adv) -> callOnNoun adv ea u
       _ -> throwError noLast
-  ) (Just $ \f -> do
+  ) (Just $ \ea f -> do
     l <- readLast
     case l of
-      Just (VAdverb adv) -> callOnFunction adv f
+      Just (VAdverb adv) -> callOnFunction adv ea f
       _ -> throwError noLast
-  ) (quad : "_Last") Nothing] [PrimitiveConjunction (Just $ \u v -> do
+  ) (quad : "_Last") Nothing] [PrimitiveConjunction (Just $ \ea u v -> do
     l <- readLast
     case l of
-      Just (VConjunction conj) -> callOnNounAndNoun conj u v
+      Just (VConjunction conj) -> callOnNounAndNoun conj ea u v
       _ -> throwError noLast
-  ) (Just $ \u g -> do
+  ) (Just $ \ea u g -> do
     l <- readLast
     case l of
-      Just (VConjunction conj) -> callOnNounAndFunction conj u g
+      Just (VConjunction conj) -> callOnNounAndFunction conj ea u g
       _ -> throwError noLast
-  ) (Just $ \f v -> do
+  ) (Just $ \ea f v -> do
     l <- readLast
     case l of
-      Just (VConjunction conj) -> callOnFunctionAndNoun conj f v
+      Just (VConjunction conj) -> callOnFunctionAndNoun conj ea f v
       _ -> throwError noLast
-  ) (Just $ \f g -> do
+  ) (Just $ \ea f g -> do
     l <- readLast
     case l of
-      Just (VConjunction conj) -> callOnFunctionAndFunction conj f g
+      Just (VConjunction conj) -> callOnFunctionAndFunction conj ea f g
       _ -> throwError noLast
   ) (quad : "_Last_") Nothing]
 

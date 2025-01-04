@@ -282,10 +282,12 @@ instance IsJSSt a => IsJSSt (Either Error a) where
 foreign import javascript safe "return await $1();" jsCall0 :: JSVal -> IO JSVal
 foreign import javascript safe "return await $1($2);" jsCall1 :: JSVal -> JSVal -> IO JSVal
 foreign import javascript safe "return await $1($2, $3);" jsCall2 :: JSVal -> JSVal -> JSVal -> IO JSVal
+foreign import javascript safe "return await $1($2, $3, $4);" jsCall3 :: JSVal -> JSVal -> JSVal -> JSVal -> IO JSVal
 
 foreign import javascript safe "wrapper" jsWrap0 :: IO JSVal -> IO JSVal
 foreign import javascript safe "wrapper" jsWrap1 :: (JSVal -> IO JSVal) -> IO JSVal
 foreign import javascript safe "wrapper" jsWrap2 :: (JSVal -> JSVal -> IO JSVal) -> IO JSVal
+foreign import javascript safe "wrapper" jsWrap3 :: (JSVal -> JSVal -> JSVal -> IO JSVal) -> IO JSVal
 
 instance IsJSSt Function where
   fromJSValSt v
@@ -297,27 +299,31 @@ instance IsJSSt Function where
       pure $ DefinedFunction {
         functionRepr = repr,
         functionContext = Nothing,
-        functionMonad = if jsIsUndefined monad then Nothing else Just $ (\x -> do
+        functionMonad = if jsIsUndefined monad then Nothing else Just $ (\ea x -> do
+          ea' <- toJSValSt ea
           x' <- toJSValSt x
-          res <- liftToSt (jsCall1 monad x') >>= fromJSValSt
+          res <- liftToSt (jsCall2 monad ea' x') >>= fromJSValSt
           liftEither res),
-        functionDyad = if jsIsUndefined dyad then Nothing else Just $ (\x y -> do
+        functionDyad = if jsIsUndefined dyad then Nothing else Just $ (\ea x y -> do
+          ea' <- toJSValSt ea
           x' <- toJSValSt x
           y' <- toJSValSt y
-          res <- liftToSt (jsCall2 dyad x' y') >>= fromJSValSt
+          res <- liftToSt (jsCall3 dyad ea' x' y') >>= fromJSValSt
           liftEither res),
         definedFunctionId = id }
     | otherwise = throwError $ DomainError "fromJSValSt Function: not a function"
   toJSValSt f = do
     ctx <- getContext
-    monad <- liftToSt $ jsWrap1 $ \x -> do
+    monad <- liftToSt $ jsWrap2 $ \ea x -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
-      r <- second fst <$> (runResult $ runSt (callMonad f x') ctx)
+      r <- second fst <$> (runResult $ runSt (callMonad f ea' x') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    dyad <- liftToSt $ jsWrap2 $ \x y -> do
+    dyad <- liftToSt $ jsWrap3 $ \ea x y -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
       y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
-      r <- second fst <$> (runResult $ runSt (callDyad f x' y') ctx)
+      r <- second fst <$> (runResult $ runSt (callDyad f ea' x' y') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
     pure $ objectToVal [("type", toJSVal $ toJSString "function"), ("repr", toJSVal $ toJSString $ show f), ("monad", monad), ("dyad", dyad)]
 
@@ -331,25 +337,29 @@ instance IsJSSt Adverb where
       pure $ DefinedAdverb {
         adverbRepr = repr,
         adverbContext = Nothing,
-        adverbOnNoun = if jsIsUndefined onArray then Nothing else Just $ (\x -> do
+        adverbOnNoun = if jsIsUndefined onArray then Nothing else Just $ (\ea x -> do
+          ea' <- toJSValSt ea
           x' <- toJSValSt x
-          res <- liftToSt (jsCall1 onArray x') >>= fromJSValSt
+          res <- liftToSt (jsCall2 onArray ea' x') >>= fromJSValSt
           liftEither res),
-        adverbOnFunction = if jsIsUndefined onFunction then Nothing else Just $ (\x -> do
+        adverbOnFunction = if jsIsUndefined onFunction then Nothing else Just $ (\ea x -> do
+          ea' <- toJSValSt ea
           x' <- toJSValSt x
-          res <- liftToSt (jsCall1 onFunction x') >>= fromJSValSt
+          res <- liftToSt (jsCall2 onFunction ea' x') >>= fromJSValSt
           liftEither res),
         definedAdverbId = id }
     | otherwise = throwError $ DomainError "fromJSValSt Adverb: not an adverb"
   toJSValSt a = do
     ctx <- getContext
-    onArray <- liftToSt $ jsWrap1 $ \x -> do
+    onArray <- liftToSt $ jsWrap2 $ \ea x -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
-      r <- second fst <$> (runResult $ runSt (callOnNoun a x') ctx)
+      r <- second fst <$> (runResult $ runSt (callOnNoun a ea' x') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    onFunction <- liftToSt $ jsWrap1 $ \x -> do
+    onFunction <- liftToSt $ jsWrap2 $ \ea x -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
-      r <- second fst <$> (runResult $ runSt (callOnFunction a x') ctx)
+      r <- second fst <$> (runResult $ runSt (callOnFunction a ea' x') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
     pure $ objectToVal [("type", toJSVal $ toJSString "adverb"), ("repr", toJSVal $ toJSString $ show a), ("array", onArray), ("function", onFunction)]
 
@@ -365,49 +375,57 @@ instance IsJSSt Conjunction where
       pure $ DefinedConjunction {
         conjRepr = repr,
         conjContext = Nothing,
-        conjOnNounNoun = if jsIsUndefined onArrayArray then Nothing else Just $ (\x y -> do
+        conjOnNounNoun = if jsIsUndefined onArrayArray then Nothing else Just $ (\ea x y -> do
+          ea' <- toJSValSt ea
           x' <- toJSValSt x
           y' <- toJSValSt y
-          res <- liftToSt (jsCall2 onArrayArray x' y') >>= fromJSValSt
+          res <- liftToSt (jsCall3 onArrayArray ea' x' y') >>= fromJSValSt
           liftEither res),
-        conjOnNounFunction = if jsIsUndefined onArrayFunction then Nothing else Just $ (\x y -> do
+        conjOnNounFunction = if jsIsUndefined onArrayFunction then Nothing else Just $ (\ea x y -> do
+          ea' <- toJSValSt ea
           x' <- toJSValSt x
           y' <- toJSValSt y
-          res <- liftToSt (jsCall2 onArrayFunction x' y') >>= fromJSValSt
+          res <- liftToSt (jsCall3 onArrayFunction ea' x' y') >>= fromJSValSt
           liftEither res),
-        conjOnFunctionNoun = if jsIsUndefined onFunctionArray then Nothing else Just $ (\x y -> do
+        conjOnFunctionNoun = if jsIsUndefined onFunctionArray then Nothing else Just $ (\ea x y -> do
+          ea' <- toJSValSt ea
           x' <- toJSValSt x
           y' <- toJSValSt y
-          res <- liftToSt (jsCall2 onFunctionArray x' y') >>= fromJSValSt
+          res <- liftToSt (jsCall3 onFunctionArray ea' x' y') >>= fromJSValSt
           liftEither res),
-        conjOnFunctionFunction = if jsIsUndefined onFunctionFunction then Nothing else Just $ (\x y -> do
+        conjOnFunctionFunction = if jsIsUndefined onFunctionFunction then Nothing else Just $ (\ea x y -> do
+          ea' <- toJSValSt ea
           x' <- toJSValSt x
           y' <- toJSValSt y
-          res <- liftToSt (jsCall2 onFunctionFunction x' y') >>= fromJSValSt
+          res <- liftToSt (jsCall3 onFunctionFunction ea' x' y') >>= fromJSValSt
           liftEither res),
         definedConjunctionId = id }
     | otherwise = throwError $ DomainError "fromJSValSt Conjunction: not a conjunction"
   toJSValSt c = do
     ctx <- getContext
-    onArrayArray <- liftToSt $ jsWrap2 $ \x y -> do
+    onArrayArray <- liftToSt $ jsWrap3 $ \ea x y -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
       y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
-      r <- second fst <$> (runResult $ runSt (callOnNounAndNoun c x' y') ctx)
+      r <- second fst <$> (runResult $ runSt (callOnNounAndNoun c ea' x' y') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    onArrayFunction <- liftToSt $ jsWrap2 $ \x y -> do
+    onArrayFunction <- liftToSt $ jsWrap3 $ \ea x y -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
       y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
-      r <- second fst <$> (runResult $ runSt (callOnNounAndFunction c x' y') ctx)
+      r <- second fst <$> (runResult $ runSt (callOnNounAndFunction c ea' x' y') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    onFunctionArray <- liftToSt $ jsWrap2 $ \x y -> do
+    onFunctionArray <- liftToSt $ jsWrap3 $ \ea x y -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
       y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
-      r <- second fst <$> (runResult $ runSt (callOnFunctionAndNoun c x' y') ctx)
+      r <- second fst <$> (runResult $ runSt (callOnFunctionAndNoun c ea' x' y') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    onFunctionFunction <- liftToSt $ jsWrap2 $ \x y -> do
+    onFunctionFunction <- liftToSt $ jsWrap3 $ \ea x y -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
       y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
-      r <- second fst <$> (runResult $ runSt (callOnFunctionAndFunction c x' y') ctx)
+      r <- second fst <$> (runResult $ runSt (callOnFunctionAndFunction c ea' x' y') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
     pure $ objectToVal [("type", toJSVal $ toJSString "conjunction"), ("repr", toJSVal $ toJSString $ show c), ("arrayArray", onArrayArray), ("arrayFunction", onArrayFunction), ("functionArray", onFunctionArray), ("functionFunction", onFunctionFunction)]
 

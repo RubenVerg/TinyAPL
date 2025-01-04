@@ -234,3 +234,6 @@ zipWithLongest f [] (y:ys) = (Nothing `f`) (Just y) : zipWithLongest f [] ys
 
 zipLongest :: [a] -> [b] -> [(Maybe a, Maybe b)]
 zipLongest = zipWithLongest (,)
+
+flap :: Functor f => f (a -> b) -> a -> f b
+flap fs x = fmap ($ x) fs

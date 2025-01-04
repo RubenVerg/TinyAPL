@@ -12,6 +12,7 @@ export interface Struct {
 }
 export type ScalarValue = Complex | string | Noun | Fun | Adv | Conj | Struct;
 export type DictEntry = [ScalarValue, ScalarValue];
+export type ExtraArgs = DictEntry[];
 export interface Arr {
     type: 'array';
     shape: number[];
@@ -31,22 +32,22 @@ export interface Nilad {
 export interface Fun {
     type: 'function';
     repr: string;
-    monad?: (y: Noun) => PromiseLike<Err | Noun>;
-    dyad?: (x: Noun, y: Noun) => PromiseLike<Err | Noun>;
+    monad?: (ea: ExtraArgs, y: Noun) => PromiseLike<Err | Noun>;
+    dyad?: (ea: ExtraArgs, x: Noun, y: Noun) => PromiseLike<Err | Noun>;
 }
 export interface Adv {
     type: 'adverb';
     repr: string;
-    array?: (n: Noun) => PromiseLike<Err | Fun>;
-    function?: (f: Fun) => PromiseLike<Err | Fun>;
+    array?: (ea: ExtraArgs, n: Noun) => PromiseLike<Err | Fun>;
+    function?: (ea: ExtraArgs, f: Fun) => PromiseLike<Err | Fun>;
 }
 export interface Conj {
     type: 'conjunction';
     repr: string;
-    arrayArray?: (n: Noun, m: Noun) => PromiseLike<Err | Fun>;
-    arrayFunction?: (n: Noun, f: Fun) => PromiseLike<Err | Fun>;
-    functionArray?: (f: Fun, m: Noun) => PromiseLike<Err | Fun>;
-    functionFunction?: (f: Fun, g: Fun) => PromiseLike<Err | Fun>;
+    arrayArray?: (ea: ExtraArgs, n: Noun, m: Noun) => PromiseLike<Err | Fun>;
+    arrayFunction?: (ea: ExtraArgs, n: Noun, f: Fun) => PromiseLike<Err | Fun>;
+    functionArray?: (ea: ExtraArgs, f: Fun, m: Noun) => PromiseLike<Err | Fun>;
+    functionFunction?: (ea: ExtraArgs, f: Fun, g: Fun) => PromiseLike<Err | Fun>;
 }
 export type Value = Noun | Fun | Adv | Conj;
 export interface Err {
