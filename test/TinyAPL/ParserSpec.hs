@@ -191,6 +191,13 @@ spec = do
     it "parses ternaries" $ do
       tok "1⍰2⍠3" `shouldBe` pure [[TokenTernary [TokenNumber 1 emptyPos] [TokenNumber 2 emptyPos] [TokenNumber 3 emptyPos] emptyPos]]
 
+    it "parses extra arguments" $ do
+      tok "⦋⦌" `shouldBe` pure [[TokenExtraArgs [] emptyPos]]
+      tok "⦋1:2⦌" `shouldBe` pure [[TokenExtraArgs [([TokenNumber 1 emptyPos], [TokenNumber 2 emptyPos])] emptyPos]]
+      tok "⦋1:2⋄3:4⦌" `shouldBe` pure [[TokenExtraArgs [([TokenNumber 1 emptyPos], [TokenNumber 2 emptyPos]), ([TokenNumber 3 emptyPos], [TokenNumber 4 emptyPos])] emptyPos]]
+      tok "⦋1:2⋄3:4⋄5:6⦌" `shouldBe` pure [[TokenExtraArgs [([TokenNumber 1 emptyPos], [TokenNumber 2 emptyPos]), ([TokenNumber 3 emptyPos], [TokenNumber 4 emptyPos]), ([TokenNumber 5 emptyPos], [TokenNumber 6 emptyPos])] emptyPos]]
+      tok "⦋hi⦌" `shouldBe` pure [[TokenSpreadExtraArgs [TokenArrayName "hi" emptyPos] emptyPos]]
+
   describe "binder" $ do
     let e2m (Right x) = Just x
         e2m (Left _)  = Nothing
@@ -227,6 +234,11 @@ spec = do
       it "parses conjunction application" $ do
         par "∘1" `shouldBe` pure [Just $ ConjunctionCallBranch (Leaf CatConjunction (TokenPrimConjunction '∘' emptyPos)) (Leaf CatArray (TokenNumber 1 emptyPos))]
         par "∘+" `shouldBe` pure [Just $ ConjunctionCallBranch (Leaf CatConjunction (TokenPrimConjunction '∘' emptyPos)) (Leaf CatFunction (TokenPrimFunction '+' emptyPos))]
+
+      it "parses extra arguments application" $ do
+        par "+⦋⦌" `shouldBe` pure [Just $ ExtraArgsBranch CatFunction (Leaf CatFunction (TokenPrimFunction '+' emptyPos)) (UnboundExtraArgsBranch (DictionaryBranch []))]
+        par "⍨⦋⦌" `shouldBe` pure [Just $ ExtraArgsBranch CatAdverb (Leaf CatAdverb (TokenPrimAdverb '⍨' emptyPos)) (UnboundExtraArgsBranch (DictionaryBranch []))]
+        par "∘⦋⦌" `shouldBe` pure [Just $ ExtraArgsBranch CatConjunction (Leaf CatConjunction (TokenPrimConjunction '∘' emptyPos)) (UnboundExtraArgsBranch (DictionaryBranch []))]
 
     describe "dfns" $ do
       it "parses dfns and dops" $ do

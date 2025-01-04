@@ -23,65 +23,125 @@ context = Context scope core undefined undefined undefined idRef
 
 spec :: Spec
 spec = do
-  let m :: Function -> Noun -> IO (Result Noun)
-      m fn y = runResult $ fst <$> runSt (callMonad fn y) context
+  let m' :: Function -> ExtraArgs -> Noun -> IO (Result Noun)
+      m' fn ea y = runResult $ fst <$> runSt (callMonad fn ea y) context
+
+      m :: Function -> Noun -> IO (Result Noun)
+      m fn = m' fn []
+
+      d' :: Function -> ExtraArgs -> Noun -> Noun -> IO (Result Noun)
+      d' fn ea x y = runResult $ fst <$> runSt (callDyad fn ea x y) context
 
       d :: Function -> Noun -> Noun -> IO (Result Noun)
-      d fn x y = runResult $ fst <$> runSt (callDyad fn x y) context
+      d fn = d' fn []
+
+      aa' :: Adverb -> ExtraArgs -> Noun -> IO (Result Function)
+      aa' adv ea' u = runResult $ fst <$> runSt (callOnNoun adv ea' u) context
 
       aa :: Adverb -> Noun -> IO (Result Function)
-      aa adv u = runResult $ fst <$> runSt (callOnNoun adv u) context
+      aa adv = aa' adv []
+
+      aam' :: Adverb -> ExtraArgs -> ExtraArgs -> Noun -> Noun -> IO (Result Noun)
+      aam' adv ea' ea u x = runResult $ fst <$> runSt (callOnNoun adv ea' u >>= (\f -> callMonad f ea x)) context
 
       aam :: Adverb -> Noun -> Noun -> IO (Result Noun)
-      aam adv u x = runResult $ fst <$> runSt (callOnNoun adv u >>= (`callMonad` x)) context
+      aam adv = aam' adv [] []
+
+      aad' :: Adverb -> ExtraArgs -> ExtraArgs -> Noun -> Noun -> Noun -> IO (Result Noun)
+      aad' adv ea' ea u x y = runResult $ fst <$> runSt (callOnNoun adv ea' u >>= (\f -> callDyad f ea x y)) context
 
       aad :: Adverb -> Noun -> Noun -> Noun -> IO (Result Noun)
-      aad adv u x y = runResult $ fst <$> runSt (callOnNoun adv u >>= (\d -> callDyad d x y)) context
+      aad adv = aad' adv [] []
+
+      af' :: Adverb -> ExtraArgs -> Function -> IO (Result Function)
+      af' adv ea' f = runResult $ fst <$> runSt (callOnFunction adv ea' f) context
 
       af :: Adverb -> Function -> IO (Result Function)
-      af adv f = runResult $ fst <$> runSt (callOnFunction adv f) context
+      af adv = af' adv []
+
+      afm' :: Adverb -> ExtraArgs -> ExtraArgs -> Function -> Noun -> IO (Result Noun)
+      afm' adv ea' ea f x = runResult $ fst <$> runSt (callOnFunction adv ea' f >>= (\f' -> callMonad f' ea x)) context
 
       afm :: Adverb -> Function -> Noun -> IO (Result Noun)
-      afm adv f x = runResult $ fst <$> runSt (callOnFunction adv f >>= (`callMonad` x)) context
+      afm adv = afm' adv [] []
+
+      afd' :: Adverb -> ExtraArgs -> ExtraArgs -> Function -> Noun -> Noun -> IO (Result Noun)
+      afd' adv ea' ea f x y = runResult $ fst <$> runSt (callOnFunction adv ea' f >>= (\f' -> callDyad f' ea x y)) context
 
       afd :: Adverb -> Function -> Noun -> Noun -> IO (Result Noun)
-      afd adv f x y = runResult $ fst <$> runSt (callOnFunction adv f >>= (\d -> callDyad d x y)) context
+      afd adv = afd' adv [] []
+
+      caa' :: Conjunction -> ExtraArgs -> Noun -> Noun -> IO (Result Function)
+      caa' conj ea' u v = runResult $ fst <$> runSt (callOnNounAndNoun conj ea' u v) context
 
       caa :: Conjunction -> Noun -> Noun -> IO (Result Function)
-      caa conj u v = runResult $ fst <$> runSt (callOnNounAndNoun conj u v) context
+      caa conj = caa' conj []
+
+      caam' :: Conjunction -> ExtraArgs -> ExtraArgs -> Noun -> Noun -> Noun -> IO (Result Noun)
+      caam' conj ea' ea u v x = runResult $ fst <$> runSt (callOnNounAndNoun conj ea' u v >>= (\f -> callMonad f ea x)) context
 
       caam :: Conjunction -> Noun -> Noun -> Noun -> IO (Result Noun)
-      caam conj u v x = runResult $ fst <$> runSt (callOnNounAndNoun conj u v >>= (`callMonad` x)) context
+      caam conj = caam' conj [] []
+
+      caad' :: Conjunction -> ExtraArgs -> ExtraArgs -> Noun -> Noun -> Noun -> Noun -> IO (Result Noun)
+      caad' conj ea' ea u v x y = runResult $ fst <$> runSt (callOnNounAndNoun conj ea' u v >>= (\d -> callDyad d ea x y)) context
 
       caad :: Conjunction -> Noun -> Noun -> Noun -> Noun -> IO (Result Noun)
-      caad conj u v x y = runResult $ fst <$> runSt (callOnNounAndNoun conj u v >>= (\d -> callDyad d x y)) context
+      caad conj = caad' conj [] []
+
+      caf' :: Conjunction -> ExtraArgs -> Noun -> Function -> IO (Result Function)
+      caf' conj ea' u g = runResult $ fst <$> runSt (callOnNounAndFunction conj ea' u g) context
 
       caf :: Conjunction -> Noun -> Function -> IO (Result Function)
-      caf conj u g = runResult $ fst <$> runSt (callOnNounAndFunction conj u g) context
+      caf conj = caf' conj []
+
+      cafm' :: Conjunction -> ExtraArgs -> ExtraArgs -> Noun -> Function -> Noun -> IO (Result Noun)
+      cafm' conj ea' ea u g x = runResult $ fst <$> runSt (callOnNounAndFunction conj ea' u g >>= (\f -> callMonad f ea x)) context
 
       cafm :: Conjunction -> Noun -> Function -> Noun -> IO (Result Noun)
-      cafm conj u g x = runResult $ fst <$> runSt (callOnNounAndFunction conj u g >>= (`callMonad` x)) context
+      cafm conj = cafm' conj [] []
+
+      cafd' :: Conjunction -> ExtraArgs -> ExtraArgs -> Noun -> Function -> Noun -> Noun -> IO (Result Noun)
+      cafd' conj ea' ea u g x y = runResult $ fst <$> runSt (callOnNounAndFunction conj ea' u g >>= (\f -> callDyad f ea x y)) context
 
       cafd :: Conjunction -> Noun -> Function -> Noun -> Noun -> IO (Result Noun)
-      cafd conj u g x y = runResult $ fst <$> runSt (callOnNounAndFunction conj u g >>= (\d -> callDyad d x y)) context
+      cafd conj = cafd' conj [] []
+
+      cfa' :: Conjunction -> ExtraArgs -> Function -> Noun -> IO (Result Function)
+      cfa' conj ea' f v = runResult $ fst <$> runSt (callOnFunctionAndNoun conj ea' f v) context
 
       cfa :: Conjunction -> Function -> Noun -> IO (Result Function)
-      cfa conj f v = runResult $ fst <$> runSt (callOnFunctionAndNoun conj f v) context
+      cfa conj = cfa' conj []
+
+      cfam' :: Conjunction -> ExtraArgs -> ExtraArgs -> Function -> Noun -> Noun -> IO (Result Noun)
+      cfam' conj ea' ea f v x = runResult $ fst <$> runSt (callOnFunctionAndNoun conj ea' f v >>= (\f' -> callMonad f' ea x)) context
 
       cfam :: Conjunction -> Function -> Noun -> Noun -> IO (Result Noun)
-      cfam conj f v x = runResult $ fst <$> runSt (callOnFunctionAndNoun conj f v >>= (`callMonad` x)) context
+      cfam conj = cfam' conj [] []
+
+      cfad' :: Conjunction -> ExtraArgs -> ExtraArgs -> Function -> Noun -> Noun -> Noun -> IO (Result Noun)
+      cfad' conj ea' ea f v x y = runResult $ fst <$> runSt (callOnFunctionAndNoun conj ea' f v >>= (\f' -> callDyad f' ea x y)) context
 
       cfad :: Conjunction -> Function -> Noun -> Noun -> Noun -> IO (Result Noun)
-      cfad conj f v x y = runResult $ fst <$> runSt (callOnFunctionAndNoun conj f v >>= (\d -> callDyad d x y)) context
+      cfad conj = cfad' conj [] []
+
+      cff' :: Conjunction -> ExtraArgs -> Function -> Function -> IO (Result Function)
+      cff' conj ea' f g = runResult $ fst <$> runSt (callOnFunctionAndFunction conj ea' f g) context
 
       cff :: Conjunction -> Function -> Function -> IO (Result Function)
-      cff conj f g = runResult $ fst <$> runSt (callOnFunctionAndFunction conj f g) context
+      cff conj = cff' conj []
+
+      cffm' :: Conjunction -> ExtraArgs -> ExtraArgs -> Function -> Function -> Noun -> IO (Result Noun)
+      cffm' conj ea' ea f g x = runResult $ fst <$> runSt (callOnFunctionAndFunction conj ea' f g >>= (\f' -> callMonad f' ea x)) context
 
       cffm :: Conjunction -> Function -> Function -> Noun -> IO (Result Noun)
-      cffm conj f g x = runResult $ fst <$> runSt (callOnFunctionAndFunction conj f g >>= (`callMonad` x)) context
+      cffm conj = cffm' conj [] []
+
+      cffd' :: Conjunction -> ExtraArgs -> ExtraArgs -> Function -> Function -> Noun -> Noun -> IO (Result Noun)
+      cffd' conj ea' ea f g x y = runResult $ fst <$> runSt (callOnFunctionAndFunction conj ea' f g >>= (\f' -> callDyad f' ea x y)) context
 
       cffd :: Conjunction -> Function -> Function -> Noun -> Noun -> IO (Result Noun)
-      cffd conj f g x y = runResult $ fst <$> runSt (callOnFunctionAndFunction conj f g >>= (\d -> callDyad d x y)) context
+      cffd conj = cffd' conj [] []
 
       e2m :: Either e a -> Maybe a
       e2m (Right x) = Just x
