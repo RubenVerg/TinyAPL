@@ -540,74 +540,82 @@ instance Floating Noun where
 
 -- * Functions
 
+type ExtraArgs = [(ScalarValue, ScalarValue)]
+
 data Function
   = DefinedFunction
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionRepr  :: String
     , functionContext :: Maybe Context
     , definedFunctionId :: Integer }
   | PrimitiveFunction
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionRepr  :: String
     , functionContext :: Maybe Context }
   | PartialFunction
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContext :: Maybe Context
     , partialFunctionFunction :: Function
     , partialFunctionLeft :: Noun }
   | DerivedFunctionNoun
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContext :: Maybe Context
     , derivedFunctionAdverb :: Adverb
     , derivedFunctionNounLeft :: Noun }
   | DerivedFunctionFunction
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContext :: Maybe Context
     , derivedFunctionAdverb :: Adverb
     , derivedFunctionFunctionLeft :: Function }
   | DerivedFunctionNounNoun
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionNounLeft :: Noun
     , derivedFunctionNounRight :: Noun }
   | DerivedFunctionNounFunction
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionNounLeft :: Noun
     , derivedFunctionFunctionRight :: Function }
   | DerivedFunctionFunctionNoun
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionFunctionLeft :: Function
     , derivedFunctionNounRight :: Noun }
   | DerivedFunctionFunctionFunction
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionFunctionLeft :: Function
     , derivedFunctionFunctionRight :: Function }
   | UnwrapArrayFunction
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContext :: Maybe Context
     , unwrapFunctionArray :: Noun }
   | TrainFunction
-    { functionMonad :: Maybe (Noun -> St Noun)
-    , functionDyad  :: Maybe (Noun -> Noun -> St Noun)
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContext :: Maybe Context
     , trainFunctionTines :: [Maybe Value] }
+  | ExtraArgsFunction
+    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContext :: Maybe Context
+    , extraArgsFunctionExtraArgs :: ExtraArgs
+    , extraArgsFunctionFunction :: Function }
   deriving (Generic, NFData)
 
 instance Eq Function where
@@ -622,6 +630,7 @@ instance Eq Function where
   DerivedFunctionFunctionFunction { derivedFunctionConjunction = aconj, derivedFunctionFunctionLeft = aa, derivedFunctionFunctionRight = ab } == DerivedFunctionFunctionFunction { derivedFunctionConjunction = bconj, derivedFunctionFunctionLeft = ba, derivedFunctionFunctionRight = bb } = aconj == bconj && aa == ba && ab == bb
   UnwrapArrayFunction { unwrapFunctionArray = a } == UnwrapArrayFunction { unwrapFunctionArray = b } = a == b
   TrainFunction { trainFunctionTines = a } == TrainFunction { trainFunctionTines = b } = a == b
+  ExtraArgsFunction { extraArgsFunctionExtraArgs = a, extraArgsFunctionFunction = b } == ExtraArgsFunction { extraArgsFunctionExtraArgs = c, extraArgsFunctionFunction = d } = a == c && b == d
   _ == _ = False
 
 instance Ord Function where
@@ -705,6 +714,19 @@ instance Ord Function where
   TrainFunction {} `compare` DerivedFunctionFunctionFunction {} = GT
   TrainFunction {} `compare` UnwrapArrayFunction {} = GT
   TrainFunction { trainFunctionTines = a } `compare` TrainFunction { trainFunctionTines = b } = b `compare` a
+  TrainFunction {} `compare` _ = LT
+  ExtraArgsFunction {} `compare` DefinedFunction {} = GT
+  ExtraArgsFunction {} `compare` PrimitiveFunction {} = GT
+  ExtraArgsFunction {} `compare` PartialFunction {} = GT
+  ExtraArgsFunction {} `compare` DerivedFunctionNoun {} = GT
+  ExtraArgsFunction {} `compare` DerivedFunctionFunction {} = GT
+  ExtraArgsFunction {} `compare` DerivedFunctionNounNoun {} = GT
+  ExtraArgsFunction {} `compare` DerivedFunctionNounFunction {} = GT
+  ExtraArgsFunction {} `compare` DerivedFunctionFunctionNoun {} = GT
+  ExtraArgsFunction {} `compare` DerivedFunctionFunctionFunction {} = GT
+  ExtraArgsFunction {} `compare` UnwrapArrayFunction {} = GT
+  ExtraArgsFunction {} `compare` TrainFunction {} = GT
+  ExtraArgsFunction { extraArgsFunctionExtraArgs = a } `compare` ExtraArgsFunction { extraArgsFunctionExtraArgs = b } = a `compare` b
 
 showTine :: Maybe Value -> String
 showTine Nothing = ""
@@ -722,52 +744,59 @@ instance Show Function where
   show (DerivedFunctionFunctionFunction { derivedFunctionConjunction = conj, derivedFunctionFunctionLeft = u, derivedFunctionFunctionRight = v }) = [fst G.parens] ++ show u ++ [snd G.parens] ++ show conj ++ [fst G.parens] ++ show v ++ [snd G.parens]
   show (UnwrapArrayFunction { unwrapFunctionArray = arr }) = [G.unwrap, fst G.parens] ++ show arr ++ [snd G.parens]
   show (TrainFunction { trainFunctionTines = tines }) = [fst G.train] ++ intercalate [' ', G.separator, ' '] (showTine <$> tines) ++ [snd G.train]
+  show (ExtraArgsFunction { extraArgsFunctionExtraArgs = args, extraArgsFunctionFunction = fn }) = [fst G.parens] ++ show fn ++ [snd G.parens, fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> show k ++ [' ', G.guard, ' '] ++ show v) <$> args) ++ [snd G.extraArgs]
 
 noMonad :: String -> Error
 noMonad str = DomainError $ "Function " ++ str ++ " cannot be called monadically"
 
-callMonad :: Function -> Noun -> St Noun
-callMonad f x = case functionMonad f of
+callMonad :: Function -> ExtraArgs -> Noun -> St Noun
+callMonad f ea x = case functionMonad f of
   Just m -> case functionContext f of
-    Just ctx -> runWithContext ctx $ m x
-    Nothing -> m x
+    Just ctx -> runWithContext ctx $ m ea x
+    Nothing -> m ea x
   Nothing -> throwError $ noMonad $ show f
 
 noDyad :: String -> Error
 noDyad str = DomainError $ "Function " ++ str ++ " cannot be called dyadically"
 
-callDyad :: Function -> Noun -> Noun -> St Noun
-callDyad f a b = case functionDyad f of
+callDyad :: Function -> ExtraArgs -> Noun -> Noun -> St Noun
+callDyad f ea a b = case functionDyad f of
   Just d -> case functionContext f of
-    Just ctx -> runWithContext ctx $ d a b
-    Nothing -> d a b
+    Just ctx -> runWithContext ctx $ d ea a b
+    Nothing -> d ea a b
   Nothing -> throwError $ noDyad $ show f
 
 -- * Operators
 
 data Adverb
   = DefinedAdverb
-    { adverbOnNoun             :: Maybe (Noun    -> St Function)
-    , adverbOnFunction         :: Maybe (Function -> St Function)
+    { adverbOnNoun             :: Maybe (ExtraArgs -> Noun     -> St Function)
+    , adverbOnFunction         :: Maybe (ExtraArgs -> Function -> St Function)
     , adverbRepr               :: String
     , adverbContext            :: Maybe Context
     , definedAdverbId          :: Integer }
   | PrimitiveAdverb
-    { adverbOnNoun             :: Maybe (Noun     -> St Function)
-    , adverbOnFunction         :: Maybe (Function -> St Function)
+    { adverbOnNoun             :: Maybe (ExtraArgs -> Noun     -> St Function)
+    , adverbOnFunction         :: Maybe (ExtraArgs -> Function -> St Function)
     , adverbRepr               :: String
     , adverbContext            :: Maybe Context }
   | PartialAdverb
-    { adverbOnNoun             :: Maybe (Noun     -> St Function)
-    , adverbOnFunction         :: Maybe (Function -> St Function)
+    { adverbOnNoun             :: Maybe (ExtraArgs -> Noun     -> St Function)
+    , adverbOnFunction         :: Maybe (ExtraArgs -> Function -> St Function)
     , adverbContext            :: Maybe Context
     , partialAdverbConjunction :: Conjunction
     , partialAdverbRight       :: Value }
   | TrainAdverb
-    { adverbOnNoun             :: Maybe (Noun     -> St Function)
-    , adverbOnFunction         :: Maybe (Function -> St Function)
+    { adverbOnNoun             :: Maybe (ExtraArgs -> Noun     -> St Function)
+    , adverbOnFunction         :: Maybe (ExtraArgs -> Function -> St Function)
     , adverbContext            :: Maybe Context
     , trainAdverbTines         :: [Maybe Value] }
+  | ExtraArgsAdverb
+    { adverbOnNoun             :: Maybe (ExtraArgs -> Noun     -> St Function)
+    , adverbOnFunction         :: Maybe (ExtraArgs -> Function -> St Function)
+    , adverbContext            :: Maybe Context
+    , extraArgsAdverbExtraArgs :: ExtraArgs
+    , extraArgsAdverbAdverb    :: Adverb }
   deriving (Generic, NFData)
 
 instance Show Adverb where
@@ -775,12 +804,14 @@ instance Show Adverb where
   show PrimitiveAdverb { adverbRepr = repr } = repr
   show PartialAdverb { partialAdverbConjunction = conj, partialAdverbRight = n } = show conj ++ [fst G.parens] ++ show n ++ [snd G.parens]
   show TrainAdverb { trainAdverbTines = tines } = [G.underscore, fst G.train] ++ intercalate [' ', G.separator, ' '] (showTine <$> tines) ++ [snd G.train]
+  show ExtraArgsAdverb { extraArgsAdverbExtraArgs = args, extraArgsAdverbAdverb = adv } = [fst G.parens] ++ show adv ++ [snd G.parens, fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> show k ++ [' ', G.guard, ' '] ++ show v) <$> args) ++ [snd G.extraArgs]
 
 instance Eq Adverb where
   DefinedAdverb { definedAdverbId = a } == DefinedAdverb { definedAdverbId = b } = a == b
   PrimitiveAdverb { adverbRepr = a } == PrimitiveAdverb { adverbRepr = b } = a == b
   PartialAdverb { partialAdverbConjunction = ac, partialAdverbRight = ar } == PartialAdverb { partialAdverbConjunction = bc, partialAdverbRight = br } = ac == bc && ar == br
   TrainAdverb { trainAdverbTines = a } == TrainAdverb { trainAdverbTines = b } = a == b
+  ExtraArgsAdverb { extraArgsAdverbExtraArgs = a, extraArgsAdverbAdverb = b } == ExtraArgsAdverb { extraArgsAdverbExtraArgs = c, extraArgsAdverbAdverb = d } = a == c && b == d
   _ == _ = False
 
 instance Ord Adverb where
@@ -797,55 +828,71 @@ instance Ord Adverb where
   TrainAdverb {} `compare` PrimitiveAdverb {} = GT
   TrainAdverb {} `compare` PartialAdverb {} = GT
   TrainAdverb { trainAdverbTines = a } `compare` TrainAdverb { trainAdverbTines = b } = b `compare` a
+  TrainAdverb {} `compare` _ = LT
+  ExtraArgsAdverb {} `compare` DefinedAdverb {} = GT
+  ExtraArgsAdverb {} `compare` PrimitiveAdverb {} = GT
+  ExtraArgsAdverb {} `compare` PartialAdverb {} = GT
+  ExtraArgsAdverb {} `compare` TrainAdverb {} = GT
+  ExtraArgsAdverb { extraArgsAdverbExtraArgs = a } `compare` ExtraArgsAdverb { extraArgsAdverbExtraArgs = b } = a `compare` b
 
-callOnNoun :: Adverb -> Noun -> St Function
-callOnNoun adv x = case adverbOnNoun adv of
+callOnNoun :: Adverb -> ExtraArgs -> Noun -> St Function
+callOnNoun adv ea x = case adverbOnNoun adv of
   Just f -> case adverbContext adv of
-    Just ctx -> runWithContext ctx $ f x
-    Nothing -> f x
+    Just ctx -> runWithContext ctx $ f ea x
+    Nothing -> f ea x
   Nothing -> throwError $ DomainError $ "Operator " ++ show adv ++ " does not take array operands."
 
-callOnFunction :: Adverb -> Function -> St Function
-callOnFunction adv x = case adverbOnFunction adv of
+callOnFunction :: Adverb -> ExtraArgs -> Function -> St Function
+callOnFunction adv ea x = case adverbOnFunction adv of
   Just f -> case adverbContext adv of
-    Just ctx -> runWithContext ctx $ f x
-    Nothing -> f x
+    Just ctx -> runWithContext ctx $ f ea x
+    Nothing -> f ea x
   Nothing -> throwError $ DomainError $ "Operator " ++ show adv ++ " does not take functions operands."
 
 data Conjunction
   = DefinedConjunction
-    { conjOnNounNoun         :: Maybe (Noun     -> Noun     -> St Function)
-    , conjOnNounFunction     :: Maybe (Noun     -> Function -> St Function)
-    , conjOnFunctionNoun     :: Maybe (Function -> Noun     -> St Function)
-    , conjOnFunctionFunction :: Maybe (Function -> Function -> St Function)
+    { conjOnNounNoun         :: Maybe (ExtraArgs -> Noun     -> Noun     -> St Function)
+    , conjOnNounFunction     :: Maybe (ExtraArgs -> Noun     -> Function -> St Function)
+    , conjOnFunctionNoun     :: Maybe (ExtraArgs -> Function -> Noun     -> St Function)
+    , conjOnFunctionFunction :: Maybe (ExtraArgs -> Function -> Function -> St Function)
     , conjRepr               :: String
     , conjContext            :: Maybe Context
     , definedConjunctionId   :: Integer }
   | PrimitiveConjunction
-    { conjOnNounNoun         :: Maybe (Noun     -> Noun     -> St Function)
-    , conjOnNounFunction     :: Maybe (Noun     -> Function -> St Function)
-    , conjOnFunctionNoun     :: Maybe (Function -> Noun     -> St Function)
-    , conjOnFunctionFunction :: Maybe (Function -> Function -> St Function)
+    { conjOnNounNoun         :: Maybe (ExtraArgs -> Noun     -> Noun     -> St Function)
+    , conjOnNounFunction     :: Maybe (ExtraArgs -> Noun     -> Function -> St Function)
+    , conjOnFunctionNoun     :: Maybe (ExtraArgs -> Function -> Noun     -> St Function)
+    , conjOnFunctionFunction :: Maybe (ExtraArgs -> Function -> Function -> St Function)
     , conjRepr               :: String
     , conjContext            :: Maybe Context }
   | TrainConjunction
-    { conjOnNounNoun         :: Maybe (Noun     -> Noun     -> St Function)
-    , conjOnNounFunction     :: Maybe (Noun     -> Function -> St Function)
-    , conjOnFunctionNoun     :: Maybe (Function -> Noun     -> St Function)
-    , conjOnFunctionFunction :: Maybe (Function -> Function -> St Function)
+    { conjOnNounNoun         :: Maybe (ExtraArgs -> Noun     -> Noun     -> St Function)
+    , conjOnNounFunction     :: Maybe (ExtraArgs -> Noun     -> Function -> St Function)
+    , conjOnFunctionNoun     :: Maybe (ExtraArgs -> Function -> Noun     -> St Function)
+    , conjOnFunctionFunction :: Maybe (ExtraArgs -> Function -> Function -> St Function)
     , conjContext            :: Maybe Context
     , trainConjunctionTines  :: [Maybe Value] }
+  | ExtraArgsConjunction
+    { conjOnNounNoun         :: Maybe (ExtraArgs -> Noun     -> Noun     -> St Function)
+    , conjOnNounFunction     :: Maybe (ExtraArgs -> Noun     -> Function -> St Function)
+    , conjOnFunctionNoun     :: Maybe (ExtraArgs -> Function -> Noun     -> St Function)
+    , conjOnFunctionFunction :: Maybe (ExtraArgs -> Function -> Function -> St Function)
+    , conjContext            :: Maybe Context
+    , extraArgsConjunctionExtraArgs :: ExtraArgs
+    , extraArgsConjunctionConjunction :: Conjunction }
   deriving (Generic, NFData)
   
 instance Show Conjunction where
   show DefinedConjunction { conjRepr = repr } = repr
   show PrimitiveConjunction { conjRepr = repr } = repr
   show TrainConjunction { trainConjunctionTines = tines } = [G.underscore, fst G.train] ++ intercalate [' ', G.separator, ' '] (showTine <$> tines) ++ [snd G.train, G.underscore]
+  show ExtraArgsConjunction { extraArgsConjunctionExtraArgs = args, extraArgsConjunctionConjunction = conj } = [fst G.parens] ++ show conj ++ [snd G.parens, fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> show k ++ [' ', G.guard, ' '] ++ show v) <$> args) ++ [snd G.extraArgs]
 
 instance Eq Conjunction where
   DefinedConjunction { definedConjunctionId = a } == DefinedConjunction { definedConjunctionId = b } = a == b
   PrimitiveConjunction { conjRepr = a } == PrimitiveConjunction { conjRepr = b } = a == b
   TrainConjunction { trainConjunctionTines = a } == TrainConjunction { trainConjunctionTines = b } = a == b
+  ExtraArgsConjunction { extraArgsConjunctionExtraArgs = a, extraArgsConjunctionConjunction = b } == ExtraArgsConjunction { extraArgsConjunctionExtraArgs = c, extraArgsConjunctionConjunction = d } = a == c && b == d
   _ == _ = False
 
 instance Ord Conjunction where
@@ -858,33 +905,38 @@ instance Ord Conjunction where
   TrainConjunction {} `compare` DefinedConjunction {} = GT
   TrainConjunction {} `compare` PrimitiveConjunction {} = GT
   TrainConjunction { trainConjunctionTines = a } `compare` TrainConjunction { trainConjunctionTines = b } = b `compare` a
+  TrainConjunction {} `compare` _ = LT
+  ExtraArgsConjunction {} `compare` DefinedConjunction {} = GT
+  ExtraArgsConjunction {} `compare` PrimitiveConjunction {} = GT
+  ExtraArgsConjunction {} `compare` TrainConjunction {} = GT
+  ExtraArgsConjunction { extraArgsConjunctionExtraArgs = a } `compare` ExtraArgsConjunction { extraArgsConjunctionExtraArgs = b } = a `compare` b
 
-callOnNounAndNoun :: Conjunction -> Noun -> Noun -> St Function
-callOnNounAndNoun conj x y = case conjOnNounNoun conj of
+callOnNounAndNoun :: Conjunction -> ExtraArgs -> Noun -> Noun -> St Function
+callOnNounAndNoun conj ea x y = case conjOnNounNoun conj of
   Just f -> case conjContext conj of
-    Just ctx -> runWithContext ctx $ f x y
-    Nothing -> f x y
+    Just ctx -> runWithContext ctx $ f ea x y
+    Nothing -> f ea x y
   Nothing -> throwError $ DomainError $ "Operator " ++ show conj ++ " cannot be applied to two nouns."
 
-callOnNounAndFunction :: Conjunction -> Noun -> Function -> St Function
-callOnNounAndFunction conj x y = case conjOnNounFunction conj of
+callOnNounAndFunction :: Conjunction -> ExtraArgs -> Noun -> Function -> St Function
+callOnNounAndFunction conj ea x y = case conjOnNounFunction conj of
   Just f -> case conjContext conj of
-    Just ctx -> runWithContext ctx $ f x y
-    Nothing -> f x y
+    Just ctx -> runWithContext ctx $ f ea x y
+    Nothing -> f ea x y
   Nothing -> throwError $ DomainError $ "Operator " ++ show conj ++ " cannot be applied to an array and a function."
 
-callOnFunctionAndNoun :: Conjunction -> Function -> Noun -> St Function
-callOnFunctionAndNoun conj x y = case conjOnFunctionNoun conj of
+callOnFunctionAndNoun :: Conjunction -> ExtraArgs -> Function -> Noun -> St Function
+callOnFunctionAndNoun conj ea x y = case conjOnFunctionNoun conj of
   Just f -> case conjContext conj of
-    Just ctx -> runWithContext ctx $ f x y
-    Nothing -> f x y
+    Just ctx -> runWithContext ctx $ f ea x y
+    Nothing -> f ea x y
   Nothing -> throwError $ DomainError $ "Operator " ++ show conj ++ " cannot be applied to a function and an array."
 
-callOnFunctionAndFunction :: Conjunction -> Function -> Function -> St Function
-callOnFunctionAndFunction conj x y = case conjOnFunctionFunction conj of
+callOnFunctionAndFunction :: Conjunction -> ExtraArgs -> Function -> Function -> St Function
+callOnFunctionAndFunction conj ea x y = case conjOnFunctionFunction conj of
   Just f -> case conjContext conj of
-    Just ctx -> runWithContext ctx $ f x y
-    Nothing -> f x y
+    Just ctx -> runWithContext ctx $ f ea x y
+    Nothing -> f ea x y
   Nothing -> throwError $ DomainError $ "Operator " ++ show conj ++ " cannot be applied to two functions."
 
 -- * Quads
@@ -1181,14 +1233,14 @@ unwrapConjunction :: Error -> Value -> St Conjunction
 unwrapConjunction _ (VConjunction val) = return val
 unwrapConjunction e _                  = throwError e
 
-callOnValue :: Adverb -> Value -> St Function
-callOnValue adv (VNoun x) = callOnNoun adv x
-callOnValue adv (VFunction x) = callOnFunction adv x
-callOnValue _ _ = throwError $ DomainError "Invalid type to adverb call"
+callOnValue :: Adverb -> ExtraArgs -> Value -> St Function
+callOnValue adv ea (VNoun x) = callOnNoun adv ea x
+callOnValue adv ea (VFunction x) = callOnFunction adv ea x
+callOnValue _ _ _ = throwError $ DomainError "Invalid type to adverb call"
 
-callOnValueAndValue :: Conjunction -> Value -> Value -> St Function
-callOnValueAndValue conj (VNoun x) (VNoun y) = callOnNounAndNoun conj x y
-callOnValueAndValue conj (VNoun x) (VFunction y) = callOnNounAndFunction conj x y
-callOnValueAndValue conj (VFunction x) (VNoun y) = callOnFunctionAndNoun conj x y
-callOnValueAndValue conj (VFunction x) (VFunction y) = callOnFunctionAndFunction conj x y
-callOnValueAndValue _ _ _ = throwError $ DomainError "Invalid type to conjunction call"
+callOnValueAndValue :: Conjunction -> ExtraArgs -> Value -> Value -> St Function
+callOnValueAndValue conj ea (VNoun x) (VNoun y) = callOnNounAndNoun conj ea x y
+callOnValueAndValue conj ea (VNoun x) (VFunction y) = callOnNounAndFunction conj ea x y
+callOnValueAndValue conj ea (VFunction x) (VNoun y) = callOnFunctionAndNoun conj ea x y
+callOnValueAndValue conj ea (VFunction x) (VFunction y) = callOnFunctionAndFunction conj ea x y
+callOnValueAndValue _ _ _ _ = throwError $ DomainError "Invalid type to conjunction call"

@@ -30,6 +30,6 @@ search' pattern arr = do
         [Number $ fromInteger $ toInteger o, Number $ fromInteger $ toInteger l, box $ vector $ Character <$> str]) mats) <$> s) strs)
 
 regex = Nilad (Just $ do
-  scope <- createRef $ Scope [] [ ("Search", (VariableConstant, PrimitiveFunction Nothing (Just search') "Search" Nothing)) ] [] [] Nothing
+  scope <- createRef $ Scope [] [ ("Search", (VariableConstant, PrimitiveFunction Nothing (Just $ const search') "Search" Nothing)) ] [] [] Nothing
   ctx <- getContext
   pure $ scalar $ Struct $ ctx{ contextScope = scope } ) Nothing (G.quad : "regex") Nothing

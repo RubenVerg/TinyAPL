@@ -31,6 +31,7 @@ unwrap = '⊐'
 struct = ('⦃', '⦄')
 access = '→'
 ternary = ('⍰', '⍠')
+extraArgs = ('⦋', '⦌')
 
 syntax =
   [ TinyAPL.Glyphs.decimal
@@ -88,6 +89,7 @@ alpha = '⍺'
 alphaBar = '⍶'
 omega = '⍵'
 omegaBar = '⍹'
+epsilon = 'ɛ'
 quad = '⎕'
 quadQuote = '⍞'
 del = '∇'
@@ -99,6 +101,7 @@ identifiers =
   , TinyAPL.Glyphs.alphaBar
   , TinyAPL.Glyphs.omega
   , TinyAPL.Glyphs.omegaBar
+  , TinyAPL.Glyphs.epsilon
   , TinyAPL.Glyphs.quad
   , TinyAPL.Glyphs.quadQuote
   , TinyAPL.Glyphs.del ]

@@ -38,21 +38,21 @@ ts = Nilad (Just $ do
   let ms = round $ fracPart (fixedToFractional s') * 1000
   pure $ vector [Number $ fromIntegral y, Number $ fromIntegral m, Number $ fromIntegral d, Number $ fromIntegral h, Number $ fromIntegral min, Number $ fromIntegral s, Number $ fromIntegral ms]) Nothing (G.quad : "ts") Nothing
 
-exists = PrimitiveFunction (Just $ \y -> do
+exists = PrimitiveFunction (Just $ \_ y -> do
   var <- asString (DomainError "Exists argument must be a string") y
   v <- gets contextScope >>= readRef >>= scopeLookup True var
   case v of
     Just _ -> return $ scalar $ Number 1
     Nothing -> return $ scalar $ Number 0
-  ) (Just $ \x y -> do
+  ) (Just $ \_ x y -> do
   var <- asString (DomainError "Exists right argument must be a string") y
   let err = DomainError "Exists left argument must be a scalar struct"
   ns <- asScalar err x >>= asStruct err >>= readRef . contextScope
   case scopeShallowLookup False var ns of
     Just _ -> pure $ scalar $ Number 1
     Nothing -> pure $ scalar $ Number 0) (G.quad : "Exists") Nothing
-repr = PrimitiveFunction (Just $ \y -> return $ vector $ Character <$> arrayRepr y) Nothing (G.quad : "Repr") Nothing
-delay = PrimitiveFunction (Just $ \y -> do
+repr = PrimitiveFunction (Just $ \_ y -> return $ vector $ Character <$> arrayRepr y) Nothing (G.quad : "Repr") Nothing
+delay = PrimitiveFunction (Just $ \_ y -> do
   let err = DomainError "Delay argument must be a nonnegative scalar number"
   n <- asScalar err y >>= asNumber err >>= asReal err
   if n < 0 then throwError err else do
@@ -61,7 +61,7 @@ delay = PrimitiveFunction (Just $ \y -> do
     end <- realToFrac <$> liftToSt getPOSIXTime
     pure $ scalar $ Number $ (end - start) :+ 0
   ) Nothing (G.quad : "Delay") Nothing
-type_ = PrimitiveFunction (Just $ \(Array sh cs) -> return $ Array sh $ (\case
+type_ = PrimitiveFunction (Just $ \_ (Array sh cs) -> return $ Array sh $ (\case
   Number _ -> Number 0
   Character _ -> Number 1
   Box _ -> Number 2
@@ -69,34 +69,34 @@ type_ = PrimitiveFunction (Just $ \(Array sh cs) -> return $ Array sh $ (\case
   AdverbWrap _ -> Number 4
   ConjunctionWrap _ -> Number 5
   Struct _ -> Number 6) <$> cs) Nothing (G.quad : "Type") Nothing
-print_ = PrimitiveFunction (Just $ \y -> do
+print_ = PrimitiveFunction (Just $ \_ y -> do
   let err = DomainError "Print argument must be a string or vector of strings"
   ss <- asStrings err y
   out <- getsContext contextOut
   out $ intercalate "\n" ss ++ "\n"
   pure $ vector []
   ) Nothing (G.quad : "P") Nothing
-errorPrint = PrimitiveFunction (Just $ \y -> do
+errorPrint = PrimitiveFunction (Just $ \_ y -> do
   let err = DomainError "Print argument must be a string or vector of strings"
   ss <- asStrings err y
   err <- getsContext contextErr
   err $ intercalate "\n" ss ++ "\n"
   pure $ vector []
   ) Nothing (G.quad : "E") Nothing
-measure = PrimitiveAdverb Nothing (Just $ \f -> pure $ DerivedFunctionFunction (Just $ \y -> do
+measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea y -> do
   start <- realToFrac <$> liftToSt getPOSIXTime
-  _ <- callMonad f y
+  _ <- callMonad f ea y
   end <- realToFrac <$> liftToSt getPOSIXTime
-  pure $ scalar $ Number $ (end - start) :+ 0) (Just $ \x y -> do
+  pure $ scalar $ Number $ (end - start) :+ 0) (Just $ \ea x y -> do
   start <- realToFrac <$> liftToSt getPOSIXTime
-  _ <- callDyad f x y
+  _ <- callDyad f ea x y
   end <- realToFrac <$> liftToSt getPOSIXTime
   pure $ scalar $ Number $ (end - start) :+ 0) Nothing measure f) (G.quad : "_Measure") Nothing
 
 core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, math, regex ] [ exists, repr, delay, type_, unicode, print_, errorPrint ] [ measure ] []
 
 makeImport :: (FilePath -> St String) -> Maybe ([String] -> St String) -> Function
-makeImport read readStd = PrimitiveFunction (Just $ \x -> do
+makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
   let err = DomainError "Import argument must be a character vector"
   path <- asVector err x >>= mapM (asCharacter err)
   ctx <- getContext
