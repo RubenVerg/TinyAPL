@@ -121,16 +121,19 @@ comparisonTolerance :: Double
 comparisonTolerance = 1e-14
 
 realEqual' :: Double -> Double -> Double -> Bool
-realEqual' t a b = if isInfinite a || isInfinite b then a == b else abs (a - b) <= t * (abs a `max` abs b)
+realEqual' t a b
+  | t == 0 || isInfinite a || isInfinite b = a == b
+  | t > 0 = abs (a - b) <= t * (abs a `max` abs b)
+  | otherwise = abs (a - b) <= negate t
 
 realEqual :: Double -> Double -> Bool
 realEqual = realEqual' comparisonTolerance
 
 complexEqual' :: Double -> Complex Double -> Complex Double -> Bool
-complexEqual' t a@(ar :+ ai) b@(br :+ bi) =
-  if isInfinite ar || isInfinite ai || isInfinite br || isInfinite bi
-  then a == b
-  else magnitude (a - b) <= t * (magnitude a `max` magnitude b)
+complexEqual' t a@(ar :+ ai) b@(br :+ bi)
+  | t == 0 || isInfinite ar || isInfinite ai || isInfinite br || isInfinite bi = a == b
+  | t > 0 = magnitude (a - b) <= t * (magnitude a `max` magnitude b)
+  | otherwise = magnitude (a - b) <= negate t
 
 complexEqual :: Complex Double -> Complex Double -> Bool
 complexEqual = complexEqual' comparisonTolerance
@@ -149,14 +152,14 @@ tolerantEquals' t a b
 tolerantEquals :: Complex Double -> Complex Double -> Bool
 tolerantEquals = tolerantEquals' comparisonTolerance
 
-tolerantcompareT :: Double -> Complex Double -> Complex Double -> Ordering
-tolerantcompareT t (ar :+ ai) (br :+ bi)
+tolerantCompare' :: Double -> Complex Double -> Complex Double -> Ordering
+tolerantCompare' t (ar :+ ai) (br :+ bi)
   | realEqual' t ar br && realEqual' t ai bi = EQ
   | realEqual' t ar br = ai `compare` bi
   | otherwise = ar `compare` br
 
 tolerantCompare :: Complex Double -> Complex Double -> Ordering
-tolerantCompare = tolerantcompareT comparisonTolerance
+tolerantCompare = tolerantCompare' comparisonTolerance
 
 class TolerantOrd c a where
   compareT :: c -> a -> a -> Ordering
@@ -193,7 +196,7 @@ instance TolerantOrd Double Double where
   compareT t a b = if realEqual' t a b then EQ else a `compare` b
 
 instance TolerantOrd Double (Complex Double) where
-  compareT t a b = tolerantcompareT t a b
+  compareT = tolerantCompare'
   equalsT = tolerantEquals'
 
 instance TolerantOrd c a => TolerantOrd c [a] where
