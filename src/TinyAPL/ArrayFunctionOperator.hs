@@ -173,6 +173,22 @@ class TolerantOrd c a where
   greaterT :: c -> a -> a -> Bool
   greaterT tolerance a b = compareT tolerance a b == GT
 
+data TolerantL c a = TolerantL c a
+
+unTolerantL :: TolerantL c a -> a
+unTolerantL (TolerantL _ a) = a
+
+instance TolerantOrd c a => Eq (TolerantL c a) where
+  (TolerantL tolerance a) == (TolerantL _ b) = equalsT tolerance a b
+  (TolerantL tolerance a) /= (TolerantL _ b) = notEqualT tolerance a b
+
+instance TolerantOrd c a => Ord (TolerantL c a) where
+  (TolerantL tolerance a) `compare` (TolerantL _ b) = compareT tolerance a b
+  (TolerantL tolerance a) < (TolerantL _ b) = lessT tolerance a b
+  (TolerantL tolerance a) <= (TolerantL _ b) = lessEqualT tolerance a b
+  (TolerantL tolerance a) > (TolerantL _ b) = greaterT tolerance a b
+  (TolerantL tolerance a) >= (TolerantL _ b) = greaterEqualT tolerance a b
+
 instance TolerantOrd Double Double where
   compareT t a b = if realEqual' t a b then EQ else a `compare` b
 
@@ -483,10 +499,10 @@ complexRemainder' t w z =
   else z - w * complexFloor' t (if equalsT t w 0 then z else z / w)
 
 complexGCD' :: Double -> Complex Double -> Complex Double -> Complex Double
-complexGCD' t a w = if equalsT t (complexRemainder' t a w) 0 then a else complexGCD' t (complexRemainder' t a w) a
+complexGCD' t a w = asAnIntegerIfItIs $ if equalsT t (complexRemainder' t a w) 0 then a else complexGCD' t (complexRemainder' t a w) a
 
 complexLCM' :: Double -> Complex Double -> Complex Double -> Complex Double
-complexLCM' t x y = if equalsT t x 0 && equalsT t y 0 then 0 else (x * y) / (complexGCD' t x y)
+complexLCM' t x y = asAnIntegerIfItIs $ if equalsT t x 0 && equalsT t y 0 then 0 else (x * y) / (complexGCD' t x y)
 
 asAnIntegerIfItIs :: Complex Double -> Complex Double
 asAnIntegerIfItIs y = if isInt (realPart y) && isInt (imagPart y) then fromInteger (round $ realPart y) :+ fromInteger (round $ imagPart y) else y
@@ -1316,12 +1332,16 @@ coreExtraArgsToleranceKey = "tolerance"
 data CoreExtraArgs = CoreExtraArgs
   { coreExtraArgsTolerance :: Double }
 
+defaultCoreExtraArgs :: CoreExtraArgs
+defaultCoreExtraArgs = CoreExtraArgs
+  { coreExtraArgsTolerance = comparisonTolerance }
+
 parseCoreExtraArgs :: MonadError Error m => ExtraArgs -> m CoreExtraArgs
 parseCoreExtraArgs ea = do
   let 
     lookupStr :: String -> Maybe ScalarValue
     lookupStr s = lookup (box $ vector $ Character <$> s) ea
   let toleranceErr = DomainError "Tolerance must be a scalar real number"
-  tolerance <- fromMaybe comparisonTolerance <$> (mapM (asNumber toleranceErr >=> asReal toleranceErr) $ lookupStr coreExtraArgsToleranceKey)
+  tolerance <- fromMaybe (coreExtraArgsTolerance defaultCoreExtraArgs) <$> (mapM (asNumber toleranceErr >=> asReal toleranceErr) $ lookupStr coreExtraArgsToleranceKey)
   pure CoreExtraArgs
     { coreExtraArgsTolerance = tolerance }

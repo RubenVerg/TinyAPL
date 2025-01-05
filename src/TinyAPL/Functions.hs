@@ -13,9 +13,10 @@ import qualified TinyAPL.Complex as Cx
 import TinyAPL.Complex ( Complex((:+)) )
 import Data.Char
 import Data.Maybe (fromJust, fromMaybe)
-import Data.List (elemIndex, genericLength, genericTake, genericDrop, genericReplicate, nub, genericIndex, sortOn, sort, find, singleton)
+import Data.List (elemIndex, genericLength, genericTake, genericDrop, genericReplicate, nub, genericIndex, sortOn, sort, find, singleton, nubBy)
 import qualified Data.List.NonEmpty as NE
 import Numeric.Natural (Natural)
+import qualified Data.Bifunctor as Bi
 import Control.Monad
 import Control.Monad.State (MonadIO)
 import Data.Ord (Down(..))
@@ -388,29 +389,29 @@ greater CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ greaterT t x y
 greater' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 greater' cea = scalarDyad (fmap boolToScalar .: greater cea)
 
-precedes :: MonadError Error m => Noun -> Noun -> m Bool
-precedes x y = pure $ x < y
+precedes :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Bool
+precedes CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ lessT t x y
 
-precedes' :: MonadError Error m => Noun -> Noun -> m Noun
-precedes' x y = scalar . boolToScalar <$> precedes x y
+precedes' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+precedes' cea x y = scalar . boolToScalar <$> precedes cea x y
 
-precedesOrIdentical :: MonadError Error m => Noun -> Noun -> m Bool
-precedesOrIdentical x y = pure $ x <= y
+precedesOrIdentical :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Bool
+precedesOrIdentical CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ lessEqualT t x y
 
-precedesOrIdentical' :: MonadError Error m => Noun -> Noun -> m Noun
-precedesOrIdentical' x y = scalar . boolToScalar <$> precedesOrIdentical x y
+precedesOrIdentical' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+precedesOrIdentical' cea x y = scalar . boolToScalar <$> precedesOrIdentical cea x y
 
-succeedsOrIdentical :: MonadError Error m => Noun -> Noun -> m Bool
-succeedsOrIdentical x y = pure $ x >= y
+succeedsOrIdentical :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Bool
+succeedsOrIdentical CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ greaterEqualT t x y
 
-succeedsOrIdentical' :: MonadError Error m => Noun -> Noun -> m Noun
-succeedsOrIdentical' x y = scalar . boolToScalar <$> succeedsOrIdentical x y
+succeedsOrIdentical' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+succeedsOrIdentical' cea x y = scalar . boolToScalar <$> succeedsOrIdentical cea x y
 
-succeeds :: MonadError Error m => Noun -> Noun -> m Bool
-succeeds x y = pure $ x > y
+succeeds :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Bool
+succeeds CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ greaterT t x y
 
-succeeds' :: MonadError Error m => Noun -> Noun -> m Noun
-succeeds' x y = scalar . boolToScalar <$> succeeds x y
+succeeds' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+succeeds' cea x y = scalar . boolToScalar <$> succeeds cea x y
 
 minimal :: MonadError Error m => Noun -> Noun -> m Noun
 minimal x y = pure $ Prelude.min x y
@@ -418,17 +419,17 @@ minimal x y = pure $ Prelude.min x y
 maximal :: MonadError Error m => Noun -> Noun -> m Noun
 maximal x y = pure $ Prelude.max x y
 
-identical :: MonadError Error m => Noun -> Noun -> m Bool
-identical x y = pure $ x == y
+identical :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Bool
+identical CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ equalsT t x y
 
-identical' :: MonadError Error m => Noun -> Noun -> m Noun
-identical' x y = scalar . boolToScalar <$> identical x y
+identical' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+identical' cea x y = scalar . boolToScalar <$> identical cea x y
 
-notIdentical :: MonadError Error m => Noun -> Noun -> m Bool
-notIdentical x y = pure $ x /= y
+notIdentical :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Bool
+notIdentical CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ notEqualT t x y
 
-notIdentical' :: MonadError Error m => Noun -> Noun -> m Noun
-notIdentical' x y = scalar . boolToScalar <$> notIdentical x y
+notIdentical' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+notIdentical' cea x y = scalar . boolToScalar <$> notIdentical cea x y
 
 tally :: MonadError Error m => Noun -> m Natural
 tally y = pure $ genericLength $ majorCells y
@@ -439,11 +440,11 @@ tally' y = scalar . Number . fromInteger . toInteger <$> tally y
 nubSieve :: (Ord a, MonadError Error m) => [a] -> m [Bool]
 nubSieve ys = pure $ zipWith (\c idx -> fromJust (c `elemIndex` ys) == idx) ys [0..]
 
-nubSieve' :: MonadError Error m => Noun -> m Noun
-nubSieve' arr@(Array _ _) = do
-  nub <- nubSieve $ majorCells arr
+nubSieve' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+nubSieve' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = do
+  nub <- nubSieve $ TolerantL t <$> majorCells arr
   pure $ vector $ boolToScalar <$> nub
-nubSieve' (Dictionary _ vs) = vector . fmap boolToScalar <$> nubSieve vs
+nubSieve' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary _ vs) = vector . fmap boolToScalar <$> nubSieve (TolerantL t <$> vs)
 
 shape :: MonadError Error m => Noun -> m [Natural]
 shape (Array sh _) = pure sh
@@ -688,33 +689,33 @@ indices n = do
 unique :: (Eq a, MonadError Error m) => [a] -> m [a]
 unique xs = pure $ nub xs
 
-unique' :: MonadError Error m => Noun -> m Noun
-unique' arr@(Array _ _) = fromMajorCells <$> unique (majorCells arr)
-unique' (Dictionary _ vs) = vector <$> unique vs
+unique' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+unique' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> unique (TolerantL t <$> majorCells arr)
+unique' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary _ vs) = vector . fmap unTolerantL <$> unique (TolerantL t <$> vs)
 
 union :: (Eq a, MonadError Error m) => [a] -> [a] -> m [a]
 union xs ys = pure $ xs ++ filter (Prelude.not . (`elem` xs)) ys
 
-union' :: MonadError Error m => Noun -> Noun -> m Noun
-union' x@(Array _ _) y@(Array _ _) = fromMajorCells <$> union (majorCells x) (majorCells y)
-union' (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ zip aks avs ++ zip bks bvs
-union' _ _ = throwError $ DomainError "Cannot union array and dictionary"
+union' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+union' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = fromMajorCells . fmap unTolerantL <$> union (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y)
+union' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ nubBy ((==) `on` TolerantL t `on` fst) $ zip aks avs ++ zip bks bvs
+union' _ _ _ = throwError $ DomainError "Cannot union array and dictionary"
 
 intersection :: (Eq a, MonadError Error m) => [a] -> [a] -> m [a]
 intersection xs ys = pure $ filter (`elem` ys) xs
 
-intersection' :: MonadError Error m => Noun -> Noun -> m Noun
-intersection' x@(Array _ _) y@(Array _ _) = fromMajorCells <$> intersection (majorCells x) (majorCells y)
-intersection' (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ filter (\(k, _) -> k `elem` aks && k `elem` bks) $ zip aks avs ++ zip bks bvs
-intersection' _ _ = throwError $ DomainError "Cannot intersect array and dictionary"
+intersection' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+intersection' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = fromMajorCells . fmap unTolerantL <$> intersection (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y)
+intersection' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ fmap (Bi.first unTolerantL) $ filter (\(k, _) -> k `elem` (TolerantL t <$> aks) && k `elem` (TolerantL t <$> bks)) $ zip (TolerantL t <$> aks) avs ++ zip (TolerantL t <$> bks) bvs
+intersection' _ _ _ = throwError $ DomainError "Cannot intersect array and dictionary"
 
 difference :: (Eq a, MonadError Error m) => [a] -> [a] -> m [a]
 difference xs ys = pure $ filter (Prelude.not . (`elem` ys)) xs
 
-difference' :: MonadError Error m => Noun -> Noun -> m Noun
-difference' x@(Array _ _) y@(Array _ _) = fromMajorCells <$> difference (majorCells x) (majorCells y)
-difference' (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ filter (\(k, _) -> k `elem` aks && Prelude.not (k `elem` bks)) $ zip aks avs ++ zip bks bvs
-difference' _ _ = throwError $ DomainError "Cannot difference array and dictionary"
+difference' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+difference' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = fromMajorCells . fmap unTolerantL <$> difference (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y)
+difference' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ fmap (Bi.first unTolerantL) $ filter (\(k, _) -> k `elem` (TolerantL t <$> aks) && Prelude.not (k `elem` (TolerantL t <$> bks))) $ zip (TolerantL t <$> aks) avs ++ zip (TolerantL t <$> bks) bvs
+difference' _ _ _ = throwError $ DomainError "Cannot difference array and dictionary"
 
 symmetricDifference :: (Eq a, MonadError Error m) => [a] -> [a] -> m [a]
 symmetricDifference xs ys = do
@@ -722,10 +723,10 @@ symmetricDifference xs ys = do
   b <- difference ys xs
   pure $ a ++ b
 
-symmetricDifference' :: MonadError Error m => Noun -> Noun -> m Noun
-symmetricDifference' x@(Array _ _) y@(Array _ _) = fromMajorCells <$> symmetricDifference (majorCells x) (majorCells y)
-symmetricDifference' (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ filter (\(k, _) -> (k `elem` aks) /= (k `elem` bks)) $ zip aks avs ++ zip bks bvs
-symmetricDifference' _ _ = throwError $ DomainError "Cannot symmetric difference array and dictionary"
+symmetricDifference' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+symmetricDifference' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = fromMajorCells . fmap unTolerantL <$> symmetricDifference (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y)
+symmetricDifference' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ fmap (Bi.first unTolerantL) $ filter (\(k, _) -> (k `elem` (TolerantL t <$> aks)) /= (k `elem` (TolerantL t <$> bks))) $ zip (TolerantL t <$> aks) avs ++ zip (TolerantL t <$> bks) bvs
+symmetricDifference' _ _ _ = throwError $ DomainError "Cannot symmetric difference array and dictionary"
 
 roll :: (MonadError Error m, MonadIO m) => Natural -> m Double
 roll y =
@@ -783,74 +784,76 @@ squad i d@(Dictionary _ _) = indexElement (toScalar i) d >>= (\case
 from :: MonadError Error m => Noun -> Noun -> m Noun
 from x y = ((\x' -> (first `before` squad) x' y) `atRank1` 0) x
 
-catenate :: MonadError Error m => Noun -> Noun -> m Noun
-catenate a@(Array ash acs) b@(Array bsh bcs) =
+catenate :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+catenate cea a@(Array ash acs) b@(Array bsh bcs) =
   if null acs && Prelude.not (null bcs) then pure b
   else if null bcs && Prelude.not (null acs) then pure a
   else if arrayRank a == arrayRank b then
     if (isScalar a && isScalar b) || (tailMaybe ash == tailMaybe bsh) then pure $ fromMajorCells $ majorCells a ++ majorCells b
     else throwError $ LengthError "Incompatible shapes to Catenate"
-  else if isScalar a then catenate (fromJust $ arrayReshaped (1 : tailPromise bsh) acs) b
-  else if isScalar b then catenate a (fromJust $ arrayReshaped (1 : tailPromise ash) bcs)
-  else if arrayRank a == arrayRank b + 1 then promote b >>= (a `catenate`)
-  else if arrayRank a + 1 == arrayRank b then promote a >>= (`catenate` b)
+  else if isScalar a then catenate cea (fromJust $ arrayReshaped (1 : tailPromise bsh) acs) b
+  else if isScalar b then catenate cea a (fromJust $ arrayReshaped (1 : tailPromise ash) bcs)
+  else if arrayRank a == arrayRank b + 1 then promote b >>= (\b' -> catenate cea a b')
+  else if arrayRank a + 1 == arrayRank b then promote a >>= (\a' -> catenate cea a' b)
   else throwError $ RankError "Incompatible ranks to Catenate"
-catenate a@(Dictionary _ _) b@(Dictionary _ _) = union' b a -- intentionally swapped
-catenate _ _ = throwError $ DomainError "Cannot catenate dictionary and array"
+catenate cea a@(Dictionary _ _) b@(Dictionary _ _) = union' cea b a -- intentionally swapped
+catenate _ (Array [_] []) d@(Dictionary _ _) = pure d
+catenate _ d@(Dictionary _ _) (Array [_] []) = pure d
+catenate _ _ _ = throwError $ DomainError "Cannot catenate dictionary and array"
 
-join :: MonadError Error m => [Noun] -> m Noun
-join = fold (catenate `after` first) (vector [])
+join :: MonadError Error m => CoreExtraArgs -> [Noun] -> m Noun
+join cea = fold (catenate cea `after` first) (vector [])
 
-join' :: MonadError Error m => Noun -> m Noun
-join' = TinyAPL.Functions.join . majorCells
+join' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+join' cea = TinyAPL.Functions.join cea . majorCells
 
 gradeUp :: MonadError Error m => Ord a => [a] -> m [Natural]
 gradeUp xs = pure $ map fst $ sortOn snd $ zip [0..genericLength xs] xs
 
-gradeUp' :: MonadError Error m => Noun -> m Noun
-gradeUp' arr@(Array _ _) = vector . fmap (Number . fromInteger . toInteger) <$> gradeUp (majorCells arr)
-gradeUp' (Dictionary ks vs) = vector <$> sortByUp ks vs
+gradeUp' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+gradeUp' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = vector . fmap (Number . fromInteger . toInteger) <$> gradeUp (TolerantL t <$> majorCells arr)
+gradeUp' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary ks vs) = vector . fmap unTolerantL <$> sortByUp (TolerantL t <$> ks) (TolerantL t <$> vs)
 
 gradeDown :: MonadError Error m => Ord a => [a] -> m [Natural]
 gradeDown xs = pure $ map fst $ sortOn snd $ zip [0..genericLength xs] (Down <$> xs)
 
-gradeDown' :: MonadError Error m => Noun -> m Noun
-gradeDown' arr@(Array _ _) = vector . fmap (Number . fromInteger . toInteger) <$> gradeDown (majorCells arr)
-gradeDown' (Dictionary ks vs) = vector <$> sortByDown ks vs
+gradeDown' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+gradeDown' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = vector . fmap (Number . fromInteger . toInteger) <$> gradeDown (TolerantL t <$> majorCells arr)
+gradeDown' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary ks vs) = vector . fmap unTolerantL <$> sortByDown (TolerantL t <$> ks) (TolerantL t <$> vs)
 
 sortByUp :: MonadError Error m => Ord b => [a] -> [b] -> m [a]
 sortByUp as bs = pure $ map fst $ sortOn snd $ zip as bs
 
-sortByUp' :: MonadError Error m => Noun -> Noun -> m Noun
-sortByUp' as@(Array _ _) bs@(Array _ _) = fromMajorCells <$> sortByUp (majorCells as) (majorCells bs)
-sortByUp' _ _ = throwError $ DomainError "Only arrays can be sorted"
+sortByUp' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+sortByUp' CoreExtraArgs{ coreExtraArgsTolerance = t } as@(Array _ _) bs@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortByUp (TolerantL t <$> majorCells as) (TolerantL t <$> majorCells bs)
+sortByUp' _ _ _ = throwError $ DomainError "Only arrays can be sorted"
 
 sortByDown :: MonadError Error m => Ord b => [a] -> [b] -> m [a]
 sortByDown as bs = pure $ map fst $ sortOn snd $ zip as $ Down <$> bs
 
-sortByDown' :: MonadError Error m => Noun -> Noun -> m Noun
-sortByDown' as@(Array _ _) bs@(Array _ _) = fromMajorCells <$> sortByDown (majorCells as) (majorCells bs)
-sortByDown' _ _ = throwError $ DomainError "Only arrays can be sorted"
+sortByDown' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+sortByDown' CoreExtraArgs{ coreExtraArgsTolerance = t } as@(Array _ _) bs@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortByDown (TolerantL t <$> majorCells as) (TolerantL t <$> majorCells bs)
+sortByDown' _ _ _ = throwError $ DomainError "Only arrays can be sorted"
 
 sortUp :: MonadError Error m => Ord a =>[a] -> m [a]
 sortUp = pure . sort
 
-sortUp' :: MonadError Error m => Noun -> m Noun
-sortUp' arr@(Array _ _) = fromMajorCells <$> sortUp (majorCells arr)
-sortUp' _ = throwError $ DomainError "Only arrays can be sorted"
+sortUp' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+sortUp' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortUp (TolerantL t <$> majorCells arr)
+sortUp' _ _ = throwError $ DomainError "Only arrays can be sorted"
 
 sortDown :: MonadError Error m => Ord a => [a] -> m [a]
 sortDown = pure . fmap getDown . sort . fmap Down
 
-sortDown' :: MonadError Error m => Noun -> m Noun
-sortDown' arr@(Array _ _) = fromMajorCells <$> sortDown (majorCells arr)
-sortDown' _ = throwError $ DomainError "Only arrays can be sorted"
+sortDown' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+sortDown' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortDown (TolerantL t <$> majorCells arr)
+sortDown' _ _ = throwError $ DomainError "Only arrays can be sorted"
 
 reorderAxes' :: MonadError Error m => Noun -> Noun -> m Noun
 reorderAxes' x@(Array _ _) y@(Array _ _) = do
   shy <- shape' y
-  sx <- sortUp' x
-  is <- sortByUp' shy x
+  sx <- sortUp' defaultCoreExtraArgs x
+  is <- sortByUp' defaultCoreExtraArgs shy x
   is' <- key' ((reduce' min') `atop` (pure .: flip const)) sx is
   iota <- indexGenerator' is'
   indices <- eachRight from x iota
@@ -969,33 +972,33 @@ encode' _ _ _ = throwError $ DomainError "Encode arguments must be number arrays
 encodeBase2 :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 encodeBase2 cea = encode' cea (scalar $ Number 2)
 
-searchFunction :: MonadError Error m => (Noun -> [Noun] -> m Noun) -> (ScalarValue -> [ScalarValue] -> [ScalarValue] -> m ScalarValue) -> Noun -> Noun -> m Noun
-searchFunction f _ ns hs@(Array _ _) = let cutRank = arrayRank hs `naturalSaturatedSub` 1
-  in if arrayRank ns < cutRank then throwError $ DomainError "Search function neelde must have rank at least equal to the rank of the major cells of the haystack"
+searchFunction :: MonadError Error m => (TolerantL Double Noun -> [TolerantL Double Noun] -> m Noun) -> (TolerantL Double ScalarValue -> [TolerantL Double ScalarValue] -> [TolerantL Double ScalarValue] -> m ScalarValue) -> CoreExtraArgs -> Noun -> Noun -> m Noun
+searchFunction f _ CoreExtraArgs { coreExtraArgsTolerance = t } ns hs@(Array _ _) = let cutRank = arrayRank hs `naturalSaturatedSub` 1
+  in if arrayRank ns < cutRank then throwError $ DomainError "Search function needle must have rank at least equal to the rank of the major cells of the haystack"
   else do
     let hc = majorCells hs
     nc <- atRank1 enclose' (toInteger cutRank) ns
     onScalars1 (\n -> do
       n' <- first n
-      f n' hc) nc
-searchFunction _ g n (Dictionary ks vs) = do
-  fromScalar <$> g (box n) ks vs
+      f (TolerantL t n') (TolerantL t <$> hc)) nc
+searchFunction _ g CoreExtraArgs { coreExtraArgsTolerance = t } n (Dictionary ks vs) = do
+  fromScalar <$> g (TolerantL t $ box n) (TolerantL t <$> ks) (TolerantL t <$> vs)
 
-elementOf :: MonadError Error m => Noun -> Noun -> m Noun
+elementOf :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 elementOf = searchFunction (pure .: scalar .: boolToScalar .: elem) (\e _ v -> pure $ boolToScalar $ e `elem` v)
 
-count :: MonadError Error m => Noun -> Noun -> m Noun
+count :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 count = searchFunction (pure .: scalar .: Number .: (:+ 0) .: countEqual) (\e _ v -> pure $ Number $ countEqual e v :+ 0)
 
-indexOf :: MonadError Error m => Noun -> Noun -> m Noun
-indexOf = flip $ searchFunction
+indexOf :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+indexOf = dipFlip $ searchFunction
   (pure .: scalar .: Number .: (:+ 0) .: (\n hs -> fromMaybe (genericLength hs) $ n `genericElemIndex` hs))
   (\e k v -> case find (\(_, u) -> e == u) (zip k v) of
-    Just (i, _) -> pure i
+    Just (i, _) -> pure $ unTolerantL i
     Nothing -> throwError $ IndexError "Value not found in dictionary")
 
-intervalIndex :: MonadError Error m => Noun -> Noun -> m Noun
-intervalIndex hs' ns =
+intervalIndex :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+intervalIndex cea hs' ns =
   if Prelude.not $ sorted $ majorCells hs' then throwError $ DomainError "Interval index left argument must be sorted"
   else (searchFunction (pure .: scalar .: Number .: (:+ 0) .: (\n hs -> do
     let lowers = Nothing : fmap Just hs
@@ -1005,10 +1008,10 @@ intervalIndex hs' ns =
       ((Just lower, Just upper), _) | lower <= n && n < upper -> True
       ((Just lower, Nothing), _) | lower <= n -> True
       ((Nothing, Just upper), _) | n < upper -> True
-      _ -> False)) (\_ _ _ -> throwError $ DomainError "Interval index only works with arrays")) ns hs'
+      _ -> False)) (\_ _ _ -> throwError $ DomainError "Interval index only works with arrays")) cea ns hs'
 
 laminate :: MonadError Error m => Noun -> Noun -> m Noun
-laminate = catenate `over` promote
+laminate = catenate defaultCoreExtraArgs `over` promote
 
 majorCells' :: MonadError Error m => Noun -> m Noun
 majorCells' = pure . vector . fmap box . majorCells

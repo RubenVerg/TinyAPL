@@ -237,3 +237,6 @@ zipLongest = zipWithLongest (,)
 
 flap :: Functor f => f (a -> b) -> a -> f b
 flap fs x = fmap ($ x) fs
+
+dipFlip :: (a -> b -> c -> d) -> (a -> c -> b -> d)
+dipFlip f x y z = f x z y
