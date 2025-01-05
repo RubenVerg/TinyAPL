@@ -175,21 +175,21 @@ matrixDivide' = atRank2 (\x y -> do
   y' <- asMatrix (DomainError "") y >>= mapM (asNumber (DomainError "Matrix divide arguments must be numeric")) 
   matrix . fmap Number <$> matrixDivide x' y') (2, 2)
 
-floor :: MonadError Error m => ScalarValue -> m ScalarValue
-floor (Number y) = pure $ Number $ complexFloor y
-floor (Character y) = pure $ Character $ toLower y
-floor _ = throwError expectedNumber
+floor :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m ScalarValue
+floor CoreExtraArgs{ coreExtraArgsTolerance = t } (Number y) = pure $ Number $ complexFloor' t y
+floor _ (Character y) = pure $ Character $ toLower y
+floor _ _ = throwError expectedNumber
 
-floor' :: MonadError Error m => Noun -> m Noun
-floor' = scalarMonad TinyAPL.Functions.floor
+floor' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+floor' = scalarMonad . TinyAPL.Functions.floor
 
-ceil :: MonadError Error m => ScalarValue -> m ScalarValue
-ceil (Number y) = pure $ Number $ complexCeiling y
-ceil (Character y) = pure $ Character $ toUpper y
-ceil _ = throwError expectedNumber
+ceil :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m ScalarValue
+ceil CoreExtraArgs{ coreExtraArgsTolerance = t } (Number y) = pure $ Number $ complexCeiling' t y
+ceil _ (Character y) = pure $ Character $ toUpper y
+ceil _ _ = throwError expectedNumber
 
-ceil' :: MonadError Error m => Noun -> m Noun
-ceil' = scalarMonad ceil
+ceil' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+ceil' = scalarMonad . ceil
 
 round :: MonadError Error m => ScalarValue -> m ScalarValue
 round (Number y) = pure $ Number $ componentFloor $ y + (0.5 :+ 0.5)
@@ -216,19 +216,19 @@ max x y = pure $ Prelude.max x y
 max' :: MonadError Error m => Noun -> Noun -> m Noun
 max' = scalarDyad TinyAPL.Functions.max
 
-lcm :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
-lcm (Number x) (Number y) = pure $ Number $ complexLCM x y
-lcm _ _ = throwError expectedNumber
+lcm :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m ScalarValue
+lcm CoreExtraArgs{ coreExtraArgsTolerance = t } (Number x) (Number y) = pure $ Number $ complexLCM' t x y
+lcm _ _ _ = throwError expectedNumber
 
-lcm' :: MonadError Error m => Noun -> Noun -> m Noun
-lcm' = scalarDyad TinyAPL.Functions.lcm
+lcm' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+lcm' = scalarDyad . TinyAPL.Functions.lcm
 
-gcd :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
-gcd (Number x) (Number y) = pure $ Number $ complexGCD x y
-gcd _ _ = throwError expectedNumber
+gcd :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m ScalarValue
+gcd CoreExtraArgs{ coreExtraArgsTolerance = t } (Number x) (Number y) = pure $ Number $ complexGCD' t x y
+gcd _ _ _ = throwError expectedNumber
 
-gcd' :: MonadError Error m => Noun -> Noun -> m Noun
-gcd' = scalarDyad TinyAPL.Functions.gcd
+gcd' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+gcd' = scalarDyad . TinyAPL.Functions.gcd
 
 nand :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 nand (Number 0) (Number 0) = pure $ Number 1
@@ -286,12 +286,12 @@ abs _ = throwError expectedNumber
 abs' :: MonadError Error m => Noun -> m Noun
 abs' = scalarMonad TinyAPL.Functions.abs
 
-remainder :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
-remainder (Number x) (Number y) = pure $ Number $ complexRemainder x y
-remainder _ _ = throwError expectedNumber
+remainder :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m ScalarValue
+remainder CoreExtraArgs{ coreExtraArgsTolerance = t } (Number x) (Number y) = pure $ Number $ complexRemainder' t x y
+remainder _ _ _ = throwError expectedNumber
 
-remainder' :: MonadError Error m => Noun -> Noun -> m Noun
-remainder' = scalarDyad remainder
+remainder' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+remainder' = scalarDyad . remainder
 
 phase :: MonadError Error m => ScalarValue -> m ScalarValue
 phase (Number y) = pure $ Number $ Cx.phase y :+ 0
@@ -352,41 +352,41 @@ span _ _ = throwError expectedNumber
 span' :: MonadError Error m => Noun -> Noun -> m Noun
 span' = scalarDyad TinyAPL.Functions.span
 
-equal :: MonadError Error m => ScalarValue -> ScalarValue -> m Bool
-equal x y = pure $ x == y
+equal :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m Bool
+equal CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ equalsT t x y
 
-equal' :: MonadError Error m => Noun -> Noun -> m Noun
-equal' = scalarDyad (fmap boolToScalar .: equal)
+equal' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+equal' cea = scalarDyad (fmap boolToScalar .: equal cea)
 
-notEqual :: MonadError Error m => ScalarValue -> ScalarValue -> m Bool
-notEqual x y = pure $ x /= y
+notEqual :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m Bool
+notEqual CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ notEqualT t x y
 
-notEqual' :: MonadError Error m => Noun -> Noun -> m Noun
-notEqual' = scalarDyad (fmap boolToScalar .: notEqual)
+notEqual' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+notEqual' cea = scalarDyad (fmap boolToScalar .: notEqual cea)
 
-less :: MonadError Error m => ScalarValue -> ScalarValue -> m Bool
-less x y = pure $ x < y
+less :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m Bool
+less CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ lessT t x y
 
-less' :: MonadError Error m => Noun -> Noun -> m Noun
-less' = scalarDyad (fmap boolToScalar .: less)
+less' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+less' cea = scalarDyad (fmap boolToScalar .: less cea)
 
-lessEqual :: MonadError Error m => ScalarValue -> ScalarValue -> m Bool
-lessEqual x y = pure $ x <= y
+lessEqual :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m Bool
+lessEqual CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ lessEqualT t x y
 
-lessEqual' :: MonadError Error m => Noun -> Noun -> m Noun
-lessEqual' = scalarDyad (fmap boolToScalar .: lessEqual)
+lessEqual' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+lessEqual' cea = scalarDyad (fmap boolToScalar .: lessEqual cea)
 
-greaterEqual :: MonadError Error m => ScalarValue -> ScalarValue -> m Bool
-greaterEqual x y = pure $ x >= y
+greaterEqual :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m Bool
+greaterEqual CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ greaterEqualT t x y
 
-greaterEqual' :: MonadError Error m => Noun -> Noun -> m Noun
-greaterEqual' = scalarDyad (fmap boolToScalar .: greaterEqual)
+greaterEqual' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+greaterEqual' cea = scalarDyad (fmap boolToScalar .: greaterEqual cea)
 
-greater :: MonadError Error m => ScalarValue -> ScalarValue -> m Bool
-greater x y = pure $ x > y
+greater :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m Bool
+greater CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ greaterT t x y
 
-greater' :: MonadError Error m => Noun -> Noun -> m Noun
-greater' = scalarDyad (fmap boolToScalar .: greater)
+greater' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+greater' cea = scalarDyad (fmap boolToScalar .: greater cea)
 
 precedes :: MonadError Error m => Noun -> Noun -> m Bool
 precedes x y = pure $ x < y
@@ -939,35 +939,35 @@ decode' _ _ = throwError $ DomainError "Decode arguments must be number arrays"
 decodeBase2 :: MonadError Error m => Noun -> m Noun
 decodeBase2 = decode' (scalar $ Number 2)
 
-encode :: MonadError Error m => [Complex Double] -> Complex Double -> m [Complex Double]
-encode [] _ = pure []
-encode (bs :> b) n = do
-  let rem = if b == 0 then n else b `complexRemainder` n
-  let div = if b == 0 then 0 else complexFloor $ n / b
-  (`snoc` rem) <$> encode bs div
+encode :: MonadError Error m => CoreExtraArgs -> [Complex Double] -> Complex Double -> m [Complex Double]
+encode _ [] _ = pure []
+encode cea@CoreExtraArgs { coreExtraArgsTolerance = t } (bs :> b) n = do
+  let rem = if b == 0 then n else complexRemainder' t b n
+  let div = if b == 0 then 0 else complexFloor' t $ n / b
+  (`snoc` rem) <$> encode cea bs div
 
-encodeScalar :: MonadError Error m => Complex Double -> Complex Double -> m [Complex Double]
-encodeScalar b _ | Cx.magnitude b <= 1 = throwError $ DomainError "Scalar encode left argument must be greater than 1 in magnitude"
-encodeScalar _ n | Number n == Number 0 = pure []
-encodeScalar b n = do
-  let rem = b `complexRemainder` n
-  let div = complexFloor $ n / b
-  let rem1 = b `complexRemainder` div
-  let div1 = complexFloor $ div / b
+encodeScalar :: MonadError Error m => CoreExtraArgs -> Complex Double -> Complex Double -> m [Complex Double]
+encodeScalar _ b _ | Cx.magnitude b <= 1 = throwError $ DomainError "Scalar encode left argument must be greater than 1 in magnitude"
+encodeScalar _ _ n | Number n == Number 0 = pure []
+encodeScalar cea@CoreExtraArgs { coreExtraArgsTolerance = t } b n = do
+  let rem = complexRemainder' t b n
+  let div = complexFloor' t $ n / b
+  let rem1 = complexRemainder' t b div
+  let div1 = complexFloor' t $ div / b
   if rem == rem1 && div == div1 then pure [n]
-  else (`snoc` rem) <$> encodeScalar b div
+  else (`snoc` rem) <$> encodeScalar cea b div
 
-encode' :: MonadError Error m => Noun -> Noun -> m Noun
-encode' a@(Array _ _) b@(Array _ _) = ((\b n -> do
+encode' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+encode' cea a@(Array _ _) b@(Array _ _) = ((\b n -> do
   let err = DomainError "Encode arguments must be number arrays"
   n' <- asScalar err n >>= asNumber err
   case asScalar err b of
-    Right b' -> vector . fmap Number . (\xs -> if null xs then [0] else xs) <$> (asNumber err b' >>= flip encodeScalar n')
-    Left _ -> vector . fmap Number <$> (asVector err b >>= mapM (asNumber err) >>= flip encode n')) `atRank2` (1, 0)) a b
-encode' _ _ = throwError $ DomainError "Encode arguments must be number arrays"
+    Right b' -> vector . fmap Number . (\xs -> if null xs then [0] else xs) <$> (asNumber err b' >>= flip (encodeScalar cea) n')
+    Left _ -> vector . fmap Number <$> (asVector err b >>= mapM (asNumber err) >>= flip (encode cea) n')) `atRank2` (1, 0)) a b
+encode' _ _ _ = throwError $ DomainError "Encode arguments must be number arrays"
 
-encodeBase2 :: MonadError Error m => Noun -> m Noun
-encodeBase2 = encode' (scalar $ Number 2)
+encodeBase2 :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+encodeBase2 cea = encode' cea (scalar $ Number 2)
 
 searchFunction :: MonadError Error m => (Noun -> [Noun] -> m Noun) -> (ScalarValue -> [ScalarValue] -> [ScalarValue] -> m ScalarValue) -> Noun -> Noun -> m Noun
 searchFunction f _ ns hs@(Array _ _) = let cutRank = arrayRank hs `naturalSaturatedSub` 1

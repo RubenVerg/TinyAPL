@@ -381,8 +381,15 @@ evalDefined statements cat = let
         let dfn = DefinedFunction {
             functionRepr = "{...}"
           , functionContext = Just $ sc
-          , functionMonad = Just $ \ea x -> run [([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea)), ([G.omega], (VariableConstant, VNoun x)), ([G.del], (VariableConstant, VFunction dfn))] sc
-          , functionDyad = Just $ \ea x y -> run [([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea)), ([G.alpha], (VariableConstant, VNoun x)), ([G.omega], (VariableConstant, VNoun y)), ([G.del], (VariableConstant, VFunction dfn))] sc
+          , functionMonad = Just $ \ea x -> run
+            [ ([G.epsilon], (VariableConstant, VNoun $ dictionary ea))
+            , ([G.omega], (VariableConstant, VNoun x))
+            , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+          , functionDyad = Just $ \ea x y -> run
+            [ ([G.epsilon], (VariableConstant, VNoun $ dictionary ea))
+            , ([G.alpha], (VariableConstant, VNoun x))
+            , ([G.omega], (VariableConstant, VNoun y))
+            , ([G.del], (VariableConstant, VFunction dfn)) ] sc
           , definedFunctionId = id }
         pure $ VFunction dfn
       CatAdverb -> do
@@ -396,15 +403,13 @@ evalDefined statements cat = let
                 functionRepr = "(" ++ show a ++ ")_{...}"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
                 , ([G.omega], (VariableConstant, VNoun x))
                 , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
                 , ([G.del], (VariableConstant, VFunction dfn)) ] sc
               , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
                 , ([G.alpha], (VariableConstant, VNoun x))
                 , ([G.omega], (VariableConstant, VNoun y))
@@ -418,15 +423,13 @@ evalDefined statements cat = let
                 functionRepr = "(" ++ show a ++ ")_{...}"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
                 , ([G.omega], (VariableConstant, VNoun x))
                 , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
                 , ([G.del], (VariableConstant, VFunction dfn)) ] sc
               , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
                 , ([G.alpha], (VariableConstant, VNoun x))
                 , ([G.omega], (VariableConstant, VNoun y))
@@ -447,16 +450,14 @@ evalDefined statements cat = let
                 functionRepr = "(" ++ show a ++ ")_{...}_(" ++ show b ++ ")"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
                 , ([G.omega, G.omega], (VariableConstant, VNoun b))
                 , ([G.omega], (VariableConstant, VNoun x))
                 , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
                 , ([G.del], (VariableConstant, VFunction dfn)) ] sc
               , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
                 , ([G.omega, G.omega], (VariableConstant, VNoun b))
                 , ([G.alpha], (VariableConstant, VNoun x))
@@ -471,16 +472,14 @@ evalDefined statements cat = let
                 functionRepr = "(" ++ show a ++ ")_{...}_(" ++ show b ++ ")"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
                 , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
                 , ([G.omega], (VariableConstant, VNoun x))
                 , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
                 , ([G.del], (VariableConstant, VFunction dfn)) ] sc
               , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
                 , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
                 , ([G.alpha], (VariableConstant, VNoun x))
@@ -495,16 +494,14 @@ evalDefined statements cat = let
                 functionRepr = "(" ++ show a ++ ")_{...}_(" ++ show b ++ ")"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
                 , ([G.omega, G.omega], (VariableConstant, VNoun b))
                 , ([G.omega], (VariableConstant, VNoun x))
                 , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
                 , ([G.del], (VariableConstant, VFunction dfn)) ] sc
               , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
                 , ([G.omega, G.omega], (VariableConstant, VNoun b))
                 , ([G.alpha], (VariableConstant, VNoun x))
@@ -519,16 +516,14 @@ evalDefined statements cat = let
                 functionRepr = "(" ++ show a ++ ")_{...}_(" ++ show b ++ ")"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
                 , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
                 , ([G.omega], (VariableConstant, VNoun x))
                 , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
                 , ([G.del], (VariableConstant, VFunction dfn)) ] sc
               , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon, G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea'))
-                , ([G.epsilon], (VariableConstant, VNoun $ uncurry Dictionary $ unzip ea))
+                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
                 , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
                 , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
                 , ([G.alpha], (VariableConstant, VNoun x))

@@ -59,7 +59,7 @@ spec = do
 
     it "parses array names" $ do
       tok "abc ∆x" `shouldBe` pure [[TokenArrayName "abc" emptyPos, TokenArrayName "∆x" emptyPos]]
-      tok "⍺ ⍺⍺ ⍵ ⍵⍵ ⎕ ⍞" `shouldBe` pure [[TokenArrayName "⍺" emptyPos, TokenArrayName "⍺⍺" emptyPos, TokenArrayName "⍵" emptyPos, TokenArrayName "⍵⍵" emptyPos, TokenArrayName "⎕" emptyPos, TokenArrayName "⍞" emptyPos]]
+      tok "⍺ ⍺⍺ ⍵ ⍵⍵ ⎕ ⍞ ɛ" `shouldBe` pure [[TokenArrayName "⍺" emptyPos, TokenArrayName "⍺⍺" emptyPos, TokenArrayName "⍵" emptyPos, TokenArrayName "⍵⍵" emptyPos, TokenArrayName "⎕" emptyPos, TokenArrayName "⍞" emptyPos, TokenArrayName "ɛ" emptyPos]]
       tok "⎕io" `shouldBe` pure [[TokenArrayName "⎕io" emptyPos]]
 
     it "parses function names" $ do

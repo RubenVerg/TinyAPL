@@ -6,7 +6,14 @@ import qualified TinyAPL.Glyphs as G
 import TinyAPL.Error
 import TinyAPL.Util (headPromise)
 
+withCoreExtraArgs1 :: (CoreExtraArgs -> a -> St r) -> ExtraArgs -> a -> St r
+withCoreExtraArgs1 f ea a = parseCoreExtraArgs ea >>= (\cea -> f cea a)
+
+withCoreExtraArgs2 :: (CoreExtraArgs -> a -> b -> St r) -> ExtraArgs -> a -> b -> St r
+withCoreExtraArgs2 f ea a b = parseCoreExtraArgs ea >>= (\cea -> f cea a b)
+
 -- * Primitive arrays
+
 
 zilde = vector []
 cilde = dictionary []
@@ -24,17 +31,17 @@ divide = PrimitiveFunction (Just $ const F.reciprocal') (Just $ const F.divide')
 power = PrimitiveFunction (Just $ const F.ePow') (Just $ const F.pow') [G.power] Nothing
 logarithm = PrimitiveFunction (Just $ const F.ln') (Just $ const F.log') [G.logarithm] Nothing
 root = PrimitiveFunction (Just $ const F.squareRoot') (Just $ const F.root') [G.root] Nothing
-floor = PrimitiveFunction (Just $ const F.floor') (Just $ const F.min') [G.floor] Nothing
-ceil = PrimitiveFunction (Just $ const F.ceil') (Just $ const F.max') [G.ceil] Nothing
+floor = PrimitiveFunction (Just $ withCoreExtraArgs1 F.floor') (Just $ const F.min') [G.floor] Nothing
+ceil = PrimitiveFunction (Just $ withCoreExtraArgs1 F.ceil') (Just $ const F.max') [G.ceil] Nothing
 round = PrimitiveFunction (Just $ const F.round') (Just $ const F.roundTo') [G.round] Nothing
-less = PrimitiveFunction Nothing (Just $ const F.less') [G.less] Nothing
-lessEqual = PrimitiveFunction Nothing (Just $ const F.lessEqual') [G.lessEqual] Nothing
-equal = PrimitiveFunction Nothing (Just $ const F.equal') [G.equal] Nothing
-greaterEqual = PrimitiveFunction Nothing (Just $ const F.greaterEqual') [G.greaterEqual] Nothing
-greater = PrimitiveFunction Nothing (Just $ const F.greater') [G.greater] Nothing
-notEqual = PrimitiveFunction (Just $ const F.nubSieve') (Just $ const F.notEqual') [G.notEqual] Nothing
-and = PrimitiveFunction (Just $ const F.promote) (Just $ const F.lcm') [G.and] Nothing
-or = PrimitiveFunction (Just $ const F.demote) (Just $ const F.gcd') [G.or] Nothing
+less = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.less') [G.less] Nothing
+lessEqual = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.lessEqual') [G.lessEqual] Nothing
+equal = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.equal') [G.equal] Nothing
+greaterEqual = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.greaterEqual') [G.greaterEqual] Nothing
+greater = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.greater') [G.greater] Nothing
+notEqual = PrimitiveFunction (Just $ const F.nubSieve') (Just $ withCoreExtraArgs2 F.notEqual') [G.notEqual] Nothing
+and = PrimitiveFunction (Just $ const F.promote) (Just $ withCoreExtraArgs2 F.lcm') [G.and] Nothing
+or = PrimitiveFunction (Just $ const F.demote) (Just $ withCoreExtraArgs2 F.gcd') [G.or] Nothing
 nand = PrimitiveFunction Nothing (Just $ const F.nand') [G.nand] Nothing
 nor = PrimitiveFunction Nothing (Just $ const F.nor') [G.nor] Nothing
 cartesian = PrimitiveFunction (Just $ const F.imaginary') (Just $ const F.cartesian') [G.cartesian] Nothing
@@ -55,7 +62,7 @@ right = PrimitiveFunction (Just $ \_ x -> pure x) (Just $ \_ _ y -> pure y) [G.r
 iota = PrimitiveFunction (Just $ const F.indexGenerator') (Just $ const F.indexOf) [G.iota] Nothing
 indices = PrimitiveFunction (Just $ const F.indices) (Just $ const F.intervalIndex) [G.indices] Nothing
 replicate = PrimitiveFunction Nothing (Just $ const F.replicate') [G.replicate] Nothing
-abs = PrimitiveFunction (Just $ const F.abs') (Just $ const F.remainder') [G.abs] Nothing
+abs = PrimitiveFunction (Just $ const F.abs') (Just $ withCoreExtraArgs2 F.remainder') [G.abs] Nothing
 phase = PrimitiveFunction (Just $ const F.phase') (Just $ const F.arctan') [G.phase] Nothing
 real = PrimitiveFunction (Just $ const F.real') Nothing [G.real] Nothing
 imag = PrimitiveFunction (Just $ const F.imag') Nothing [G.imag] Nothing
@@ -81,7 +88,7 @@ matrixInverse = PrimitiveFunction (Just $ const F.matrixInverse') (Just $ const 
 factorial = PrimitiveFunction (Just $ const F.factorial') (Just $ const F.binomial') [G.factorial] Nothing
 raise = PrimitiveFunction (Just $ const F.raise1) (Just $ const F.raise') [G.raise] Nothing
 decode = PrimitiveFunction (Just $ const F.decodeBase2) (Just $ const F.decode') [G.decode] Nothing
-encode = PrimitiveFunction (Just $ const F.encodeBase2) (Just $ const F.encode') [G.encode] Nothing
+encode = PrimitiveFunction (Just $ withCoreExtraArgs1 F.encodeBase2) (Just $ withCoreExtraArgs2 F.encode') [G.encode] Nothing
 histogram = PrimitiveFunction Nothing (Just $ const F.count) [G.histogram] Nothing
 increment = PrimitiveFunction (Just $ const F.increment') Nothing [G.increment] Nothing
 decrement = PrimitiveFunction (Just $ const F.decrement') (Just $ const F.span') [G.decrement] Nothing
@@ -176,72 +183,72 @@ selfie = PrimitiveAdverb
   { adverbRepr = [G.selfie]
   , adverbContext = Nothing
   , adverbOnNoun = Just $ \_ x -> pure $ DerivedFunctionNoun (Just $ const $ F.constant1 x) (Just $ const $ F.constant2 x) Nothing selfie x
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.duplicate $ callDyad f ea) (Just $ \ea -> F.commute $ callDyad f ea) Nothing selfie f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.duplicate $ callDyad f []) (Just $ const $ F.commute $ callDyad f []) Nothing selfie f }
 reduce = PrimitiveAdverb
   { adverbRepr = [G.reduce]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.reduce' $ callDyad f ea) (Just $ \ea -> F.fold' $ callDyad f ea) Nothing reduce f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.reduce' $ callDyad f []) (Just $ const $ F.fold' $ callDyad f []) Nothing reduce f }
 reduceBack = PrimitiveAdverb
   { adverbRepr = [G.reduceBack]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.reduceBack' $ callDyad f ea) (Just $ \ea -> F.foldBack' $ callDyad f ea) Nothing reduceBack f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.reduceBack' $ callDyad f []) (Just $ const $ F.foldBack' $ callDyad f []) Nothing reduceBack f }
 onPrefixes = PrimitiveAdverb
   { adverbRepr = [G.onPrefixes]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.onPrefixes' $ callMonad f ea) Nothing Nothing onPrefixes f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onPrefixes' $ callMonad f []) Nothing Nothing onPrefixes f }
 onSuffixes = PrimitiveAdverb
   { adverbRepr = [G.onSuffixes]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.onSuffixes' $ callMonad f ea) (Just $ \ea -> F.onInfixes' $ callMonad f ea) Nothing onSuffixes f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onSuffixes' $ callMonad f []) (Just $ const $ F.onInfixes' $ callMonad f []) Nothing onSuffixes f }
 each = PrimitiveAdverb
   { adverbRepr = [G.each]
   , adverbContext = Nothing
   , adverbOnNoun = Just $ \_ x -> pure $ DerivedFunctionNoun (Just $ const $ F.each1 $ F.constant1 x) (Just $ const $ F.each2 $ F.constant2 x) Nothing each x
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.each1 $ callMonad f ea) (Just $ \ea -> F.each2 $ callDyad f ea) Nothing each f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.each1 $ callMonad f []) (Just $ const $ F.each2 $ callDyad f []) Nothing each f }
 eachLeft = PrimitiveAdverb
   { adverbRepr = [G.eachLeft]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction Nothing (Just $ \ea -> F.eachLeft $ callDyad f ea) Nothing eachLeft f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction Nothing (Just $ const $ F.eachLeft $ callDyad f []) Nothing eachLeft f }
 eachRight = PrimitiveAdverb
   { adverbRepr = [G.eachRight]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction Nothing (Just $ \ea -> F.eachRight $ callDyad f ea) Nothing eachRight f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction Nothing (Just $ const $ F.eachRight $ callDyad f []) Nothing eachRight f }
 key = PrimitiveAdverb
   { adverbRepr = [G.key]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.keyMonad $ callDyad f ea) (Just $ \ea -> F.key' $ callDyad f ea) Nothing key f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.keyMonad $ callDyad f []) (Just $ const $ F.key' $ callDyad f []) Nothing key f }
 onCells = PrimitiveAdverb
   { adverbRepr = [G.onCells]
   , adverbContext = Nothing
   , adverbOnNoun = Just $ \_ x -> pure $ DerivedFunctionNoun (Just $ const $ F.onCells1 $ F.constant1 x) (Just $ const $ F.onCells2 $ F.constant2 x) Nothing onCells x
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.onCells1 $ callMonad f ea) (Just $ \ea -> F.onCells2 $ callDyad f ea) Nothing onCells f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onCells1 $ callMonad f []) (Just $ const $ F.onCells2 $ callDyad f []) Nothing onCells f }
 onScalars = PrimitiveAdverb
   { adverbRepr = [G.onScalars]
   , adverbContext = Nothing
   , adverbOnNoun = Just $ \_ x -> pure $ DerivedFunctionNoun (Just $ const $ F.onScalars1 $ F.constant1 x) (Just $ const $ F.onScalars2 $ F.constant2 x) Nothing onScalars x
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.onScalars1 $ callMonad f ea) (Just $ \ea -> F.onScalars2 $ callDyad f ea) Nothing onScalars f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onScalars1 $ callMonad f []) (Just $ const $ F.onScalars2 $ callDyad f []) Nothing onScalars f }
 boxed = PrimitiveAdverb
   { adverbRepr = [G.boxed]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.boxed1 $ callMonad f ea) (Just $ \ea -> F.boxed2 $ callDyad f ea) Nothing boxed f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.boxed1 $ callMonad f []) (Just $ const $ F.boxed2 $ callDyad f []) Nothing boxed f }
 onContents = PrimitiveAdverb
   { adverbRepr = [G.onContents]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.onContents1 $ callMonad f ea) (Just $ \ea -> F.onContents2 $ callDyad f ea) Nothing onContents f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onContents1 $ callMonad f []) (Just $ const $ F.onContents2 $ callDyad f []) Nothing onContents f }
 table = PrimitiveAdverb
   { adverbRepr = [G.table]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction Nothing (Just $ \ea -> F.table $ callDyad f ea) Nothing table f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction Nothing (Just $ const $ F.table $ callDyad f []) Nothing table f }
 ident = PrimitiveAdverb
   { adverbRepr = [G.ident]
   , adverbContext = Nothing
@@ -251,7 +258,7 @@ onSimpleScalars = PrimitiveAdverb
   { adverbRepr = [G.onSimpleScalars]
   , adverbContext = Nothing
   , adverbOnNoun = Just $ \_ x -> pure $ DerivedFunctionNoun (Just $ const $ F.onSimpleScalars1 (F.constant1 x)) (Just $ const $ F.onSimpleScalars2 (F.constant2 x)) Nothing onSimpleScalars x
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea -> F.onSimpleScalars1 $ callMonad f ea) (Just $ \ea -> F.onSimpleScalars2 $ callDyad f ea) Nothing onSimpleScalars f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onSimpleScalars1 $ callMonad f []) (Just $ const $ F.onSimpleScalars2 $ callDyad f []) Nothing onSimpleScalars f }
 
 adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   [ TinyAPL.Primitives.selfie
@@ -278,71 +285,71 @@ atop = PrimitiveConjunction
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
-  , conjOnFunctionNoun = Just $ \_ f r -> pure $ DerivedFunctionFunctionNoun (Just $ \ea -> F.atRank1' (callMonad f ea) r) (Just $ \ea -> F.atRank2' (callDyad f ea) r) Nothing atop f r
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.compose (callMonad f ea) (callMonad g ea)) (Just $ \ea -> F.atop (callMonad f ea) (callDyad g ea)) Nothing atop f g }
+  , conjOnFunctionNoun = Just $ \_ f r -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.atRank1' (callMonad f []) r) (Just $ const $ F.atRank2' (callDyad f []) r) Nothing atop f r
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.compose (callMonad f []) (callMonad g [])) (Just $ const $ F.atop (callMonad f []) (callDyad g [])) Nothing atop f g }
 over = PrimitiveConjunction
   { conjRepr = [G.over]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
-  , conjOnFunctionNoun = Just $ \_ f d -> pure $ DerivedFunctionFunctionNoun (Just $ \ea -> F.atDepth1' (callMonad f ea) d) (Just $ \ea -> F.atDepth2' (callDyad f ea) d) Nothing over f d
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.compose (callMonad f ea) (callMonad g ea)) (Just $ \ea -> F.over (callDyad f ea) (callMonad g ea)) Nothing over f g }
+  , conjOnFunctionNoun = Just $ \_ f d -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.atDepth1' (callMonad f []) d) (Just $ const $ F.atDepth2' (callDyad f []) d) Nothing over f d
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.compose (callMonad f []) (callMonad g [])) (Just $ const $ F.over (callDyad f []) (callMonad g [])) Nothing over f g }
 after = PrimitiveConjunction
   { conjRepr = [G.after]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
-  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ \ea y -> callDyad g ea x y) Nothing Nothing after x g
-  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ \ea x -> callDyad f ea x y) Nothing Nothing after f y
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.compose (callMonad f ea) (callMonad g ea)) (Just $ \ea -> F.after (callDyad f ea) (callMonad g ea)) Nothing after f g }
+  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ \_ y -> callDyad g [] x y) Nothing Nothing after x g
+  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ \_ x -> callDyad f [] x y) Nothing Nothing after f y
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.compose (callMonad f []) (callMonad g [])) (Just $ const $ F.after (callDyad f []) (callMonad g [])) Nothing after f g }
 before = PrimitiveConjunction
   { conjRepr = [G.before]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
-  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ \ea y -> callDyad g ea x y) (Just $ \ea x' y -> callDyad g ea x' y) Nothing before x g
-  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ \ea x -> callDyad f ea x y) (Just $ \ea x y' -> callDyad f ea x y') Nothing before f y
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.reverseCompose (callMonad f ea) (callMonad g ea)) (Just $ \ea -> F.before (callMonad f ea) (callDyad g ea)) Nothing before f g }
+  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ \_ y -> callDyad g [] x y) (Just $ \_ x' y -> callDyad g [] x' y) Nothing before x g
+  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ \_ x -> callDyad f [] x y) (Just $ \_ x y' -> callDyad f [] x y') Nothing before f y
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.reverseCompose (callMonad f []) (callMonad g [])) (Just $ const $ F.before (callMonad f []) (callDyad g [])) Nothing before f g }
 leftHook = PrimitiveConjunction
   { conjRepr = [G.leftHook]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Nothing
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.leftHook (callMonad f ea) (callDyad g ea)) (Just $ \ea -> F.before (callMonad f ea) (callDyad g ea)) Nothing leftHook f g }
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.leftHook (callMonad f []) (callDyad g [])) (Just $ const $ F.before (callMonad f []) (callDyad g [])) Nothing leftHook f g }
 rightHook = PrimitiveConjunction
   { conjRepr = [G.rightHook]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Nothing
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.rightHook (callDyad f ea) (callMonad g ea)) (Just $ \ea -> F.after (callDyad f ea) (callMonad g ea)) Nothing rightHook f g }
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.rightHook (callDyad f []) (callMonad g [])) (Just $ const $ F.after (callDyad f []) (callMonad g [])) Nothing rightHook f g }
 mirror = PrimitiveConjunction
   { conjRepr = [G.mirror]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Nothing
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction Nothing (Just $ \ea -> F.mirror (callDyad f ea) (callDyad g ea)) Nothing mirror f g }
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction Nothing (Just $ const $ F.mirror (callDyad f []) (callDyad g [])) Nothing mirror f g }
 leftFork = PrimitiveConjunction
   { conjRepr = [G.leftFork]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Nothing
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.leftHook (callMonad f ea) (callDyad g ea)) (Just $ \ea -> F.leftFork (callDyad f ea) (callDyad g ea)) Nothing leftFork f g }
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.leftHook (callMonad f []) (callDyad g [])) (Just $ const $ F.leftFork (callDyad f []) (callDyad g [])) Nothing leftFork f g }
 rightFork = PrimitiveConjunction
   { conjRepr = [G.rightFork]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Nothing
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.rightHook (callDyad f ea) (callMonad g ea)) (Just $ \ea -> F.rightFork (callDyad f ea) (callDyad g ea)) Nothing rightFork f g }
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.rightHook (callDyad f []) (callMonad g [])) (Just $ const $ F.rightFork (callDyad f []) (callDyad g [])) Nothing rightFork f g }
 repeat = PrimitiveConjunction
   { conjRepr = [G.repeat]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
-  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ \ea -> F.repeat1 (callMonad f ea) y) (Just $ \ea -> F.repeat2 (callDyad f ea) y) Nothing TinyAPL.Primitives.repeat f y
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.until1 (callMonad f ea) (callDyad g ea)) (Just $ \ea -> F.until2 (callDyad f ea) (callDyad g ea)) Nothing TinyAPL.Primitives.repeat f g }
+  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.repeat1 (callMonad f []) y) (Just $ const $ F.repeat2 (callDyad f []) y) Nothing TinyAPL.Primitives.repeat f y
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.until1 (callMonad f []) (callDyad g [])) (Just $ const $ F.until2 (callDyad f []) (callDyad g [])) Nothing TinyAPL.Primitives.repeat f g }
 valences = PrimitiveConjunction
   { conjRepr = [G.valences]
   , conjContext = Nothing
@@ -354,16 +361,16 @@ under = PrimitiveConjunction
   { conjRepr = [G.under]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
-  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ \ea -> F.underK x (callMonad g ea)) Nothing Nothing under x g
+  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ const $ F.underK x (callMonad g [])) Nothing Nothing under x g
   , conjOnFunctionNoun = Nothing
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.under (callMonad f ea) (callMonad g ea)) (Just $ \ea -> F.under2 (callDyad f ea) (callMonad g ea)) Nothing under f g }
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.under (callMonad f []) (callMonad g [])) (Just $ const $ F.under2 (callDyad f []) (callMonad g [])) Nothing under f g }
 innerProduct = PrimitiveConjunction
   { conjRepr = [G.innerProduct]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Nothing
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction Nothing (Just $ \ea -> F.innerProduct (callMonad f ea) (callDyad g ea)) Nothing innerProduct f g }
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction Nothing (Just $ const $ F.innerProduct (callMonad f []) (callDyad g [])) Nothing innerProduct f g }
 lev = PrimitiveConjunction
   { conjRepr = [G.lev]
   , conjContext = Nothing
@@ -393,15 +400,15 @@ forkB = PrimitiveConjunction
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Just $ \_ left z -> case left of
     DerivedFunctionNounNoun _ _ _ op x y | op == forkA -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.fork1 (F.constant1 x) (F.constant2 y) (F.constant1 z)) (Just $ const $ F.fork2 (F.constant2 x) (F.constant2 y) (F.constant2 z)) Nothing forkB left z
-    DerivedFunctionNounFunction _ _ _ op x g | op == forkA -> pure $ DerivedFunctionFunctionNoun (Just $ \ea -> F.fork1 (F.constant1 x) (callDyad g ea) (F.constant1 z)) (Just $ \ea -> F.fork2 (F.constant2 x) (callDyad g ea) (F.constant2 z)) Nothing forkB left z
-    DerivedFunctionFunctionNoun _ _ _ op f y | op == forkA -> pure $ DerivedFunctionFunctionNoun (Just $ \ea -> F.fork1 (callMonad f ea) (F.constant2 y) (F.constant1 z)) (Just $ \ea -> F.fork2 (callDyad f ea) (F.constant2 y) (F.constant2 z)) Nothing forkB left z
-    DerivedFunctionFunctionFunction _ _ _ op f g | op == forkA -> pure $ DerivedFunctionFunctionNoun (Just $ \ea -> F.fork1 (callMonad f ea) (callDyad g ea) (F.constant1 z)) (Just $ \ea -> F.fork2 (callDyad f ea) (callDyad g ea) (F.constant2 z)) Nothing forkB left z
+    DerivedFunctionNounFunction _ _ _ op x g | op == forkA -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.fork1 (F.constant1 x) (callDyad g []) (F.constant1 z)) (Just $ const $ F.fork2 (F.constant2 x) (callDyad g []) (F.constant2 z)) Nothing forkB left z
+    DerivedFunctionFunctionNoun _ _ _ op f y | op == forkA -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.fork1 (callMonad f []) (F.constant2 y) (F.constant1 z)) (Just $ const $ F.fork2 (callDyad f []) (F.constant2 y) (F.constant2 z)) Nothing forkB left z
+    DerivedFunctionFunctionFunction _ _ _ op f g | op == forkA -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.fork1 (callMonad f []) (callDyad g []) (F.constant1 z)) (Just $ const $ F.fork2 (callDyad f []) (callDyad g []) (F.constant2 z)) Nothing forkB left z
     _ -> message
   , conjOnFunctionFunction = Just $ \_ left h -> case left of
-    DerivedFunctionNounNoun _ _ _ op x y | op == forkA -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.fork1 (F.constant1 x) (F.constant2 y) (callMonad h ea)) (Just $ \ea -> F.fork2 (F.constant2 x) (F.constant2 y) (callDyad h ea)) Nothing forkB left h
-    DerivedFunctionNounFunction _ _ _ op x g | op == forkA -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.fork1 (F.constant1 x) (callDyad g ea) (callMonad h ea)) (Just $ \ea -> F.fork2 (F.constant2 x) (callDyad g ea) (callDyad h ea)) Nothing forkB left h
-    DerivedFunctionFunctionNoun _ _ _ op f y | op == forkA -> pure $ DerivedFunctionFunctionFunction (Just $ \ea ->  F.fork1 (callMonad f ea) (F.constant2 y) (callMonad h ea)) (Just $ \ea -> F.fork2 (callDyad f ea) (F.constant2 y) (callDyad h ea)) Nothing forkB left h
-    DerivedFunctionFunctionFunction _ _ _ op f g | op == forkA -> pure $ DerivedFunctionFunctionFunction (Just $ \ea -> F.fork1 (callMonad f ea) (callDyad g ea) (callMonad h ea)) (Just $ \ea -> F.fork2 (callDyad f ea) (callDyad g ea) (callDyad h ea)) Nothing forkB left h
+    DerivedFunctionNounNoun _ _ _ op x y | op == forkA -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.fork1 (F.constant1 x) (F.constant2 y) (callMonad h [])) (Just $ const $ F.fork2 (F.constant2 x) (F.constant2 y) (callDyad h [])) Nothing forkB left h
+    DerivedFunctionNounFunction _ _ _ op x g | op == forkA -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.fork1 (F.constant1 x) (callDyad g []) (callMonad h [])) (Just $ const $ F.fork2 (F.constant2 x) (callDyad g []) (callDyad h [])) Nothing forkB left h
+    DerivedFunctionFunctionNoun _ _ _ op f y | op == forkA -> pure $ DerivedFunctionFunctionFunction (Just $ const $  F.fork1 (callMonad f []) (F.constant2 y) (callMonad h [])) (Just $ const $ F.fork2 (callDyad f []) (F.constant2 y) (callDyad h [])) Nothing forkB left h
+    DerivedFunctionFunctionFunction _ _ _ op f g | op == forkA -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.fork1 (callMonad f []) (callDyad g []) (callMonad h [])) (Just $ const $ F.fork2 (callDyad f []) (callDyad g []) (callDyad h [])) Nothing forkB left h
     _ -> message }
   where message = throwError $ DomainError $ [G.forkA] ++ " must be used in conjunction with " ++ [G.forkB]
 

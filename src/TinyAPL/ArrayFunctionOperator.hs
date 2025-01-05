@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, DeriveGeneric, DeriveAnyClass, InstanceSigs, TupleSections #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, DeriveGeneric, DeriveAnyClass, InstanceSigs, TupleSections, MultiParamTypeClasses, FlexibleInstances #-}
 module TinyAPL.ArrayFunctionOperator where
 
 import TinyAPL.Error
@@ -120,25 +120,81 @@ fromMajorCells (c:cs) = let
 comparisonTolerance :: Double
 comparisonTolerance = 1e-14
 
+realEqual' :: Double -> Double -> Double -> Bool
+realEqual' t a b = if isInfinite a || isInfinite b then a == b else abs (a - b) <= t * (abs a `max` abs b)
+
 realEqual :: Double -> Double -> Bool
-realEqual a b = if isInfinite a || isInfinite b then a == b else abs (a - b) <= comparisonTolerance * (abs a `max` abs b)
-complexEqual :: Complex Double -> Complex Double -> Bool
-complexEqual a@(ar :+ ai) b@(br :+ bi) =
+realEqual = realEqual' comparisonTolerance
+
+complexEqual' :: Double -> Complex Double -> Complex Double -> Bool
+complexEqual' t a@(ar :+ ai) b@(br :+ bi) =
   if isInfinite ar || isInfinite ai || isInfinite br || isInfinite bi
   then a == b
-  else magnitude (a - b) <= comparisonTolerance * (magnitude a `max` magnitude b)
+  else magnitude (a - b) <= t * (magnitude a `max` magnitude b)
+
+complexEqual :: Complex Double -> Complex Double -> Bool
+complexEqual = complexEqual' comparisonTolerance
+
+isReal' :: Double -> Complex Double -> Bool
+isReal' t (_ :+ b) = realEqual' t 0 b -- A number is real if its imaginary part compares equal to zero.
 
 isReal :: Complex Double -> Bool
-isReal (_ :+ b) = 0 `realEqual` b -- A number is real if its imaginary part compares equal to zero.
+isReal = isReal' comparisonTolerance
+
+tolerantEquals' :: Double -> Complex Double -> Complex Double -> Bool
+tolerantEquals' t a b
+  | isReal' t a && isReal' t b = realEqual' t (realPart a) (realPart b)
+  | otherwise = complexEqual' t a b
+
+tolerantEquals :: Complex Double -> Complex Double -> Bool
+tolerantEquals = tolerantEquals' comparisonTolerance
+
+tolerantcompareT :: Double -> Complex Double -> Complex Double -> Ordering
+tolerantcompareT t (ar :+ ai) (br :+ bi)
+  | realEqual' t ar br && realEqual' t ai bi = EQ
+  | realEqual' t ar br = ai `compare` bi
+  | otherwise = ar `compare` br
+
+tolerantCompare :: Complex Double -> Complex Double -> Ordering
+tolerantCompare = tolerantcompareT comparisonTolerance
+
+class TolerantOrd c a where
+  compareT :: c -> a -> a -> Ordering
+  equalsT :: c -> a -> a -> Bool
+  equalsT tolerance a b = compareT tolerance a b == EQ
+  notEqualT :: c -> a -> a -> Bool
+  notEqualT tolerance a b = not $ equalsT tolerance a b
+  lessT :: c -> a -> a -> Bool
+  lessT tolerance a b = compareT tolerance a b == LT
+  lessEqualT :: c -> a -> a -> Bool
+  lessEqualT tolerance a b = compareT tolerance a b /= GT
+  greaterEqualT :: c -> a -> a -> Bool
+  greaterEqualT tolerance a b = compareT tolerance a b /= LT
+  greaterT :: c -> a -> a -> Bool
+  greaterT tolerance a b = compareT tolerance a b == GT
+
+instance TolerantOrd Double Double where
+  compareT t a b = if realEqual' t a b then EQ else a `compare` b
+
+instance TolerantOrd Double (Complex Double) where
+  compareT t a b = tolerantcompareT t a b
+  equalsT = tolerantEquals'
+
+instance TolerantOrd c a => TolerantOrd c [a] where
+  compareT _ [] [] = EQ
+  compareT _ [] _ = LT
+  compareT _ _ [] = GT
+  compareT tolerance (a:as) (b:bs) = compareT tolerance a b <> compareT tolerance as bs
+
+instance (TolerantOrd c a, TolerantOrd c b) => TolerantOrd c (a, b) where
+  compareT tolerance (a, b) (c, d) = compareT tolerance a c <> compareT tolerance b d
 
 -- * Total ordering for scalars and arrays
 
 instance Eq ScalarValue where
   (Character a) == (Character b) = a == b
   (Box as) == (Box bs) = as == bs
-  (Number a) == (Number b)
-    | isReal a && isReal b = realPart a `realEqual` realPart b
-    | otherwise = a `complexEqual` b
+  (Number a) == (Number b) = tolerantEquals a b
   (Wrap a) == (Wrap b) = a == b
   (AdverbWrap a) == (AdverbWrap b) = a == b
   (ConjunctionWrap a) == (ConjunctionWrap b) = a == b
@@ -151,10 +207,7 @@ instance Eq ScalarValue where
    * boxes, ordered by their contents
 -}
 instance Ord ScalarValue where
-  (Number (ar :+ ai)) `compare` (Number (br :+ bi))
-    | ar `realEqual` br && ai `realEqual` bi = EQ
-    | ar `realEqual` br = ai `compare` bi
-    | otherwise = ar `compare` br
+  (Number a) `compare` (Number b) = tolerantCompare a b
   (Number _) `compare` _ = LT
   (Character _) `compare` (Number _) = GT
   (Character a) `compare` (Character b) = a `compare` b
@@ -189,28 +242,38 @@ instance Ord ScalarValue where
   (Struct _) `compare` (ConjunctionWrap _) = GT
   (Struct _) `compare` (Struct _) = LT
 
+instance TolerantOrd Double ScalarValue where
+  compareT tolerance (Number a) (Number b) = compareT tolerance a b
+  compareT _ a b = a `compare` b
+
 instance Eq Noun where
   -- Two arrays are equal iff both their shapes and their ravels are equal.
   (Array ash as) == (Array bsh bs) = (ash, as) == (bsh, bs)
   (Dictionary aks avs) == (Dictionary bks bvs) = sortOn fst (zip aks avs) == sortOn fst (zip bks bvs)
   _ == _ = False
 
+instance TolerantOrd Double Noun where
+  compareT tolerance (Array [] [a]) (Array [] [b]) = compareT tolerance a b
+  compareT _ (Array [_] []) (Array [_] []) = EQ
+  compareT _ (Array [_] []) (Array [_] _) = LT
+  compareT _ (Array [_] _) (Array [_] []) = GT
+  compareT tolerance (Array [at] (a:as)) (Array [bt] (b:bs)) = compareT tolerance a b <> compareT tolerance (Array [at - 1] as) (Array [bt - 1] bs) <> at `compare` bt
+  compareT tolerance a@(Array ash acs) b@(Array bsh bcs)
+    | arrayRank a < arrayRank b = compareT tolerance (Array (genericReplicate (arrayRank b - arrayRank a) 1 ++ ash) acs) b <> LT
+    | arrayRank a > arrayRank b = compareT tolerance a (Array (genericReplicate (arrayRank a - arrayRank b) 1 ++ bsh) bcs) <> GT
+    | otherwise = mconcat (zipWith (compareT tolerance) (majorCells a) (majorCells b)) <> fromMaybe 1 (listToMaybe ash) `compare` fromMaybe 1 (listToMaybe bsh)
+  compareT tolerance (Dictionary aks avs) (Dictionary bks bvs) = compareT tolerance (sortOn fst (zip aks avs)) (sortOn fst (zip bks bvs))
+  compareT _ (Array _ _) (Dictionary _ _) = LT
+  compareT _ (Dictionary _ _) (Array _ _) = GT
+
 instance Ord Noun where
-  (Array [] [a]) `compare` (Array [] [b]) = a `compare` b
-  (Array [_] []) `compare` (Array [_] []) = EQ
-  (Array [_] []) `compare` (Array [_] _) = LT
-  (Array [_] _) `compare` (Array [_] []) = GT
-  (Array [at] (a:as)) `compare` (Array [bt] (b:bs)) = a `compare` b <> Array [at - 1] as `compare` Array [bt - 1] bs <> at `compare` bt
-  a@(Array ash acs) `compare` b@(Array bsh bcs)
-    | arrayRank a < arrayRank b = (Array (genericReplicate (arrayRank b - arrayRank a) 1 ++ ash) acs) `compare` b <> LT
-    | arrayRank a > arrayRank b = a `compare` (Array (genericReplicate (arrayRank a - arrayRank b) 1 ++ bsh) bcs) <> GT
-    | otherwise = mconcat (zipWith compare (majorCells a) (majorCells b)) <> fromMaybe 1 (listToMaybe ash) `compare` fromMaybe 1 (listToMaybe bsh)
-  (Dictionary aks avs) `compare` (Dictionary bks bvs) = sortOn fst (zip aks avs) `compare` sortOn fst (zip bks bvs)
-  (Array _ _) `compare` (Dictionary _ _) = LT
-  (Dictionary _ _) `compare` (Array _ _) = GT
+  compare = compareT comparisonTolerance
+
+isInt' :: Double -> Double -> Bool
+isInt' t = realEqual' t <*> (fromInteger . round)
 
 isInt :: Double -> Bool
-isInt = realEqual <*> (fromInteger . round)
+isInt = isInt' comparisonTolerance
 
 -- * @Show@ for scalars and arrays
 
@@ -400,33 +463,33 @@ onMajorCells _ (Dictionary _ _) = throwError $ DomainError "Dictionary not allow
 -- * functions that depend on tolerance
 
 -- https://aplwiki.com/wiki/Complex_floor
-complexFloor :: Complex Double -> Complex Double
-complexFloor (r :+ i) = let
+complexFloor' :: Double -> Complex Double -> Complex Double
+complexFloor' t (r :+ i) = let
   b = componentFloor $ r :+ i
   x = fracPart r
   y = fracPart i
   in
-    if x + y < 1 then b
-    else if x >= y then b + 1
+    if lessT t ((x + y) :+ 0) 1 then b
+    else if greaterEqualT t (x :+ 0) (y :+ 0) then b + 1
     else b + (0 :+ 1)
 
-complexCeiling :: Complex Double -> Complex Double
-complexCeiling = negate . complexFloor . negate
+complexCeiling' :: Double -> Complex Double -> Complex Double
+complexCeiling' t = negate . complexFloor' t . negate
 
-complexRemainder :: Complex Double -> Complex Double -> Complex Double
-complexRemainder w z =
-  if w == 0 then z
-  else if isReal (z / w) && isInt (realPart $ z / w) then 0
-  else z - w * complexFloor (if w `complexEqual` 0 then z else z / w)
+complexRemainder' :: Double -> Complex Double -> Complex Double -> Complex Double
+complexRemainder' t w z =
+  if equalsT t w 0 then z
+  else if isReal' t (z / w) && isInt' t (realPart $ z / w) then 0
+  else z - w * complexFloor' t (if equalsT t w 0 then z else z / w)
 
-complexGCD :: Complex Double -> Complex Double -> Complex Double
-complexGCD a w = if a `complexRemainder` w `complexEqual` 0 then a else (a `complexRemainder` w) `complexGCD` a
+complexGCD' :: Double -> Complex Double -> Complex Double -> Complex Double
+complexGCD' t a w = if equalsT t (complexRemainder' t a w) 0 then a else complexGCD' t (complexRemainder' t a w) a
 
-complexLCM :: Complex Double -> Complex Double -> Complex Double
-complexLCM x y = if x `complexEqual` 0 && y `complexEqual` 0 then 0 else (x * y) / (x `complexGCD` y)
+complexLCM' :: Double -> Complex Double -> Complex Double -> Complex Double
+complexLCM' t x y = if equalsT t x 0 && equalsT t y 0 then 0 else (x * y) / (complexGCD' t x y)
 
 asAnIntegerIfItIs :: Complex Double -> Complex Double
-asAnIntegerIfItIs y = if isInt (realPart y) && isInt (imagPart y) then fromInteger (floor $ realPart y) :+ fromInteger (floor $ imagPart y) else y
+asAnIntegerIfItIs y = if isInt (realPart y) && isInt (imagPart y) then fromInteger (round $ realPart y) :+ fromInteger (round $ imagPart y) else y
 
 -- * Scalar functions
 
@@ -1244,3 +1307,21 @@ callOnValueAndValue conj ea (VNoun x) (VFunction y) = callOnNounAndFunction conj
 callOnValueAndValue conj ea (VFunction x) (VNoun y) = callOnFunctionAndNoun conj ea x y
 callOnValueAndValue conj ea (VFunction x) (VFunction y) = callOnFunctionAndFunction conj ea x y
 callOnValueAndValue _ _ _ _ = throwError $ DomainError "Invalid type to conjunction call"
+
+-- * Core extra args
+
+coreExtraArgsToleranceKey :: String
+coreExtraArgsToleranceKey = "tolerance"
+
+data CoreExtraArgs = CoreExtraArgs
+  { coreExtraArgsTolerance :: Double }
+
+parseCoreExtraArgs :: MonadError Error m => ExtraArgs -> m CoreExtraArgs
+parseCoreExtraArgs ea = do
+  let 
+    lookupStr :: String -> Maybe ScalarValue
+    lookupStr s = lookup (box $ vector $ Character <$> s) ea
+  let toleranceErr = DomainError "Tolerance must be a scalar real number"
+  tolerance <- fromMaybe comparisonTolerance <$> (mapM (asNumber toleranceErr >=> asReal toleranceErr) $ lookupStr coreExtraArgsToleranceKey)
+  pure CoreExtraArgs
+    { coreExtraArgsTolerance = tolerance }
