@@ -70,7 +70,9 @@ syntax =
   , snd TinyAPL.Glyphs.struct
   , TinyAPL.Glyphs.access
   , fst TinyAPL.Glyphs.ternary
-  , snd TinyAPL.Glyphs.ternary ]
+  , snd TinyAPL.Glyphs.ternary
+  , fst TinyAPL.Glyphs.extraArgs
+  , snd TinyAPL.Glyphs.extraArgs ]
 
 escapes =
   [ (stringDelimiter, stringDelimiter)
@@ -326,6 +328,7 @@ lev = '⫣'
 dex = '⊩'
 forkA = '«'
 forkB = '»'
+approximate = '≈'
 
 conjunctions =
   [ TinyAPL.Glyphs.atop
@@ -344,4 +347,5 @@ conjunctions =
   , TinyAPL.Glyphs.lev
   , TinyAPL.Glyphs.dex
   , TinyAPL.Glyphs.forkA
-  , TinyAPL.Glyphs.forkB ]
+  , TinyAPL.Glyphs.forkB
+  , TinyAPL.Glyphs.approximate ]
