@@ -778,7 +778,7 @@ squad i y@(Array _ _) = do
       onScalars1 (\(Array [] [ind]) -> asNumber err ind >>= asInt err >>= flip indexCell y >>= go iss) is
   go axisIndices y
 squad i d@(Dictionary _ _) = indexElement (toScalar i) d >>= (\case
-  Just r -> pure $ scalar r
+  Just r -> pure $ fromScalar r
   Nothing -> throwError $ IndexError "Key not found in dictionary")
 
 from :: MonadError Error m => Noun -> Noun -> m Noun

@@ -5,6 +5,7 @@ import qualified TinyAPL.Functions as F
 import qualified TinyAPL.Glyphs as G
 import TinyAPL.Error
 import TinyAPL.Util (headPromise)
+import TinyAPL.Complex (Complex((:+)))
 
 withCoreExtraArgs1 :: (CoreExtraArgs -> a -> St r) -> ExtraArgs -> a -> St r
 withCoreExtraArgs1 f ea a = parseCoreExtraArgs ea >>= (\cea -> f cea a)
@@ -411,6 +412,22 @@ forkB = PrimitiveConjunction
     DerivedFunctionFunctionFunction _ _ _ op f g | op == forkA -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.fork1 (callMonad f []) (callDyad g []) (callMonad h [])) (Just $ const $ F.fork2 (callDyad f []) (callDyad g []) (callDyad h [])) Nothing forkB left h
     _ -> message }
   where message = throwError $ DomainError $ [G.forkA] ++ " must be used in conjunction with " ++ [G.forkB]
+approximate = PrimitiveConjunction
+  { conjRepr = [G.approximate]
+  , conjContext = Nothing
+  , conjOnNounNoun = Nothing
+  , conjOnNounFunction = Nothing
+  , conjOnFunctionNoun = Just $ \_ f v -> do
+    let err = DomainError $ "Approximate right operand must be a scalar real or function returning a scalar real"
+    tolerance <- asScalar err v >>= asNumber err >>= asReal err
+    pure $ DerivedFunctionFunctionNoun (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)]) Nothing approximate f v
+  , conjOnFunctionFunction = Just $ \_ f g -> do
+    let err = DomainError $ "Approximate right operand must be a scalar real or function returning a scalar real"
+    pure $ DerivedFunctionFunctionFunction (Just $ const $ \y -> do
+      tolerance <- callMonad g [] y >>= asScalar err >>= asNumber err >>= asReal err
+      callMonad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)] y) (Just $ const $ \x y -> do
+      tolerance <- callDyad g [] x y >>= asScalar err >>= asNumber err >>= asReal err
+      callDyad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)] x y) Nothing approximate f g }
 
 conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
   [ TinyAPL.Primitives.atop
@@ -429,4 +446,5 @@ conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
   , TinyAPL.Primitives.lev
   , TinyAPL.Primitives.dex
   , TinyAPL.Primitives.forkA
-  , TinyAPL.Primitives.forkB ]
+  , TinyAPL.Primitives.forkB
+  , TinyAPL.Primitives.approximate ]
