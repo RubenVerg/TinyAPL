@@ -434,6 +434,19 @@ approximate = PrimitiveConjunction
       callMonad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)] y) (Just $ const $ \x y -> do
       tolerance <- callDyad g [] x y >>= asScalar err >>= asNumber err >>= asReal err
       callDyad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)] x y) Nothing approximate f g }
+fill = PrimitiveConjunction
+  { conjRepr = [G.fill]
+  , conjContext = Nothing
+  , conjOnNounNoun = Nothing
+  , conjOnNounFunction = Nothing
+  , conjOnFunctionNoun = Just $ \_ f v -> do
+    let fl = toScalar v
+    pure $ DerivedFunctionFunctionNoun (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsFillKey, fl)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsFillKey, fl)]) Nothing fill f v
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ \y -> do
+      fl <- toScalar <$> callMonad g [] y
+      callMonad f [(box $ vector $ Character <$> coreExtraArgsFillKey, fl)] y) (Just $ const $ \x y -> do
+      fl <- toScalar <$> callDyad g [] x y
+      callDyad f [(box $ vector $ Character <$> coreExtraArgsFillKey, fl)] x y) Nothing fill f g }
 
 conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
   [ TinyAPL.Primitives.atop
@@ -453,4 +466,5 @@ conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
   , TinyAPL.Primitives.dex
   , TinyAPL.Primitives.forkA
   , TinyAPL.Primitives.forkB
-  , TinyAPL.Primitives.approximate ]
+  , TinyAPL.Primitives.approximate
+  , TinyAPL.Primitives.fill ]
