@@ -1,6 +1,7 @@
 /** @jsx h */
 
 import GlyphPage from './components/GlyphPage.tsx';
+import Glyphs from './components/Glyphs.tsx';
 import InfoPage from './components/InfoPage.tsx';
 import PrimitivePage from './components/PrimitivePage.tsx';
 import Primitives from './components/Primitives.tsx';
@@ -92,6 +93,10 @@ const glyphPage = (glyph: Glyph) => render(<FullPage pages={pages}><GlyphPage gl
 	title: `${glyph.glyph} ${glyph.name} - TinyAPL`,
 });
 
+const glyphIndexPage = () => render(<FullPage pages={pages}><Glyphs pages={pages} /></FullPage>, {
+	title: 'Glyphs - TinyAPL'
+});
+
 const runInterpreter = () => render(<RunInterpreter pages={pages} interpreters={interpreters} />, {
 	title: 'Run Interpreter - TinyAPL',
 });
@@ -109,7 +114,7 @@ const directories: Record<string, keyof typeof pages> = {
 
 const renderers = {
 	index: [index, undefined],
-	glyphs: [glyphPage, undefined],
+	glyphs: [glyphPage, glyphIndexPage],
 	info: [infoPage, undefined],
 	primitives: [primitivePage, primitiveIndexPage],
 	quads: [quadPage, undefined],
