@@ -24,8 +24,6 @@ import qualified Data.Matrix as M
 import qualified TinyAPL.Gamma.Gamma as Gamma
 import Data.Foldable (foldlM, foldrM)
 
-import Debug.Trace
-
 -- * Functions
 
 expectedNumber = DomainError "Expected number"
@@ -630,22 +628,22 @@ last (Array _ []) = throwError $ DomainError "Last on empty array"
 last (Array _ xs) = pure $ fromScalar $ Prelude.last xs
 last (Dictionary _ vs) = pure $ vector vs
 
-indexGenerator :: MonadError Error m => Natural -> m Noun
-indexGenerator 0 = pure $ vector []
-indexGenerator i = pure $ vector $ Number . fromInteger . toInteger <$> [0..i - 1]
+indexGenerator :: MonadError Error m => CoreExtraArgs -> Natural -> m Noun
+indexGenerator _ 0 = pure $ vector []
+indexGenerator CoreExtraArgs { coreExtraArgsOrigin = o } i = pure $ vector $ Number . fromInteger . toInteger . (+ o) <$> [0..i - 1]
 
-indexGeneratorN :: MonadError Error m => [Natural] -> m Noun
-indexGeneratorN is = pure $ fromJust $ arrayReshaped is $ box . fromJust . arrayReshaped [genericLength is] . fmap (Number . fromInteger . toInteger) <$> generateIndices is
+indexGeneratorN :: MonadError Error m => CoreExtraArgs -> [Natural] -> m Noun
+indexGeneratorN CoreExtraArgs { coreExtraArgsOrigin = o } is = pure $ fromJust $ arrayReshaped is $ box . fromJust . arrayReshaped [genericLength is] . fmap (Number . fromInteger . toInteger . (+ o)) <$> generateIndices is
 
-indexGenerator' :: MonadError Error m => Noun -> m Noun
-indexGenerator' arr = do
+indexGenerator' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+indexGenerator' cea arr = do
   let err = DomainError "Index Generator argument must be a natural scalar or vector"
   is <- asVector err arr >>= mapM (asNumber err >=> asNat err)
-  if isScalar arr then indexGenerator $ headPromise is
-  else indexGeneratorN is
+  if isScalar arr then indexGenerator cea $ headPromise is
+  else indexGeneratorN cea is
 
 range :: MonadError Error m => Noun -> Noun -> m Noun
-range = commute $ (indexGenerator' `atop` span') `leftFork` eachLeft add'
+range = commute $ (indexGenerator' defaultCoreExtraArgs `atop` span') `leftFork` eachLeft add' -- IO of … should always be zero
 
 oneRange :: MonadError Error m => Noun -> m Noun
 oneRange = range $ scalar $ Number 1
@@ -671,14 +669,14 @@ replicate' (Dictionary sk sv) (Dictionary ak av) = do
   dictionary <$> replicateDict (zip sk sv') (zip ak av)
 replicate' _ _ = throwError $ DomainError "Replicate left argument cannot mix arrays and dictionaries"
 
-indices :: MonadError Error m => Noun -> m Noun
-indices n = do
+indices :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+indices CoreExtraArgs { coreExtraArgsOrigin = o } n = do
   let err = DomainError "Where argument must be an array of naturals or dictionary with natural values"
   case n of
     (Array sh cs) -> do
       let indices = generateIndices sh
       let shape = [genericLength sh | length sh /= 1]
-      let rep idx c = genericReplicate c $ box $ fromJust $ arrayReshaped shape $ Number . fromInteger . toInteger <$> idx
+      let rep idx c = genericReplicate c $ box $ fromJust $ arrayReshaped shape $ Number . fromInteger . toInteger . (+ o) <$> idx
       counts <- mapM (asNumber err >=> asNat err) cs
       pure $ vector $ concat $ zipWith rep indices counts
     (Dictionary ks vs) -> do
@@ -728,18 +726,18 @@ symmetricDifference' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y
 symmetricDifference' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ fmap (Bi.first unTolerantL) $ filter (\(k, _) -> (k `elem` (TolerantL t <$> aks)) /= (k `elem` (TolerantL t <$> bks))) $ zip (TolerantL t <$> aks) avs ++ zip (TolerantL t <$> bks) bvs
 symmetricDifference' _ _ _ = throwError $ DomainError "Cannot symmetric difference array and dictionary"
 
-roll :: (MonadError Error m, MonadIO m) => Natural -> m Double
-roll y =
+roll :: (MonadError Error m, MonadIO m) => CoreExtraArgs -> Natural -> m Double
+roll CoreExtraArgs { coreExtraArgsOrigin = o } y =
   if y == 0 then randomR (0, 1)
-  else fromInteger <$> randomR (0, toInteger y - 1)
+  else fromInteger . (+ toInteger o) <$> randomR (0, toInteger y - 1)
 
-roll' :: (MonadError Error m, MonadIO m) => Noun -> m Noun
-roll' = scalarMonad $ \y -> do
+roll' :: (MonadError Error m, MonadIO m) => CoreExtraArgs -> Noun -> m Noun
+roll' cea = scalarMonad $ \y -> do
   n <- asNumber expectedNatural y >>= asNat expectedNatural
-  Number . (:+ 0) <$> roll n
+  Number . (:+ 0) <$> roll cea n
 
-deal :: (MonadError Error m, MonadIO m) => Natural -> Natural -> m [Natural]
-deal count max
+deal :: (MonadError Error m, MonadIO m) => CoreExtraArgs -> Natural -> Natural -> m [Natural]
+deal CoreExtraArgs { coreExtraArgsOrigin = o } count max
   | count > max = throwError $ DomainError "Deal left must be less than or equal to right argument"
   | otherwise = do
     let go 0 _ = pure []
@@ -747,42 +745,42 @@ deal count max
           index <- randomR (0, length xs - 1)
           let num = xs !! index
           (num :) <$> go (n - 1) (filter (/= num) xs)
-    go count [0..max-1]
+    go count $ fmap (+ o) [0..max-1]
 
-deal' :: (MonadError Error m, MonadIO m) => Noun -> Noun -> m Noun
-deal' count max = do
+deal' :: (MonadError Error m, MonadIO m) => CoreExtraArgs -> Noun -> Noun -> m Noun
+deal' cea count max = do
   let err = DomainError "Deal arguments must be natural numbers"
   c <- asScalar err count >>= asNumber err >>= asNat err
   m <- asScalar err max >>= asNumber err >>= asNat err
-  vector . fmap (Number . (:+ 0) . fromInteger . toInteger) <$> deal c m
+  vector . fmap (Number . (:+ 0) . fromInteger . toInteger) <$> deal cea c m
 
-indexCell :: MonadError Error m => Integer -> Noun -> m Noun
-indexCell i x@(Array _ _)
-  | i < 0 = indexCell (genericLength (majorCells x) + i) x
-  | i > genericLength (majorCells x) = throwError $ IndexError "Index out of bounds"
-  | otherwise = pure $ genericIndex (majorCells x) i
-indexCell _ (Dictionary _ _) = throwError $ DomainError "Dictionary cannot be cell-indexed"
+indexCell :: MonadError Error m => CoreExtraArgs -> Integer -> Noun -> m Noun
+indexCell CoreExtraArgs { coreExtraArgsOrigin = o } i x@(Array _ _)
+  | i < 0 = indexCell defaultCoreExtraArgs (genericLength (majorCells x) + i) x
+  | i - toInteger o >= genericLength (majorCells x) = throwError $ IndexError "Index out of bounds"
+  | otherwise = pure $ genericIndex (majorCells x) (i - toInteger o)
+indexCell _ _ (Dictionary _ _) = throwError $ DomainError "Dictionary cannot be cell-indexed"
 
 indexElement :: MonadError Error m => ScalarValue -> Noun -> m (Maybe ScalarValue)
 indexElement _ (Array _ _) = throwError $ DomainError "Array cannot be element-indexed"
 indexElement i (Dictionary ks vs) = pure $ lookup i $ zip ks vs
 
-squad :: MonadError Error m => Noun -> Noun -> m Noun
-squad i y@(Array _ _) = do
+squad :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+squad cea i y@(Array _ _) = do
   let err = DomainError "Squad left argument must be a vector of arrays of integers"
   axisIndices <- fmap fromScalar <$> asVector err i
   let
     go :: MonadError Error m => [Noun] -> Noun -> m Noun
     go [] y = pure y
     go (is:iss) y =
-      onScalars1 (\(Array [] [ind]) -> asNumber err ind >>= asInt err >>= flip indexCell y >>= go iss) is
+      onScalars1 (\(Array [] [ind]) -> asNumber err ind >>= asInt err >>= flip (indexCell cea) y >>= go iss) is
   go axisIndices y
-squad i d@(Dictionary _ _) = indexElement (toScalar i) d >>= (\case
+squad _ i d@(Dictionary _ _) = indexElement (toScalar i) d >>= (\case
   Just r -> pure $ fromScalar r
   Nothing -> throwError $ IndexError "Key not found in dictionary")
 
-from :: MonadError Error m => Noun -> Noun -> m Noun
-from x y = ((\x' -> (first `before` squad) x' y) `atRank1` 0) x
+from :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+from cea x y = ((\x' -> (first `before` squad cea) x' y) `atRank1` 0) x
 
 catenate :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 catenate cea a@(Array ash acs) b@(Array bsh bcs) =
@@ -807,18 +805,18 @@ join cea = fold (catenate cea `after` first) (vector [])
 join' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 join' cea = TinyAPL.Functions.join cea . majorCells
 
-gradeUp :: MonadError Error m => Ord a => [a] -> m [Natural]
-gradeUp xs = pure $ map fst $ sortOn snd $ zip [0..genericLength xs] xs
+gradeUp :: MonadError Error m => Ord a => CoreExtraArgs -> [a] -> m [Natural]
+gradeUp CoreExtraArgs{ coreExtraArgsOrigin = o } xs = pure $ map ((+ o) . fst) $ sortOn snd $ zip [0..genericLength xs] xs
 
 gradeUp' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
-gradeUp' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = vector . fmap (Number . fromInteger . toInteger) <$> gradeUp (TolerantL t <$> majorCells arr)
+gradeUp' cea@CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = vector . fmap (Number . fromInteger . toInteger) <$> gradeUp cea (TolerantL t <$> majorCells arr)
 gradeUp' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary ks vs) = vector . fmap unTolerantL <$> sortByUp (TolerantL t <$> ks) (TolerantL t <$> vs)
 
-gradeDown :: MonadError Error m => Ord a => [a] -> m [Natural]
-gradeDown xs = pure $ map fst $ sortOn snd $ zip [0..genericLength xs] (Down <$> xs)
+gradeDown :: MonadError Error m => Ord a => CoreExtraArgs -> [a] -> m [Natural]
+gradeDown CoreExtraArgs{ coreExtraArgsOrigin = o } xs = pure $ map ((+ o) . fst) $ sortOn snd $ zip [0..genericLength xs] (Down <$> xs)
 
 gradeDown' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
-gradeDown' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = vector . fmap (Number . fromInteger . toInteger) <$> gradeDown (TolerantL t <$> majorCells arr)
+gradeDown' cea@CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = vector . fmap (Number . fromInteger . toInteger) <$> gradeDown cea (TolerantL t <$> majorCells arr)
 gradeDown' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary ks vs) = vector . fmap unTolerantL <$> sortByDown (TolerantL t <$> ks) (TolerantL t <$> vs)
 
 sortByUp :: MonadError Error m => Ord b => [a] -> [b] -> m [a]
@@ -849,19 +847,19 @@ sortDown' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 sortDown' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortDown (TolerantL t <$> majorCells arr)
 sortDown' _ _ = throwError $ DomainError "Only arrays can be sorted"
 
-reorderAxes' :: MonadError Error m => Noun -> Noun -> m Noun
-reorderAxes' x@(Array _ _) y@(Array _ _) = do
+reorderAxes' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+reorderAxes' cea x@(Array _ _) y@(Array _ _) = do
   shy <- shape' y
   sx <- sortUp' defaultCoreExtraArgs x
   is <- sortByUp' defaultCoreExtraArgs shy x
   is' <- key' ((reduce' min') `atop` (pure .: flip const)) sx is
-  iota <- indexGenerator' is'
-  indices <- eachRight from x iota
-  from indices y
-reorderAxes' _ _ = throwError $ DomainError "Dictionaries cannot be transposed"
+  iota <- indexGenerator' cea is'
+  indices <- eachRight (from cea) x iota
+  from cea indices y
+reorderAxes' _ _ _ = throwError $ DomainError "Dictionaries cannot be transposed"
 
-reorderAxes :: MonadError Error m => [Natural] -> Noun -> m Noun
-reorderAxes is arr = reorderAxes' (vector $ Number . fromInteger . toInteger <$> is) arr
+reorderAxes :: MonadError Error m => CoreExtraArgs -> [Natural] -> Noun -> m Noun
+reorderAxes cea is arr = reorderAxes' cea (vector $ Number . fromInteger . toInteger <$> is) arr
 
 invertedTable :: MonadError Error m => Noun -> m ([ScalarValue], [ScalarValue])
 invertedTable (Dictionary ks vs) = pure (ks, vs)
@@ -872,8 +870,8 @@ invertedTable' = invertedTable >=> uncurry (pair `on` vector)
 
 transpose :: MonadError Error m => Noun -> m Noun
 transpose arr@(Array _ _) = do
-  r <- rank' arr >>= indexGenerator' >>= reverse'
-  reorderAxes' r arr
+  r <- rank' arr >>= indexGenerator' defaultCoreExtraArgs >>= reverse'
+  reorderAxes' defaultCoreExtraArgs r arr
 transpose dict@(Dictionary _ _) = invertedTable' dict
 
 factorial :: MonadError Error m => ScalarValue -> m ScalarValue
@@ -991,19 +989,19 @@ count :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 count = searchFunction (pure .: scalar .: Number .: (:+ 0) .: countEqual) (\e _ v -> pure $ Number $ countEqual e v :+ 0)
 
 indexOf :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-indexOf = dipFlip $ searchFunction
-  (pure .: scalar .: Number .: (:+ 0) .: (\n hs -> fromMaybe (genericLength hs) $ n `genericElemIndex` hs))
+indexOf cea@CoreExtraArgs{ coreExtraArgsOrigin = o } = flip $ searchFunction
+  (pure .: scalar .: Number .: (:+ 0) .: (\n hs -> (+ fromIntegral o) $ fromMaybe (genericLength hs) $ n `genericElemIndex` hs))
   (\e k v -> case find (\(_, u) -> e == u) (zip k v) of
     Just (i, _) -> pure $ unTolerantL i
-    Nothing -> throwError $ IndexError "Value not found in dictionary")
+    Nothing -> throwError $ IndexError "Value not found in dictionary") cea
 
 intervalIndex :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-intervalIndex cea hs' ns =
+intervalIndex cea@CoreExtraArgs{ coreExtraArgsOrigin = o } hs' ns =
   if Prelude.not $ sorted $ majorCells hs' then throwError $ DomainError "Interval index left argument must be sorted"
   else (searchFunction (pure .: scalar .: Number .: (:+ 0) .: (\n hs -> do
     let lowers = Nothing : fmap Just hs
     let uppers = fmap Just hs :> Nothing
-    let bounds = Prelude.reverse $ zipWith3 (\l u i -> ((l, u), i)) lowers uppers [0..genericLength hs]
+    let bounds = Prelude.reverse $ zipWith3 (\l u i -> ((l, u), i)) lowers uppers $ fmap (+ fromIntegral o) [0..genericLength hs]
     fromMaybe 0 $ fmap snd $ flip find bounds $ \case
       ((Just lower, Just upper), _) | lower <= n && n < upper -> True
       ((Just lower, Nothing), _) | lower <= n -> True
@@ -1019,22 +1017,22 @@ majorCells' = pure . vector . fmap box . majorCells
 mix :: MonadError Error m => Noun -> m Noun
 mix = atRank1 first 0
 
-group :: MonadError Error m => [Integer] -> [a] -> m [[a]]
-group is xs = do
-  let buckets = genericTake (1 + ((-1) `Prelude.max` maximum is)) $ Prelude.repeat []
+group :: MonadError Error m => CoreExtraArgs -> [Integer] -> [a] -> m [[a]]
+group CoreExtraArgs{ coreExtraArgsOrigin = o } is xs = do
+  let buckets = genericTake (1 + ((-1) `Prelude.max` maximum ((subtract $ toInteger o) <$> is))) $ Prelude.repeat []
   let go :: MonadError Error m => [[a]] -> [Integer] -> [a] -> m [[a]]
       go buckets _ [] = pure buckets
       go buckets (i:is) (x:xs)
-        | i < 0 = go buckets is xs
-        | otherwise = go ((genericTake i buckets) ++ [genericIndex buckets i `snoc` x] ++ (genericDrop (i + 1) buckets)) is xs
+        | i < toInteger o = go buckets is xs
+        | otherwise = go ((genericTake i buckets) ++ [genericIndex buckets (i - toInteger o) `snoc` x] ++ (genericDrop (i + 1) buckets)) is xs
       go _ [] _ = throwError $ DomainError "Group left argument too short"
   go buckets is xs
 
-group' :: MonadError Error m => Noun -> Noun -> m Noun
-group' is xs = do
+group' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+group' cea is xs = do
   let err = DomainError "Group left argument must be a vector of integers"
   is' <- asVector err is >>= mapM (asNumber err >=> asInt err)
-  (vector . fmap (box . fromMajorCells)) <$> TinyAPL.Functions.group is' (majorCells xs)
+  (vector . fmap (box . fromMajorCells)) <$> TinyAPL.Functions.group cea is' (majorCells xs)
 
 partition :: MonadError Error m => [Natural] -> [a] -> m [[a]]
 partition is xs = do
@@ -1257,10 +1255,10 @@ key' :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 key' f karr@(Array _ _) varr@(Array _ _) = fromMajorCells <$> key (\k vs -> f k $ vector $ toScalar <$> vs) (majorCells karr) (majorCells varr)
 key' _ _ _ = throwError $ NYIError "Key on dictionaries"
 
-keyMonad :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> m Noun
-keyMonad f arr = do
+keyMonad :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
+keyMonad cea f arr = do
   t <- tally' arr
-  is <- indexGenerator' t
+  is <- indexGenerator' cea t
   key' f arr is
 
 parseRank :: MonadError Error m => Noun -> m (Integer, Integer, Integer)
@@ -1436,14 +1434,14 @@ onInfixesFill _ _ _ _ = throwError $ DomainError "On Infixes: invalid fill mode 
 
 encloseAnAxis :: MonadError Error m => Natural -> Noun -> m [Noun]
 encloseAnAxis n arr = do
-  move <- gradeUp $ n : filter (/= n) [0..arrayRank arr - 1]
-  majorCells <$> reorderAxes move arr
+  move <- gradeUp defaultCoreExtraArgs $ n : filter (/= n) [0..arrayRank arr - 1]
+  majorCells <$> reorderAxes defaultCoreExtraArgs move arr
 
 mixAnAxis :: MonadError Error m => Natural -> [Noun] -> m Noun
 mixAnAxis n arrs = do
   let am = fromMajorCells arrs
   let move = n : filter (/= n) [0..arrayRank am - 1]
-  reorderAxes (traceWith (\_ -> "mix " ++ show n ++ ": move = " ++ show move ++ ", am = " ++ show am ++ "; arrs = " ++ show arrs) move) am
+  reorderAxes defaultCoreExtraArgs move am
 
 onInfixes :: MonadError Error m => Natural -> (Noun -> m Noun) -> [(Natural, Natural, Integer, [ScalarValue])] -> Noun -> m Noun
 onInfixes _ _ [] y = pure y

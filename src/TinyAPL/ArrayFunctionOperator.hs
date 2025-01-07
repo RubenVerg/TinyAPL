@@ -1332,12 +1332,17 @@ callOnValueAndValue _ _ _ _ = throwError $ DomainError "Invalid type to conjunct
 coreExtraArgsToleranceKey :: String
 coreExtraArgsToleranceKey = "tolerance"
 
+coreExtraArgsOriginKey :: String
+coreExtraArgsOriginKey = "origin"
+
 data CoreExtraArgs = CoreExtraArgs
-  { coreExtraArgsTolerance :: Double }
+  { coreExtraArgsTolerance :: Double
+  , coreExtraArgsOrigin :: Natural }
 
 defaultCoreExtraArgs :: CoreExtraArgs
 defaultCoreExtraArgs = CoreExtraArgs
-  { coreExtraArgsTolerance = comparisonTolerance }
+  { coreExtraArgsTolerance = comparisonTolerance
+  , coreExtraArgsOrigin = 0 }
 
 parseCoreExtraArgs :: MonadError Error m => ExtraArgs -> m CoreExtraArgs
 parseCoreExtraArgs ea = do
@@ -1346,5 +1351,8 @@ parseCoreExtraArgs ea = do
     lookupStr s = lookup (box $ vector $ Character <$> s) ea
   let toleranceErr = DomainError "Tolerance must be a scalar real number"
   tolerance <- fromMaybe (coreExtraArgsTolerance defaultCoreExtraArgs) <$> (mapM (asNumber toleranceErr >=> asReal toleranceErr) $ lookupStr coreExtraArgsToleranceKey)
+  let originErr = DomainError "Origin must be a scalar integer"
+  origin <- fromMaybe (coreExtraArgsOrigin defaultCoreExtraArgs) <$> (mapM (asNumber originErr >=> asInt originErr) $ lookupStr coreExtraArgsOriginKey)
   pure CoreExtraArgs
-    { coreExtraArgsTolerance = tolerance }
+    { coreExtraArgsTolerance = tolerance
+    , coreExtraArgsOrigin = origin }

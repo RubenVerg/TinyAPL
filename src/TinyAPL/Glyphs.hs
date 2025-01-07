@@ -290,6 +290,7 @@ onContents = 'ᑒ'
 table = '⊞'
 ident = '⫤'
 onSimpleScalars = '⌓'
+originOne = '⑴'
 
 adverbs =
   [ TinyAPL.Glyphs.selfie
@@ -307,7 +308,8 @@ adverbs =
   , TinyAPL.Glyphs.onContents
   , TinyAPL.Glyphs.table
   , TinyAPL.Glyphs.ident
-  , TinyAPL.Glyphs.onSimpleScalars ]
+  , TinyAPL.Glyphs.onSimpleScalars
+  , TinyAPL.Glyphs.originOne ]
 
 -- * Conjunctions
 
