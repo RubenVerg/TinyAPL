@@ -260,6 +260,11 @@ onSimpleScalars = PrimitiveAdverb
   , adverbContext = Nothing
   , adverbOnNoun = Just $ \_ x -> pure $ DerivedFunctionNoun (Just $ const $ F.onSimpleScalars1 (F.constant1 x)) (Just $ const $ F.onSimpleScalars2 (F.constant2 x)) Nothing onSimpleScalars x
   , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onSimpleScalars1 $ callMonad f []) (Just $ const $ F.onSimpleScalars2 $ callDyad f []) Nothing onSimpleScalars f }
+originOne = PrimitiveAdverb
+  { adverbRepr = [G.originOne]
+  , adverbContext = Nothing
+  , adverbOnNoun = Nothing
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsOriginKey, Number 1)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsOriginKey, Number 1)]) Nothing originOne f }
 
 adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   [ TinyAPL.Primitives.selfie
@@ -277,7 +282,8 @@ adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   , TinyAPL.Primitives.onContents
   , TinyAPL.Primitives.table
   , TinyAPL.Primitives.ident
-  , TinyAPL.Primitives.onSimpleScalars ]
+  , TinyAPL.Primitives.onSimpleScalars
+  , TinyAPL.Primitives.originOne ]
 
 -- * Primitive conjunctions
 
