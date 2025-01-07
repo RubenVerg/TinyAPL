@@ -43,7 +43,7 @@ function Header({ pages }: HeaderProps) {
 					</ul>
 				</li>
 				<li class='nav-item ms-2'>
-					Glyphs
+					<a class='nav-link ps-0' href='/docs/glyph'>Glyphs</a>
 					<ul class={sidebarSubNavClass}>
 						{[...Object.entries(pages.glyphs)].sort(([_ak, av], [_bk, bv]) => av.name.localeCompare(bv.name)).map(([id, glyph]) => <li class='nav-item'><a class='nav-link' href={`/docs/glyph/${id}`}><code>{glyph.glyph}</code> {glyph.name}</a></li>)}
 					</ul>
