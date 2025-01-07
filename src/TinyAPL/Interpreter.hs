@@ -25,8 +25,8 @@ asWraps :: MonadError Error m => Error -> Noun -> m Function
 asWraps err arr = do
   if null $ arrayShape arr then asWrap err (headPromise $ arrayContents arr)
   else pure $ UnwrapArrayFunction
-    { functionMonad = Just $ \ea x -> F.onScalars1 (\w -> asScalar err w >>= asWrap err >>= (\f -> callMonad f ea x)) arr
-    , functionDyad = Just $ \ea x y -> F.onScalars1 (\w -> asScalar err w >>= asWrap err >>= (\f -> callDyad f ea x y)) arr
+    { functionMonad = Just $ \ea x -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callMonad f ea x)) arr
+    , functionDyad = Just $ \ea x y -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callDyad f ea x y)) arr
     , functionContext = Nothing
     , unwrapFunctionArray = arr }
 
