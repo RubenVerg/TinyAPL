@@ -115,6 +115,27 @@ fromMajorCells (c:cs) = let
     Array sh _ -> sh == arrayShape c
     Dictionary _ _ -> False) cs then impl else error "fromMajorCells: mismatched shapes or dictionary"
 
+fillArray :: [Natural] -> ScalarValue -> Noun -> Noun
+fillArray _ _ (Dictionary _ _) = error $ "Fill dictionary"
+fillArray [] _ a = a
+fillArray (m:ms) f a = let
+  inner = fromMajorCells $ fillArray ms f <$> majorCells a
+  (_:tl) = arrayShape inner
+  in Array (m : tl) (genericTake (m * product tl) $ arrayContents inner ++ repeat f)
+
+fromMajorCellsFilled :: ScalarValue -> [Noun] -> Noun
+fromMajorCellsFilled _ xs | any (\case Array{} -> False; _ -> True) xs = error "fromMajorCellsFilled: dictionary cell"
+fromMajorCellsFilled _ [] = Array [0] []
+fromMajorCellsFilled f cs = let
+  shapes = arrayShape <$> cs
+  maxShape = foldr (\a b -> zipWith max a b) (const 0 <$> headPromise shapes) shapes
+  cells = fillArray maxShape f <$> cs
+  in fromMajorCells cells
+
+fromMajorCellsMaybeFilled :: Maybe ScalarValue -> [Noun] -> Noun
+fromMajorCellsMaybeFilled Nothing = fromMajorCells
+fromMajorCellsMaybeFilled (Just f) = fromMajorCellsFilled f
+
 -- * Number comparison functions
 
 comparisonTolerance :: Double
@@ -1335,14 +1356,19 @@ coreExtraArgsToleranceKey = "tolerance"
 coreExtraArgsOriginKey :: String
 coreExtraArgsOriginKey = "origin"
 
+coreExtraArgsFillKey :: String
+coreExtraArgsFillKey = "fill"
+
 data CoreExtraArgs = CoreExtraArgs
   { coreExtraArgsTolerance :: Double
-  , coreExtraArgsOrigin :: Natural }
+  , coreExtraArgsOrigin :: Natural
+  , coreExtraArgsFill :: Maybe ScalarValue }
 
 defaultCoreExtraArgs :: CoreExtraArgs
 defaultCoreExtraArgs = CoreExtraArgs
   { coreExtraArgsTolerance = comparisonTolerance
-  , coreExtraArgsOrigin = 0 }
+  , coreExtraArgsOrigin = 0
+  , coreExtraArgsFill = Nothing }
 
 parseCoreExtraArgs :: MonadError Error m => ExtraArgs -> m CoreExtraArgs
 parseCoreExtraArgs ea = do
@@ -1353,6 +1379,8 @@ parseCoreExtraArgs ea = do
   tolerance <- fromMaybe (coreExtraArgsTolerance defaultCoreExtraArgs) <$> (mapM (asNumber toleranceErr >=> asReal toleranceErr) $ lookupStr coreExtraArgsToleranceKey)
   let originErr = DomainError "Origin must be a scalar integer"
   origin <- fromMaybe (coreExtraArgsOrigin defaultCoreExtraArgs) <$> (mapM (asNumber originErr >=> asInt originErr) $ lookupStr coreExtraArgsOriginKey)
+  let fill = lookupStr coreExtraArgsFillKey
   pure CoreExtraArgs
     { coreExtraArgsTolerance = tolerance
-    , coreExtraArgsOrigin = origin }
+    , coreExtraArgsOrigin = origin
+    , coreExtraArgsFill = fill }

@@ -158,7 +158,7 @@ matrixInverse y = do
     Right r -> pure $ r * hermitian y
 
 matrixInverse' :: MonadError Error m => Noun -> m Noun
-matrixInverse' = atRank1 (\y -> do
+matrixInverse' = atRank1 defaultCoreExtraArgs (\y -> do
   r <- rank y
   mat <- asMatrix (DomainError "") y >>= mapM (asNumber (DomainError "Matrix inverse argument must be numeric"))
   inv <- fmap Number <$> matrixInverse (if r < 2 then M.transpose mat else mat)
@@ -169,7 +169,7 @@ matrixDivide :: MonadError Error m => M.Matrix (Complex Double) -> M.Matrix (Com
 matrixDivide x y = (* x) <$> matrixInverse y
 
 matrixDivide' :: MonadError Error m => Noun -> Noun -> m Noun
-matrixDivide' = atRank2 (\x y -> do
+matrixDivide' = atRank2 defaultCoreExtraArgs (\x y -> do
   x' <- asMatrix (DomainError "") x >>= mapM (asNumber (DomainError "Matrix divide arguments must be numeric"))
   y' <- asMatrix (DomainError "") y >>= mapM (asNumber (DomainError "Matrix divide arguments must be numeric")) 
   matrix . fmap Number <$> matrixDivide x' y') (2, 2)
@@ -531,27 +531,34 @@ reverse = pure . Prelude.reverse
 reverse' :: MonadError Error m => Noun -> m Noun
 reverse' = onMajorCells TinyAPL.Functions.reverse
 
-rotate :: MonadError Error m => [Integer] -> Noun -> m Noun
-rotate [] xs = pure xs
-rotate (r:rs) xs = fromMajorCells . TinyAPL.Util.rotate r <$> mapM (TinyAPL.Functions.rotate rs) (majorCells xs)
+rotate :: MonadError Error m => CoreExtraArgs -> [Integer] -> Noun -> m Noun
+rotate _ [] xs = pure xs
+rotate cea@CoreExtraArgs{ coreExtraArgsFill = Nothing } (r:rs) xs = fromMajorCells . TinyAPL.Util.rotate r <$> mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs)
+rotate cea@CoreExtraArgs{ coreExtraArgsFill = Just fill } (r:rs) xs = do
+  re <- fromMajorCells . genericDrop r <$> mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs)
+  if r < 0 then reverse' re >>= reverse' . fillArray (arrayShape xs) fill else pure $ fillArray (arrayShape xs) fill re
 
-rotate' :: MonadError Error m => Noun -> Noun -> m Noun
-rotate' rot arr = do
+rotate' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+rotate' cea rot arr = do
   let err = DomainError "Rotate left argument must be an integer vector or scalar"
   rs <- asVector err rot >>= mapM (asNumber err >=> asInt err)
-  TinyAPL.Functions.rotate rs arr
+  TinyAPL.Functions.rotate cea rs arr
 
-take :: MonadError Error m => [Integer] -> Noun -> m Noun
-take [] xs = pure xs
-take (t:ts) xs = let
-  take' c = if c < 0 then Prelude.reverse . genericTake (negate c) . Prelude.reverse else genericTake c
-  in fromMajorCells . take' t <$> mapM (TinyAPL.Functions.take ts) (majorCells xs)
+take :: MonadError Error m => CoreExtraArgs -> [Integer] -> Noun -> m Noun
+take _ [] xs = pure xs
+take cea@CoreExtraArgs{ coreExtraArgsFill = Nothing } (t:ts) xs = do
+  let take' c = if c < 0 then Prelude.reverse . genericTake (negate c) . Prelude.reverse else genericTake c
+  fromMajorCells . take' t <$> mapM (TinyAPL.Functions.take cea ts) (majorCells xs)
+take cea@CoreExtraArgs{ coreExtraArgsFill = Just fill } ts'@(t:ts) xs = do
+  r <- fromMajorCells <$> mapM (TinyAPL.Functions.take cea ts) (majorCells xs)
+  let finalShape = (fromInteger . Prelude.abs <$> ts') ++ Prelude.drop (length ts') (arrayShape r)
+  if t < 0 then reverse' r >>= reverse' . fillArray finalShape fill else pure $ fillArray finalShape fill r
 
-take' :: MonadError Error m => Noun -> Noun -> m Noun
-take' tak arr = do
+take' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+take' cea tak arr = do
   let err = DomainError "Take left argument must be an integer vector"
   ts <- asVector err tak >>= mapM (asNumber err >=> asInt err)
-  TinyAPL.Functions.take ts arr
+  TinyAPL.Functions.take cea ts arr
 
 drop :: MonadError Error m => [Integer] -> Noun -> m Noun
 drop [] xs = pure xs
@@ -618,15 +625,17 @@ fromInvertedTable es@(Array [2, _] _) = do
   fromKeysAndValues ks vs
 fromInvertedTable _ = throwError $ DomainError "From Inverted Table argument must be a pair of vectors"
 
-first :: MonadError Error m => Noun -> m Noun
-first (Array _ []) = throwError $ DomainError "First on empty array"
-first (Array _ (x:_)) = pure $ fromScalar x
-first (Dictionary ks _) = pure $ vector ks
+first :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+first CoreExtraArgs{ coreExtraArgsFill = Nothing } (Array _ []) = throwError $ DomainError "First on empty array"
+first CoreExtraArgs{ coreExtraArgsFill = Just fill } (Array _ []) = pure $ fromScalar fill
+first _ (Array _ (x:_)) = pure $ fromScalar x
+first _ (Dictionary ks _) = pure $ vector ks
 
-last :: MonadError Error m => Noun -> m Noun
-last (Array _ []) = throwError $ DomainError "Last on empty array"
-last (Array _ xs) = pure $ fromScalar $ Prelude.last xs
-last (Dictionary _ vs) = pure $ vector vs
+last :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+last CoreExtraArgs{ coreExtraArgsFill = Nothing } (Array _ []) = throwError $ DomainError "Last on empty array"
+last CoreExtraArgs{ coreExtraArgsFill = Just fill } (Array _ []) = pure $ fromScalar fill
+last _ (Array _ xs) = pure $ fromScalar $ Prelude.last xs
+last _ (Dictionary _ vs) = pure $ vector vs
 
 indexGenerator :: MonadError Error m => CoreExtraArgs -> Natural -> m Noun
 indexGenerator _ 0 = pure $ vector []
@@ -773,21 +782,21 @@ squad cea i y@(Array _ _) = do
     go :: MonadError Error m => [Noun] -> Noun -> m Noun
     go [] y = pure y
     go (is:iss) y =
-      onScalars1 (\(Array [] [ind]) -> asNumber err ind >>= asInt err >>= flip (indexCell cea) y >>= go iss) is
+      onScalars1 defaultCoreExtraArgs (\(Array [] [ind]) -> asNumber err ind >>= asInt err >>= flip (indexCell cea) y >>= go iss) is
   go axisIndices y
 squad _ i d@(Dictionary _ _) = indexElement (toScalar i) d >>= (\case
   Just r -> pure $ fromScalar r
   Nothing -> throwError $ IndexError "Key not found in dictionary")
 
 from :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-from cea x y = ((\x' -> (first `before` squad cea) x' y) `atRank1` 0) x
+from cea x y = onScalars1 defaultCoreExtraArgs (\x' -> (first defaultCoreExtraArgs `before` squad cea) x' y) x
 
 catenate :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-catenate cea a@(Array ash acs) b@(Array bsh bcs) =
+catenate cea@CoreExtraArgs{ coreExtraArgsFill = fill } a@(Array ash acs) b@(Array bsh bcs) =
   if null acs && Prelude.not (null bcs) then pure b
   else if null bcs && Prelude.not (null acs) then pure a
   else if arrayRank a == arrayRank b then
-    if (isScalar a && isScalar b) || (tailMaybe ash == tailMaybe bsh) then pure $ fromMajorCells $ majorCells a ++ majorCells b
+    if (isScalar a && isScalar b) || (fill /= Nothing || tailMaybe ash == tailMaybe bsh) then pure $ fromMajorCellsMaybeFilled fill $ majorCells a ++ majorCells b
     else throwError $ LengthError "Incompatible shapes to Catenate"
   else if isScalar a then catenate cea (fromJust $ arrayReshaped (1 : tailPromise bsh) acs) b
   else if isScalar b then catenate cea a (fromJust $ arrayReshaped (1 : tailPromise ash) bcs)
@@ -800,7 +809,7 @@ catenate _ d@(Dictionary _ _) (Array [_] []) = pure d
 catenate _ _ _ = throwError $ DomainError "Cannot catenate dictionary and array"
 
 join :: MonadError Error m => CoreExtraArgs -> [Noun] -> m Noun
-join cea = fold (catenate cea `after` first) (vector [])
+join cea = fold (catenate cea `after` first defaultCoreExtraArgs) (vector [])
 
 join' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 join' cea = TinyAPL.Functions.join cea . majorCells
@@ -928,13 +937,13 @@ decode ns cs =
   else pure $ sum $ zipWith (*) (Prelude.reverse $ scanl1 (*) (init $ 1 : Prelude.reverse ns)) cs
 
 decode' :: MonadError Error m => Noun -> Noun -> m Noun
-decode' a@(Array _ _) b@(Array _ _) = ((\ns cs -> do
+decode' a@(Array _ _) b@(Array _ _) = atRank2 defaultCoreExtraArgs (\ns cs -> do
   let err = DomainError "Decode arguments must be number arrays"
   cs' <- asVector err cs >>= mapM (asNumber err)
   ns' <- case asScalar err ns of
     Right x -> Prelude.replicate (length cs') <$> asNumber err x
     Left _ -> asVector err ns >>= mapM (asNumber err)
-  scalar . Number <$> decode ns' cs') `atRank2` (1, 1)) a b
+  scalar . Number <$> decode ns' cs') (1, 1) a b
 decode' _ _ = throwError $ DomainError "Decode arguments must be number arrays"
 
 decodeBase2 :: MonadError Error m => Noun -> m Noun
@@ -959,12 +968,12 @@ encodeScalar cea@CoreExtraArgs { coreExtraArgsTolerance = t } b n = do
   else (`snoc` rem) <$> encodeScalar cea b div
 
 encode' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-encode' cea a@(Array _ _) b@(Array _ _) = ((\b n -> do
+encode' cea a@(Array _ _) b@(Array _ _) = atRank2 defaultCoreExtraArgs (\b n -> do
   let err = DomainError "Encode arguments must be number arrays"
   n' <- asScalar err n >>= asNumber err
   case asScalar err b of
     Right b' -> vector . fmap Number . (\xs -> if null xs then [0] else xs) <$> (asNumber err b' >>= flip (encodeScalar cea) n')
-    Left _ -> vector . fmap Number <$> (asVector err b >>= mapM (asNumber err) >>= flip (encode cea) n')) `atRank2` (1, 0)) a b
+    Left _ -> vector . fmap Number <$> (asVector err b >>= mapM (asNumber err) >>= flip (encode cea) n')) (1, 0) a b
 encode' _ _ _ = throwError $ DomainError "Encode arguments must be number arrays"
 
 encodeBase2 :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
@@ -975,9 +984,9 @@ searchFunction f _ CoreExtraArgs { coreExtraArgsTolerance = t } ns hs@(Array _ _
   in if arrayRank ns < cutRank then throwError $ DomainError "Search function needle must have rank at least equal to the rank of the major cells of the haystack"
   else do
     let hc = majorCells hs
-    nc <- atRank1 enclose' (toInteger cutRank) ns
-    onScalars1 (\n -> do
-      n' <- first n
+    nc <- atRank1 defaultCoreExtraArgs enclose' (toInteger cutRank) ns
+    onScalars1 defaultCoreExtraArgs (\n -> do
+      n' <- first defaultCoreExtraArgs n
       f (TolerantL t n') (TolerantL t <$> hc)) nc
 searchFunction _ g CoreExtraArgs { coreExtraArgsTolerance = t } n (Dictionary ks vs) = do
   fromScalar <$> g (TolerantL t $ box n) (TolerantL t <$> ks) (TolerantL t <$> vs)
@@ -1008,14 +1017,14 @@ intervalIndex cea@CoreExtraArgs{ coreExtraArgsOrigin = o } hs' ns =
       ((Nothing, Just upper), _) | n < upper -> True
       _ -> False)) (\_ _ _ -> throwError $ DomainError "Interval index only works with arrays")) cea ns hs'
 
-laminate :: MonadError Error m => Noun -> Noun -> m Noun
-laminate = catenate defaultCoreExtraArgs `over` promote
+laminate :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+laminate cea = catenate cea `over` promote
 
 majorCells' :: MonadError Error m => Noun -> m Noun
 majorCells' = pure . vector . fmap box . majorCells
 
-mix :: MonadError Error m => Noun -> m Noun
-mix = atRank1 first 0
+mix :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+mix cea = atRank1 cea (first defaultCoreExtraArgs) 0
 
 group :: MonadError Error m => CoreExtraArgs -> [Integer] -> [a] -> m [[a]]
 group CoreExtraArgs{ coreExtraArgsOrigin = o } is xs = do
@@ -1234,11 +1243,11 @@ boxed1 = compose enclose'
 boxed2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 boxed2 = atop enclose'
 
-onContents1 :: MonadError Error m => (Noun -> m Noun) -> Noun -> m Noun
-onContents1 = (`compose` first)
+onContents1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Noun -> m Noun
+onContents1 cea = (`compose` first cea)
 
-onContents2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
-onContents2 = (`over` first)
+onContents2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+onContents2 cea = (`over` first cea)
 
 eachLeft :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 eachLeft f x y = each2 f x (scalar $ box y)
@@ -1271,43 +1280,43 @@ parseRank arr = do
     [d, e, f] -> pure (d, e, f)
     _ -> throwError err
 
-atRank1 :: MonadError Error m => (Noun -> m Noun) -> Integer -> Noun -> m Noun
-atRank1 f rank arr@(Array _ _)
+atRank1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Integer -> Noun -> m Noun
+atRank1 cea@CoreExtraArgs{ coreExtraArgsFill = fill } f rank arr@(Array _ _)
   | arrayRank arr == 0 = f arr
   | rank >= 0 && toInteger (arrayRank arr) <= rank = f arr
-  | rank >= 0 = fromMajorCells <$> mapM (atRank1 f rank) (majorCells arr)
-  | rank == -1 = fromMajorCells <$> mapM f (majorCells arr)
-  | otherwise = fromMajorCells <$> mapM (atRank1 f $ rank + 1) (majorCells arr)
-atRank1 _ _ (Dictionary _ _) = throwError $ NYIError "At Rank on dictionaries"
+  | rank >= 0 = fromMajorCellsMaybeFilled fill <$> mapM (atRank1 cea f rank) (majorCells arr)
+  | rank == -1 = fromMajorCellsMaybeFilled fill <$> mapM f (majorCells arr)
+  | otherwise = fromMajorCellsMaybeFilled fill <$> mapM (atRank1 cea f $ rank + 1) (majorCells arr)
+atRank1 _ _ _ (Dictionary _ _) = throwError $ NYIError "At Rank on dictionaries"
 
-atRank2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> (Integer, Integer) -> Noun -> Noun -> m Noun
-atRank2 f (ra, rb) a b = do
+atRank2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> (Integer, Integer) -> Noun -> Noun -> m Noun
+atRank2 cea f (ra, rb) a b = do
   -- @dzaima (in fact, {a b c←⌽3⍴⌽⍵⍵ ⋄ ↑(⊂⍤b⊢⍺) ⍺⍺¨ ⊂⍤c⊢⍵} is an impl of the dyadic case from the monadic one (with Dyalog's ↑ meaning))
-  as <- atRank1 enclose' ra a
-  bs <- atRank1 enclose' rb b
-  each2 f as bs >>= atRank1 first 0
+  as <- atRank1 cea enclose' ra a
+  bs <- atRank1 cea enclose' rb b
+  each2 f as bs >>= atRank1 cea (first defaultCoreExtraArgs) 0
 
-atRank1' :: MonadError Error m => (Noun -> m Noun) -> Noun -> Noun -> m Noun
-atRank1' f r y = do
+atRank1' :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Noun -> Noun -> m Noun
+atRank1' cea f r y = do
   (a, _, _) <- parseRank r
-  atRank1 f a y
+  atRank1 cea f a y
 
-atRank2' :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> Noun -> m Noun
-atRank2' f r x y = do
+atRank2' :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> Noun -> m Noun
+atRank2' cea f r x y = do
   (_, b, c) <- parseRank r
-  atRank2 f (b, c) x y
+  atRank2 cea f (b, c) x y
 
-onCells1 :: MonadError Error m => (Noun -> m Noun) -> Noun -> m Noun
-onCells1 f = atRank1 f (-1)
+onCells1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Noun -> m Noun
+onCells1 cea f = atRank1 cea f (-1)
 
-onCells2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
-onCells2 f = atRank2 f (-1, -1)
+onCells2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+onCells2 cea f = atRank2 cea f (-1, -1)
 
-onScalars1 :: MonadError Error m => (Noun -> m Noun) -> Noun -> m Noun
-onScalars1 f = atRank1 f 0
+onScalars1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Noun -> m Noun
+onScalars1 cea f = atRank1 cea f 0
 
-onScalars2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
-onScalars2 f = atRank2 f (0, 0)
+onScalars2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+onScalars2 cea f = atRank2 cea f (0, 0)
 
 atDepth1 :: MonadError Error m => (Noun -> m Noun) -> Integer -> Noun -> m Noun
 atDepth1 f depth arr@(Array _ _)
@@ -1384,12 +1393,12 @@ until2 f p x y = let
 under :: MonadError Error m => (Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> m Noun
 under f g arr@(Array _ _) = do
   let nums = fromJust $ arrayReshaped (arrayShape arr) $ Number . (:+ 0) <$> [1..]
-  pairs <- atRank2 (atop enclose' pair) (0, 0) arr nums
+  pairs <- onScalars2 defaultCoreExtraArgs (atop enclose' pair) arr nums
   rs <- g pairs
-  nums' <- atRank1 (compose TinyAPL.Functions.last first) 0 rs
+  nums' <- onScalars1 defaultCoreExtraArgs (compose (TinyAPL.Functions.last defaultCoreExtraArgs) (first defaultCoreExtraArgs)) rs
   if Prelude.not $ distinct $ arrayContents rs then throwError $ DomainError "Under right operand must return each element at most once"
   else do
-    res <- atRank1 (compose first first) 0 rs >>= f
+    res <- onScalars1 defaultCoreExtraArgs (compose (first defaultCoreExtraArgs) (first defaultCoreExtraArgs)) rs >>= f
     if isScalar res then do
       pure $ Array (arrayShape arr) $ zipWith (\num el -> if num `elem` (arrayContents nums') then headPromise $ arrayContents res else el) (arrayContents nums) (arrayContents arr)
     else if arrayShape nums' == arrayShape res then do
@@ -1407,10 +1416,10 @@ underK :: MonadError Error m => Noun -> (Noun -> m Noun) -> Noun -> m Noun
 underK arr = under (\_ -> pure arr)
 
 table :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
-table f = atRank2 (atRank2 f (0, 0)) (0, likePositiveInfinity)
+table f = atRank2 defaultCoreExtraArgs (onScalars2 defaultCoreExtraArgs f) (0, likePositiveInfinity)
 
 innerProduct :: MonadError Error m => (Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
-innerProduct f g = atRank2 (atop f (atRank2 (atRank2 g (0, 0)) (-1, -1))) (1, likePositiveInfinity)
+innerProduct f g = atRank2 defaultCoreExtraArgs (atop f (onCells2 defaultCoreExtraArgs (onScalars2 defaultCoreExtraArgs g))) (1, likePositiveInfinity)
 
 onInfixesFill :: MonadError Error m => Natural -> [ScalarValue] -> Integer -> NE.NonEmpty Noun -> m [Noun]
 onInfixesFill 0 [fill] count ys = pure $ genericTake (Prelude.abs count) $ Prelude.repeat $ arrayReshapedNE (arrayShape $ NE.head ys) (NE.singleton fill)

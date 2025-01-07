@@ -27,11 +27,11 @@ const prefix = { code: 'Backquote', sym: '`' };
 
 const keyboard = [
 	['Backquote', '`', '~', undefined, '⍨', '⋄', '⌺'],
-	['Digit1', '1', '!', '¨', '↗', undefined, undefined],
+	['Digit1', '1', '!', '¨', '↗', undefined, '⑴'],
 	['Digit2', '2', '@', '¯', undefined, undefined, undefined],
 	['Digit3', '3', '#', undefined, '⍒', undefined, undefined],
 	['Digit4', '4', '$', '≤', '⍋', '⊴', undefined],
-	['Digit5', '5', '%', undefined, '≈', undefined, undefined],
+	['Digit5', '5', '%', '⬚', '≈', undefined, undefined],
 	['Digit6', '6', '^', '≥', '⍉', '⊵', undefined],
 	['Digit7', '7', '&', undefined, '⊖', undefined, undefined],
 	['Digit8', '8', '*', '≠', '⍣', '⍟', '∞'],
