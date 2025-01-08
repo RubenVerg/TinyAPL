@@ -4,8 +4,9 @@ import TinyAPL.ArrayFunctionOperator
 import qualified TinyAPL.Functions as F
 import qualified TinyAPL.Glyphs as G
 import TinyAPL.Error
-import TinyAPL.Util (headPromise)
+import TinyAPL.Util (headPromise, rollR)
 import TinyAPL.Complex (Complex((:+)))
+
 
 withCoreExtraArgs1 :: (CoreExtraArgs -> a -> St r) -> ExtraArgs -> a -> St r
 withCoreExtraArgs1 f ea a = parseCoreExtraArgs ea >>= (\cea -> f cea a)
@@ -224,17 +225,17 @@ key = PrimitiveAdverb
   { adverbRepr = [G.key]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \ea f -> (\cea -> DerivedFunctionFunction (Just $ const $ F.keyMonad cea $ callDyad f []) (Just $ const $ F.key' $ callDyad f []) Nothing key f) <$> parseCoreExtraArgs ea }
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.keyMonad $ callDyad f []) (ea' ++ ea)) (Just $ const $ F.key' $ callDyad f []) Nothing key f }
 onCells = PrimitiveAdverb
   { adverbRepr = [G.onCells]
   , adverbContext = Nothing
-  , adverbOnNoun = Just $ \ea x -> (\cea -> DerivedFunctionNoun (Just $ const $ F.onCells1 cea $ F.constant1 x) (Just $ const $ F.onCells2 cea $ F.constant2 x) Nothing onCells x) <$> parseCoreExtraArgs ea
-  , adverbOnFunction = Just $ \ea f -> (\cea -> DerivedFunctionFunction (Just $ const $ F.onCells1 cea $ callMonad f []) (Just $ const $ F.onCells2 cea $ callDyad f []) Nothing onCells f) <$> parseCoreExtraArgs ea }
+  , adverbOnNoun = Just $ \ea x -> pure $ DerivedFunctionNoun (Just $ \ea' -> withCoreExtraArgs1 (flip F.onCells1 $ F.constant1 x) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.onCells2 $ F.constant2 x) (ea' ++ ea)) Nothing onCells x
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.onCells1 $ callMonad f []) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.onCells2 $ callDyad f []) (ea' ++ ea)) Nothing onCells f }
 onScalars = PrimitiveAdverb
   { adverbRepr = [G.onScalars]
   , adverbContext = Nothing
-  , adverbOnNoun = Just $ \ea x -> (\cea -> DerivedFunctionNoun (Just $ const $ F.onScalars1 cea $ F.constant1 x) (Just $ const $ F.onScalars2 cea $ F.constant2 x) Nothing onScalars x) <$> parseCoreExtraArgs ea
-  , adverbOnFunction = Just $ \ea f -> (\cea -> DerivedFunctionFunction (Just $ const $ F.onScalars1 cea $ callMonad f []) (Just $ const $ F.onScalars2 cea $ callDyad f []) Nothing onScalars f) <$> parseCoreExtraArgs ea }
+  , adverbOnNoun = Just $ \ea x -> pure $ DerivedFunctionNoun (Just $ \ea' -> withCoreExtraArgs1 (flip F.onScalars1 $ F.constant1 x) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.onScalars2 $ F.constant2 x) (ea' ++ ea)) Nothing onScalars x
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.onScalars1 $ callMonad f []) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.onScalars2 $ callDyad f []) (ea' ++ ea)) Nothing onScalars f }
 boxed = PrimitiveAdverb
   { adverbRepr = [G.boxed]
   , adverbContext = Nothing
@@ -244,7 +245,7 @@ onContents = PrimitiveAdverb
   { adverbRepr = [G.onContents]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \ea f -> (\cea -> DerivedFunctionFunction (Just $ const $ F.onContents1 cea $ callMonad f []) (Just $ const $ F.onContents2 cea $ callDyad f []) Nothing onContents f) <$> parseCoreExtraArgs ea }
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.onContents1 $ callMonad f []) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.onContents2 $ callDyad f []) (ea' ++ ea)) Nothing onContents f }
 table = PrimitiveAdverb
   { adverbRepr = [G.table]
   , adverbContext = Nothing
@@ -292,7 +293,7 @@ atop = PrimitiveConjunction
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
-  , conjOnFunctionNoun = Just $ \ea f r -> (\cea -> DerivedFunctionFunctionNoun (Just $ const $ F.atRank1' cea (callMonad f []) r) (Just $ const $ F.atRank2' cea (callDyad f []) r) Nothing atop f r) <$> parseCoreExtraArgs ea
+  , conjOnFunctionNoun = Just $ \ea f r -> pure $ DerivedFunctionFunctionNoun (Just $ \ea' -> withCoreExtraArgs1 (rollR F.atRank1' (callMonad f []) r) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (rollR F.atRank2' (callDyad f []) r) (ea' ++ ea)) Nothing atop f r
   , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.compose (callMonad f []) (callMonad g [])) (Just $ const $ F.atop (callMonad f []) (callDyad g [])) Nothing atop f g }
 over = PrimitiveConjunction
   { conjRepr = [G.over]
