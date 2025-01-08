@@ -240,3 +240,6 @@ flap fs x = fmap ($ x) fs
 
 dipFlip :: (a -> b -> c -> d) -> (a -> c -> b -> d)
 dipFlip f x y z = f x z y
+
+rollR :: (a -> b -> c -> d) -> (b -> c -> a -> d)
+rollR f x y z = f z x y
