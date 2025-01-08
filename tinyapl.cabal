@@ -95,6 +95,8 @@ executable tinyapl
                     , deepseq
                     , exceptions
                     , tinyapl
+    if os(linux)
+        build-depends:edited
 
     hs-source-dirs:   app
     default-language: Haskell2010

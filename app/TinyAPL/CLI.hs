@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP, LambdaCase #-}
+
+#define is_linux defined(unix_HOST_OS) || defined(__unix___HOST_OS) || defined(__unix_HOST_OS) || defined(linux_HOST_OS) || defined(__linux___HOST_OS) || defined(__linux_HOST_OS)
+
 module TinyAPL.CLI where
 
 import TinyAPL.ArrayFunctionOperator
@@ -17,6 +21,10 @@ import Data.List (singleton)
 import Data.IORef
 import System.Info
 import Control.DeepSeq
+#if is_linux
+import TinyAPL.Highlighter
+import qualified System.Console.Edited as E
+#endif
 
 readImportFile :: FilePath -> St String
 readImportFile path = liftToSt $ readFile path
@@ -71,15 +79,225 @@ runCode output file code context = do
     Left err -> hPrint stderr err $> context
     Right (res, context') -> if output then print res $> context' else return context'
 
+singleCharacters :: [(Char, Char)]
+singleCharacters =
+  [ ('1', '¨')
+  , ('2', '¯')
+  , ('4', '≤')
+--, ('3', ' ')
+  , ('5', '⬚')
+  , ('6', '≥')
+--, ('7', ' ')
+  , ('8', '≠')
+  , ('9', '∨')
+  , ('0', '∧')
+  , ('-', '×')
+  , ('=', '÷')
+--, ('q', ' ')
+  , ('w', '⍵')
+  , ('e', '∊')
+  , ('r', '⍴')
+  , ('t', '⊞')
+  , ('y', '↑')
+  , ('u', '↓')
+  , ('i', '⍳')
+  , ('o', '○')
+  , ('p', '◡')
+  , ('[', '←')
+  , (']', '→')
+  , ('a', '⍺')
+  , ('s', '⌈')
+  , ('d', '⌊')
+  , ('f', '⍛')
+  , ('g', '∇')
+  , ('h', '∆')
+  , ('j', '∘')
+  , ('k', '⍆')
+  , ('l', '⎕')
+  , (';', '⍎')
+  , ('\'', '⍕')
+  , ('\\', '⊢')
+  , ('z', '⊂')
+  , ('x', '⊃')
+  , ('c', '∩')
+  , ('v', '∪')
+  , ('b', '⊥')
+  , ('n', '⊤')
+  , ('m', '«')
+  , (',', '⍪')
+  , ('.', '∙')
+  , ('/', '⌿')
+  , (' ', '`')
+  
+  , ('~', '⍨')
+  , ('!', '↗')
+--, ('@', ' ')
+  , ('#', '⍒')
+  , ('$', '⍋')
+  , ('%', '≈')
+  , ('^', '⍉')
+  , ('&', '⊖')
+  , ('*', '⍣')
+  , ('(', '⍱')
+  , (')', '⍲')
+  , ('_', '⊗')
+  , ('+', '⊕')
+--, ('Q', ' ')
+  , ('W', '⍹')
+  , ('E', '⍷')
+  , ('R', '√')
+  , ('T', '⍨')
+  , ('Y', '↟')
+  , ('U', '↡')
+  , ('I', '⍸')
+  , ('O', '⍥')
+  , ('P', '◠')
+  , ('{', '⟨')
+  , ('}', '⟩')
+  , ('A', '⍶')
+  , ('S', '§')
+  , ('D', '⸠')
+  , ('F', '∡')
+  , ('G', '⍢')
+  , ('H', '⍙')
+  , ('J', '⍤')
+  , ('K', '⌸')
+  , ('L', '⌷')
+  , (':', '≡')
+  , ('"', '≢')
+  , ('|', '⊣')
+  , ('Z', '⊆')
+  , ('X', '⊇')
+  , ('C', '⍝')
+  , ('V', '⁖')
+--, ('B', ' ')
+--, ('N', ' ')
+  , ('M', '»')
+  , ('<', 'ᑈ')
+  , ('>', 'ᐵ')
+--, ('?', ' ')
+  , (' ', '‿') ]
+
+doubleCharacters :: [(Char, Char)]
+doubleCharacters =
+  [ ('`', '⋄')
+--, ('1', ' ')
+--, ('2', ' ')
+--, ('3', ' ')
+  , ('4', '⊴')
+--, ('5', ' ')
+  , ('6', '⊵')
+--, ('7', ' ')
+  , ('8', '⍟')
+  , ('9', '∻')
+  , ('0', '⍬')
+  , ('-', '⸚')
+  , ('=', '⌹')
+  , ('q', '⇾')
+--, ('w', ' ')
+  , ('e', '⏨')
+  , ('r', 'ϼ')
+  , ('t', '߹')
+--, ('y', ' ')
+--, ('u', ' ')
+  , ('i', '…')
+--, ('o', ' ')
+--, ('p', ' ')
+  , ('[', '⦅')
+  , (']', '⦆')
+  , ('a', 'ɛ')
+  , ('s', '↾')
+  , ('d', '⇂')
+  , ('f', '∠')
+  , ('g', '⫇')
+  , ('h', '⊸')
+  , ('j', 'ᴊ')
+  , ('k', '⍅')
+--, ('l', ' ')
+  , (';', '⍮')
+  , ('\'', '⍘')
+  , ('\\', '⊩')
+  , ('z', '⊏')
+  , ('x', '⊐')
+  , ('c', '⟃')
+  , ('v', '⫤')
+  , ('b', '⇇')
+  , ('n', '↚')
+  , ('m', '↩')
+  , (',', '⊲')
+  , ('.', '⊳')
+--, ('/', ' ')
+--, (' ', ' ')
+  
+  , ('~', '⌺')
+  , ('!', '⑴')
+--, ('@', ' ')
+--, ('#', ' ')
+--, ('$', ' ')
+--, ('%', ' ')
+--, ('^', ' ')
+--, ('&', ' ')
+  , ('*', '∞')
+  , ('(', '⦋')
+  , (')', '⦌')
+  , ('_', 'ⵧ')
+  , ('+', '⧺')
+  , ('Q', '⇽')
+--, ('W', ' ')
+  , ('E', '⋷')
+  , ('R', 'ℜ')
+  , ('T', '‥')
+--, ('Y', ' ')
+--, ('U', ' ')
+  , ('I', 'ℑ')
+--, ('O', ' ')
+  , ('P', '⌓')
+  , ('{', '⦃')
+  , ('}', '⦄')
+--, ('A', ' ')
+--, ('S', ' ')
+--, ('D', ' ')
+--, ('F', ' ')
+--, ('G', ' ')
+  , ('H', '⟜')
+--, ('J', ' ')
+--, ('K', ' ')
+--, ('L', ' ')
+  , (':', '⍠')
+  , ('"', '⍞')
+  , ('|', '⫣')
+  , ('Z', 'ᑣ')
+  , ('X', 'ᑒ')
+  , ('C', '⟄')
+--, ('V', ' ')
+--, ('B', ' ')
+--, ('N', ' ')
+--, ('M', ' ')
+--, ('<', ' ')
+  , ('>', '■')
+  , ('?', '⍰')
+--, ('Space', ' ')
+  ]
+
 repl :: Context -> IO ()
 repl context = let
-  go :: Context -> IO ()
-  go context = do
-    putStr "> "
+#if is_linux
+  go :: E.Edited -> Context -> IO ()
+#else
+  go :: Int -> Context -> IO ()
+#endif
+  go el context = do
+#if is_linux
+    line <- E.getString el
+#else
+    putStr "      "
     hFlush stdout
-    line <- getLine
-    if line == "" then return ()
-    else runCode True "<repl>" line context >>= go
+    line <- Just <$> getLine
+#endif
+    case line of
+      Nothing -> pure ()
+      Just "" -> pure ()
+      Just line' -> runCode True "<repl>" line' context >>= go el
   in do
     putStrLn "TinyAPL REPL, empty line to exit"
     putStrLn "Supported primitives:"
@@ -110,5 +328,65 @@ repl context = let
     putStrLn $ "* assignment with " ++ [G.assign] ++ ", modify assignment with " ++ [G.assignModify] ++ ", constant assignment with " ++ [G.assignConstant] ++ ", private assignment with " ++ [G.assignPrivate]
     putStrLn $ "* array assignment with array notation of names"
     putStrLn $ "* comments: " ++ [G.comment] ++ " until end of line, " ++ [fst G.inlineComment, snd G.inlineComment] ++ " inline"
-
-    go context
+    
+#if is_linux
+    el <- E.edited "TinyAPL"
+    E.setEditor el E.Emacs
+    E.setPrompt' el "      "
+    E.addFunction el "prefix" "Prefix for entering TinyAPL glyphs" $ \_ _ -> do
+      chM <- E.getOneChar el
+      case chM of
+        Nothing -> pure E.EOF
+        Just '`' -> do
+          ch2M <- E.getOneChar el
+          case ch2M of
+            Nothing -> pure E.EOF
+            Just ch2 -> case lookup ch2 doubleCharacters of
+              Just replacement -> do
+                E.insertString el [replacement]
+                pure E.Refresh
+              Nothing -> do
+                E.insertString el [ch2]
+                pure E.RefreshBeep
+        Just ch -> case lookup ch singleCharacters of
+          Just replacement -> do
+            E.insertString el [replacement]
+            pure E.Refresh
+          Nothing -> do
+            E.insertString el [ch]
+            pure E.RefreshBeep
+    E.addBind el "`" "prefix"
+    E.setUseStyle el True
+    E.setStyleFunc el $ \_ str -> pure $ (\case
+      CNumber -> E.EditedStyle E.Red E.Unset False False False False
+      CString -> E.EditedStyle E.Cyan E.Unset False False False False
+      CStringEscape -> E.EditedStyle E.Blue E.Unset False False False False
+      CArrayName -> E.EditedStyle E.Red E.Unset False False False False
+      CPrimArray -> E.EditedStyle E.Red E.Unset False False False False
+      CFunctionName -> E.EditedStyle E.Green E.Unset False False False False
+      CPrimFunction -> E.EditedStyle E.Green E.Unset False False False False
+      CAdverbName -> E.EditedStyle E.Magenta E.Unset False False False False
+      CPrimAdverb -> E.EditedStyle E.Magenta E.Unset False False False False
+      CConjunctionName -> E.EditedStyle E.Yellow E.Unset False False False False
+      CPrimConjunction -> E.EditedStyle E.Yellow E.Unset False False False False
+      CComment -> E.EditedStyle E.Unset E.Unset False True False False
+      _ -> E.EditedStyleReset) <$> highlight str
+    E.addBind el "\\e[1~" "ed-move-to-beg"
+    E.addBind el "\\e[4~" "ed-move-to-end"
+    E.addBind el "\\e[7~" "ed-move-to-beg"
+    E.addBind el "\\e[8~" "ed-move-to-end"
+    E.addBind el "\\e[H" "ed-move-to-beg"
+    E.addBind el "\\e[F" "ed-move-to-end"
+    E.addBind el "\\e[3~" "ed-delete-next-char"
+    E.addBind el "\\e[2~" "em-toggle-overwrite"
+    E.addBind el "\\e[1;5C" "em-next-word"
+    E.addBind el "\\e[1;5D" "ed-prev-word"
+    E.addBind el "\\e[5C" "em-next-word"
+    E.addBind el "\\e[5D" "ed-prev-word"
+    E.addBind el "\\e\\e[C" "em-next-word"
+    E.addBind el "\\e\\e[D" "ed-prev-word"
+#else
+    let el = 0
+#endif
+    
+    go el context
