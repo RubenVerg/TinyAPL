@@ -101,6 +101,7 @@ group = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.group') [G.group]
 partition = PrimitiveFunction Nothing (Just $ const F.partition') [G.partition] Nothing
 execute = PrimitiveFunction (Just $ const F.execute') Nothing [G.execute] Nothing
 format = PrimitiveFunction (Just $ const F.format') Nothing [G.format] Nothing
+find = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.find') [G.find] Nothing
 
 functions = (\x -> (headPromise $ functionRepr x, x)) <$>
   [ TinyAPL.Primitives.plus
@@ -177,7 +178,8 @@ functions = (\x -> (headPromise $ functionRepr x, x)) <$>
   , TinyAPL.Primitives.group
   , TinyAPL.Primitives.partition
   , TinyAPL.Primitives.execute
-  , TinyAPL.Primitives.format ]
+  , TinyAPL.Primitives.format
+  , TinyAPL.Primitives.find ]
 
 -- * Primitive adverbs
 

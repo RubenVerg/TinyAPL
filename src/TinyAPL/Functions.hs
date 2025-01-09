@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, NegativeLiterals #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, NegativeLiterals, TupleSections #-}
 
 module TinyAPL.Functions where
 
@@ -1091,6 +1091,12 @@ format x = pure $ show x
 
 format' :: MonadError Error m => Noun -> m Noun
 format' x = vector . fmap Character <$> format x
+
+find' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+find' cea n hs = do
+  when (arrayRank n > arrayRank hs) $ throwError $ DomainError "Find left argument must have rank at most equal to the right argument's"
+  n' <- rerank (arrayRank hs) n
+  onInfixes 0 (identical' cea n') ((, 1, 6, []) <$> arrayShape n') hs
 
 -- * Modifiers
 
