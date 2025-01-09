@@ -12,6 +12,7 @@ import Data.Vector.Internal.Check (HasCallStack)
 import qualified Data.List.NonEmpty as NE
 import Data.Fixed
 import Numeric.Natural
+import Control.Monad
 
 infixr 9 .:
 (.:) f g x y = f $ g x y
@@ -199,6 +200,16 @@ whileM_ p f = go where
   go = do
     x <- p
     if x then f >> go else pure ()
+
+whenM :: Monad m => m Bool -> m () -> m ()
+whenM p f = do
+  x <- p
+  when x f
+
+unlessM :: Monad m => m Bool -> m () -> m ()
+unlessM p f = do
+  x <- p
+  unless x f
 
 distinct :: Eq a => [a] -> Bool
 distinct [] = True

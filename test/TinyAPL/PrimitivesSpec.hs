@@ -915,6 +915,16 @@ spec = do
         it "drops zeros"$ do
           d P.partition (vector [Number 1, Number 1, Number 0, Number 0, Number 4]) (vector $ Character <$> "abcde") `shouldReturn` pure (vector [box $ vector $ Character <$> "ab", box $ vector $ Character <$> "e"])
 
+    describe [G.find] $ do
+      describe "find" $ do
+        it "marks the top left corner of subarrays in arrays" $ do
+          d P.find (scalar $ Number 2) (vector [Number 1, Number 2, Number 3, Number 2, Number 1]) `shouldReturn` pure (vector [Number 0, Number 1, Number 0, Number 1, Number 0])
+          d P.find (scalar $ Number 2) (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 2, Number 0]]) `shouldReturn` pure (fromMajorCells [vector [Number 0, Number 1, Number 0], vector [Number 0, Number 1, Number 0]])
+          d P.find (vector [Number 1, Number 1]) (vector [Number 1, Number 1, Number 1, Number 3]) `shouldReturn` pure (vector [Number 1, Number 1, Number 0, Number 0])
+          d P.find (vector [Number 2, Number 4]) (fromMajorCells [vector [Number 1, Number 2, Number 4], vector [Number 2, Number 4, Number 0]]) `shouldReturn` pure (fromMajorCells [vector [Number 0, Number 1, Number 0], vector [Number 1, Number 0, Number 0]])
+          d P.find (fromMajorCells [vector [Number 1, Number 2], vector [Number 2, Number 0]]) (fromMajorCells [vector [Number 0, Number 1, Number 2, Number 0], vector [Number 1, Number 2, Number 0, Number 1], vector [Number 2, Number 0, Number 1, Number 2], vector [Number 0, Number 1, Number 2, Number 0]])
+            `shouldReturn` pure (fromMajorCells [vector [Number 0, Number 1, Number 0, Number 0], vector [Number 1, Number 0, Number 0, Number 0], vector [Number 0, Number 0, Number 1, Number 0], vector [Number 0, Number 0, Number 0, Number 0]])
+
   describe "adverbs" $ do
     describe [G.selfie] $ do
       describe "constant" $ do
