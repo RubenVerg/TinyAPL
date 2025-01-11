@@ -1,9 +1,9 @@
 name: Deploy
 on:
   push:
-    branches: main
+    branches: beta
   pull_request:
-    branches: main
+    branches: beta
 
 jobs:
   deploy:
@@ -29,6 +29,6 @@ jobs:
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
         with:
-          project: "tinyapl"
+          project: "tinyapl-beta"
           entrypoint: "main.tsx"
           root: "docs"
