@@ -1098,6 +1098,9 @@ find' cea n hs = do
   n' <- rerank (arrayRank hs) n
   onInfixes 0 (identical' cea n') ((, 1, 6, []) <$> arrayShape n') hs
 
+histogram :: MonadError Error m => Noun -> m Noun
+histogram = (((indexGenerator' defaultCoreExtraArgs `compose` first defaultCoreExtraArgs) `compose` reduce' max') `compose` increment') `leftHook` TinyAPL.Functions.count defaultCoreExtraArgs
+
 -- * Modifiers
 
 compose :: MonadError Error m => (b -> m c) -> (a -> m b) -> a -> m c
