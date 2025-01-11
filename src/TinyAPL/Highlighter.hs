@@ -6,7 +6,6 @@ import TinyAPL.Util
 
 import Control.Monad.State
 import Data.Char (chr)
-import Control.Monad
 
 data Color
   = COther
@@ -32,7 +31,7 @@ data HState = HState
 type HSt = State HState
 
 highlight :: String -> [Color]
-highlight str = reverse $ hColors $ execState hl (HState [] str) where
+highlight str = take (length str) $ reverse $ hColors $ execState hl (HState [] str) where
   atEnd :: HSt Bool
   atEnd = do
     str <- gets hStr
@@ -92,10 +91,8 @@ highlight str = reverse $ hColors $ execState hl (HState [] str) where
       else do
         advance
         push CString
-    e <- atEnd
-    unless e $ do
-      advance
-      push CString
+    advance
+    push CString
 
   numberChars = ['0'..'9'] ++ [G.decimal, G.negative, G.exponent, G.imaginary, G.infinity]
 
@@ -111,14 +108,13 @@ highlight str = reverse $ hColors $ execState hl (HState [] str) where
     whileM_ (andNotAtEnd $ (/= (snd G.inlineComment)) <$> peek) $ do
       advance
       push CComment
-    e <- atEnd
-    unless e $ do
-      advance
-      push CComment
+    advance
+    push CComment
 
   comment :: HSt ()
   comment = do
     advance
+    push CComment
     whileM_ (andNotAtEnd $ (/= '\n') <$> peek) $ do
       advance
       push CComment
