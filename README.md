@@ -310,5 +310,3 @@ Marked features are supported, unmarked features are planned
 	* system adverbs
 		* [ ] `⎕_BinFile` read/write binary files, with format chosen from the operand
 	* system conjunctions
-
-
