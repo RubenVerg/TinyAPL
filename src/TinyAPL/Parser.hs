@@ -658,7 +658,9 @@ treeCategory (TernaryBranch _ _ _)             = CatArray
 treeCategory (UnboundExtraArgsBranch _)        = CatExtraArgs
 treeCategory (ExtraArgsBranch c _ _)           = c
 
-bindingMap :: [((Category, Category), (Int, Tree -> Tree -> Tree))]
+type BindingMap = [((Category, Category), (Int, Tree -> Tree -> Tree))]
+
+bindingMap :: BindingMap
 bindingMap =
   [ ((CatArray,           CatFunction),  (2, DyadCallBranch))
   , ((CatFunction,        CatArray),     (1, MonadCallBranch))
@@ -671,26 +673,44 @@ bindingMap =
   , ((CatAdverb,          CatExtraArgs), (4, ExtraArgsBranch CatAdverb))
   , ((CatConjunction,     CatExtraArgs), (4, ExtraArgsBranch CatConjunction)) ]
 
-pairs :: [Tree] -> [(Int, Tree -> Tree -> Tree)]
-pairs = mapAdjacent $ fromMaybe (0, undefined) .: (curry (`lookup` bindingMap) `on` treeCategory)
+compactTrainBindingMap :: BindingMap
+compactTrainBindingMap = filter (\case
+  ((CatArray, CatFunction), _) -> False
+  ((CatFunction, CatArray), _) -> False
+  ((CatAppliedFunction, CatArray), _) -> False
+  _ -> True) bindingMap
 
-bindPair :: NonEmpty Tree -> Result (NonEmpty Tree)
-bindPair x@(_ :| []) = pure x
-bindPair xs = let
+pairs :: BindingMap -> [Tree] -> [(Int, Tree -> Tree -> Tree)]
+pairs map = mapAdjacent $ fromMaybe (0, undefined) .: (curry (`lookup` map) `on` treeCategory)
+
+bindPairMaybe :: BindingMap -> NonEmpty Tree -> Result (Maybe (NonEmpty Tree))
+bindPairMaybe _ x@(_ :| []) = pure $ Just x
+bindPairMaybe map xs = let
   xs' = NE.toList xs
-  (sts, trees) = unzip $ pairs xs'
+  (sts, trees) = unzip $ pairs map xs'
   maxBind = maximum sts
   nextBind = fromJust $ maxBind `elemIndex` sts
   tree = trees !! nextBind
   indexed = zip [0..] xs'
-  in if maxBind == 0 then throwError $ SyntaxError "No binding found" else pure $ NE.fromList $ mapMaybe (\(idx, el) ->
+  in if maxBind == 0 then pure Nothing else pure $ Just $ NE.fromList $ mapMaybe (\(idx, el) ->
     if idx == nextBind then Just $ tree el $ xs' !! (idx + 1)
     else if idx == nextBind + 1 then Nothing
     else Just el) indexed
 
+bindPair :: NonEmpty Tree -> Result (NonEmpty Tree)
+bindPair x = bindPairMaybe bindingMap x >>= (\case
+  Nothing -> throwError $ SyntaxError "No binding found"
+  Just x' -> pure x')
+
 bindAll :: NonEmpty Tree -> Result Tree
 bindAll (x :| []) = pure x
 bindAll xs = bindPair xs >>= bindAll
+
+bindAllMultiple :: BindingMap -> NonEmpty Tree -> Result (NonEmpty Tree)
+bindAllMultiple _ (x :| []) = pure $ NE.singleton x
+bindAllMultiple map xs = bindPairMaybe map xs >>= (\case
+  Nothing -> pure xs
+  Just xs' -> bindAllMultiple map xs')
 
 categorize :: String -> String -> Result [[Tree]]
 categorize name source = tokenize name source >>= mapM (\xs -> case NE.nonEmpty xs of
@@ -705,6 +725,9 @@ categorize name source = tokenize name source >>= mapM (\xs -> case NE.nonEmpty 
 
   categorizeAndBind :: NonEmpty Token -> Result Tree
   categorizeAndBind = categorizeTokens >=> bindAll
+
+  categorizeAndBindMultiple :: BindingMap -> NonEmpty Token -> Result (NonEmpty Tree)
+  categorizeAndBindMultiple map = categorizeTokens >=> bindAllMultiple map
 
   requireOfCategory :: Category -> (Category -> Error) -> Tree -> Result Tree
   requireOfCategory cat msg tree | treeCategory tree == cat = pure tree
@@ -761,6 +784,9 @@ categorize name source = tokenize name source >>= mapM (\xs -> case NE.nonEmpty 
     Nothing -> return Nothing
     Just e' -> Just <$> categorizeAndBind e') es)
 
+  compactTrain :: Category -> NonEmpty Token -> SourcePos -> Result Tree
+  compactTrain cat es _ = TrainBranch cat . fmap Just . NE.toList <$> categorizeAndBindMultiple compactTrainBindingMap es
+
   struct :: [NonEmpty Token] -> SourcePos -> Result Tree
   struct es _ = StructBranch <$> mapM (\x -> categorizeAndBind x) es
 
@@ -808,8 +834,11 @@ categorize name source = tokenize name source >>= mapM (\xs -> case NE.nonEmpty 
   tokenToTree (TokenVector es pos)                          = vector es pos
   tokenToTree (TokenHighRank es pos)                        = highRank es pos
   tokenToTree (TokenDictionary es pos)                      = dictionary es pos
+  tokenToTree (TokenTrain [f : fs] pos)                     = compactTrain CatFunction (f :| fs) pos
   tokenToTree (TokenTrain fs pos)                           = train CatFunction fs pos
+  tokenToTree (TokenAdverbTrain [f : fs] pos)               = compactTrain CatAdverb (f :| fs) pos
   tokenToTree (TokenAdverbTrain fs pos)                     = train CatAdverb fs pos
+  tokenToTree (TokenConjunctionTrain [f : fs] pos)          = compactTrain CatConjunction (f :| fs) pos
   tokenToTree (TokenConjunctionTrain fs pos)                = train CatConjunction fs pos
   tokenToTree (TokenWrap val _)                             = WrapBranch <$> (tokenToTree val >>= (\x -> case treeCategory x of
     CatFunction -> pure x

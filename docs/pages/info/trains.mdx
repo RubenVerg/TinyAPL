@@ -69,3 +69,7 @@ The simplest train is the 1-train:
 ## Longer trains
 
 Longer trains are parsed right-to-left, two tines at a time, creating 3-trains; the result of an evaluation becomes the rightmost tine of the next group. If only a tine is left it is used to create a 2-train. If the left tine of a 3-train is empty, it becomes a 2-train. This can be useful to force a chain of functions to be an Atop instead of a Fork.
+
+## Compact trains
+
+If a train has no diamonds, the contents are parsed with a special syntax where function application doesn't exist (but modifier application does), and then each tree becomes a tine. This means that in most cases, you can omit diamonds in trains:&nbsp;<hl code="⦅+-×⦆" />&nbsp;for&nbsp;<hl code="⦅+⋄-⋄×⦆" />.

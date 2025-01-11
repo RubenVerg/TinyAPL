@@ -323,3 +323,14 @@ spec = do
     describe "ternaries" $ do
       it "parses ternaries" $ do
         par "1⍰2⍠3" `shouldBe` pure [Just $ TernaryBranch (Leaf CatArray (TokenNumber 1 emptyPos)) (Leaf CatArray (TokenNumber 2 emptyPos)) (Leaf CatArray (TokenNumber 3 emptyPos))]
+
+    describe "trains" $ do
+      it "parses trains" $ do
+        par "⦅1⋄2⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ Leaf CatArray (TokenNumber 1 emptyPos), Just $ Leaf CatArray (TokenNumber 2 emptyPos)]]
+        par "⦅1⋄2⋄3⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ Leaf CatArray (TokenNumber 1 emptyPos), Just $ Leaf CatArray (TokenNumber 2 emptyPos), Just $ Leaf CatArray (TokenNumber 3 emptyPos)]]
+        par "⦅1⋄⋄2⋄3⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ Leaf CatArray (TokenNumber 1 emptyPos), Nothing, Just $ Leaf CatArray (TokenNumber 2 emptyPos), Just $ Leaf CatArray (TokenNumber 3 emptyPos)]]
+        par "_⦅1⋄2⋄3⦆" `shouldBe` pure [Just $ TrainBranch CatAdverb [Just $ Leaf CatArray (TokenNumber 1 emptyPos), Just $ Leaf CatArray (TokenNumber 2 emptyPos), Just $ Leaf CatArray (TokenNumber 3 emptyPos)]]
+      it "parses compact trains" $ do
+        par "⦅1 2 3⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ Leaf CatArray (TokenNumber 1 emptyPos), Just $ Leaf CatArray (TokenNumber 2 emptyPos), Just $ Leaf CatArray (TokenNumber 3 emptyPos)]]
+        par "⦅+ 1⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ Leaf CatFunction (TokenPrimFunction '+' emptyPos), Just $ Leaf CatArray (TokenNumber 1 emptyPos)]]
+        par "⦅+⍨ 1⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ AdverbCallBranch (Leaf CatFunction (TokenPrimFunction '+' emptyPos)) (Leaf CatAdverb (TokenPrimAdverb '⍨' emptyPos)), Just $ Leaf CatArray (TokenNumber 1 emptyPos)]]
