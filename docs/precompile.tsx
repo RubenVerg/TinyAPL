@@ -1,11 +1,31 @@
 import pages, { forcePages, loadPages, validatePages } from './pages.ts';
 import interpreters, { loadInterpreters } from './interpreters.ts';
-import { JSXNode } from './deps/x/htm.ts';
+import { imageName } from './images.ts';
+import { fullImageForPattern } from './generate_images.ts';
+import { exists } from './deps/std/fs.ts';
 
 await loadPages();
 validatePages();
 await forcePages();
 await loadInterpreters();
+
+for (const { pattern } of Object.values(pages.primitives)) {
+	const name = imageName(pattern);
+	if (await exists(name)) await Deno.remove(name);
+	await Deno.writeFile(name, await fullImageForPattern(pattern));
+}
+
+for (const { pattern } of Object.values(pages.quads)) {
+	const name = imageName(pattern);
+	if (await exists(name)) await Deno.remove(name);
+	await Deno.writeFile(name, await fullImageForPattern(pattern));
+}
+
+for (const { glyph } of Object.values(pages.glyphs)) {
+	const name = imageName(glyph);
+	if (await exists(name)) await Deno.remove(name);
+	await Deno.writeFile(name, await fullImageForPattern(glyph));
+}
 
 await Deno.writeTextFile('pages.json', JSON.stringify({
 	index: { body: pages.index.toString() },
