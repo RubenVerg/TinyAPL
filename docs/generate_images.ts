@@ -56,7 +56,7 @@ async function imageForPattern(pattern: string) {
 const banner = await Image.load('./assets/banner.png');
 
 export async function fullImageForPattern(pattern: string) {
-	const width = banner.width, height = 500;
+	const width = banner.width, height = 400;
 	const bottomHeight = banner.height, topHeight = height - bottomHeight;
 
 	const canvas = createCanvas(width, height);
