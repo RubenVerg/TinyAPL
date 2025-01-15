@@ -92,7 +92,7 @@ const primitivePage = (primitive: Primitive) => render(<FullPage pages={pages}><
 	meta: {
 		'og:title': `${primitive.name} - TinyAPL`,
 		'og:description': primitive.body.toString(),
-		'og:image': `/generated/images/primitive/${primitive.name}.png`,
+		'og:image': `/generated/images/primitive/${Object.entries(pages.primitives).find(([_, { name }]) => name === primitive.name)![0]}.png`,
 	}
 });
 
@@ -105,7 +105,7 @@ const quadPage = (quad: Quad) => render(<FullPage pages={pages}><QuadPage quad={
 	meta: {
 		'og:title': `${quad.name} - TinyAPL`,
 		'og:description': quad.body.toString(),
-		'og:image': `/generated/images/quad/${quad.name}.png`,
+		'og:image': `/generated/images/quad/${Object.entries(pages.quads).find(([_, { name }]) => name === quad.name)![0]}.png`,
 	}
 });
 
