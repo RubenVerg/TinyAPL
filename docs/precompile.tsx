@@ -21,6 +21,12 @@ for (const { pattern } of Object.values(pages.quads)) {
 	await Deno.writeFile(name, await fullImageForPattern(pattern));
 }
 
+for (const { glyph } of Object.values(pages.glyphs)) {
+	const name = imageName(glyph);
+	if (await exists(name)) await Deno.remove(name);
+	await Deno.writeFile(name, await fullImageForPattern(glyph));
+}
+
 await Deno.writeTextFile('pages.json', JSON.stringify({
 	index: { body: pages.index.toString() },
 	...Object.fromEntries(Object.entries(pages).filter(([k]) => k !== 'index').map(([k, v]: [string, Record<string, { body: JSX.Element }>]) => { return [ k, Object.fromEntries(Object.entries(v).map(([k1, v1]) => [ k1, { ...v1, body: v1.body.toString() } ])) ]; })),

@@ -18,6 +18,7 @@ import { fullImageForPattern } from './images.ts';
 import { serveDir } from './deps/std/http.ts';
 import html, { h, HtmlOptions } from './deps/x/htm.ts';
 import { extensions, types } from './deps/std/media_types/_db.ts';
+import { stripHtml } from './deps/npm/string-strip-html.ts';
 
 types.set('tinyapl', 'text/plain');
 extensions.set('text/plain', [...extensions.get('text/plain')!, 'tinyapl']);
@@ -83,7 +84,7 @@ const infoPage = (info: Info) => render(<FullPage pages={pages}><InfoPage info={
 	title: `${info.name} - TinyAPL`,
 	meta: {
 		'og:title': `${info.name} - TinyAPL`,
-		'og:description': info.body.toString(),
+		'og:description': stripHtml(info.body.toString()).result,
 	}
 });
 
@@ -91,7 +92,7 @@ const primitivePage = (primitive: Primitive) => render(<FullPage pages={pages}><
 	title: `${primitive.name} - TinyAPL`,
 	meta: {
 		'og:title': `${primitive.name} - TinyAPL`,
-		'og:description': primitive.body.toString(),
+		'og:description': stripHtml(primitive.body.toString()).result,
 		'og:image': `/generated/images/primitive/${Object.entries(pages.primitives).find(([_, { name }]) => name === primitive.name)![0]}.png`,
 	}
 });
@@ -104,13 +105,18 @@ const quadPage = (quad: Quad) => render(<FullPage pages={pages}><QuadPage quad={
 	title: `${quad.name} - TinyAPL`,
 	meta: {
 		'og:title': `${quad.name} - TinyAPL`,
-		'og:description': quad.body.toString(),
+		'og:description': stripHtml(quad.body.toString()).result,
 		'og:image': `/generated/images/quad/${Object.entries(pages.quads).find(([_, { name }]) => name === quad.name)![0]}.png`,
 	}
 });
 
 const glyphPage = (glyph: Glyph) => render(<FullPage pages={pages}><GlyphPage glyph={glyph} /></FullPage>, {
 	title: `${glyph.glyph} ${glyph.name} - TinyAPL`,
+	meta: {
+		'og:title': `${glyph.glyph} ${glyph.name} - TinyAPL`,
+		'og:description': `${glyph.primitives.map(primitive => pages.primitives[primitive]!.name).join(' / ')}\n${stripHtml(glyph.body.toString()).result}`,
+		'og:image': `/generated/images/glyph/${Object.entries(pages.glyphs).find(([_, { name }]) => name === glyph.glyph)![0]}.png`,
+	}
 });
 
 const glyphIndexPage = () => render(<FullPage pages={pages}><Glyphs pages={pages} /></FullPage>, {
@@ -186,6 +192,8 @@ async function handler(req: Request) {
 			return new Response(await fullImageForPattern(pages.primitives[name].pattern), { headers: { 'Content-Type': 'image/png' } });
 		if (cat === 'quad' && name in pages.quads)
 			return new Response(await fullImageForPattern(pages.quads[name].pattern), { headers: { 'Content-Type': 'image/png' } });
+		if (cat === 'glyph' && name in pages.glyphs)
+			return new Response(await fullImageForPattern(pages.glyphs[name].glyph), { headers: { 'Content-Type': 'image/png' } });
 	}
 
 	for (const [dir, typ] of Object.entries(directories)) {

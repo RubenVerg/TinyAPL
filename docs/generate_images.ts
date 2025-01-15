@@ -1,7 +1,6 @@
 import * as tinyapl from './interpreters/latest/tinyapl.js';
 
 import { createCanvas, Image, Fonts } from './deps/jsr/gfx/canvas.ts';
-import { exists } from './deps/std/fs.ts'
 
 Fonts.register(await Deno.readFile('./assets/TinyAPL386.ttf'), 'TinyAPL386');
 
@@ -56,7 +55,7 @@ async function imageForPattern(pattern: string) {
 const banner = await Image.load('./assets/banner.png');
 
 export async function fullImageForPattern(pattern: string) {
-	const width = banner.width, height = 400;
+	const width = banner.width, height = 350;
 	const bottomHeight = banner.height, topHeight = height - bottomHeight;
 
 	const canvas = createCanvas(width, height);
@@ -67,6 +66,7 @@ export async function fullImageForPattern(pattern: string) {
 	context.drawImage(banner, 0, topHeight);
 
 	const patternImage = new Image(await imageForPattern(pattern));
+	await new Promise<void>(res => { patternImage.onload = () => { res(); } });
 	const scaleFactor = Math.min(width / patternImage.width, topHeight / patternImage.height);
 	context.drawImage(
 		patternImage, 
