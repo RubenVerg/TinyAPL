@@ -1,6 +1,6 @@
 import pages, { forcePages, loadPages, validatePages } from './pages.ts';
 import interpreters, { loadInterpreters } from './interpreters.ts';
-import { imageName, fullImageForPattern } from './images.ts';
+import { imageName, fullImageForPattern } from './generate_images.ts';
 import { exists } from './deps/std/fs.ts';
 
 await loadPages();
