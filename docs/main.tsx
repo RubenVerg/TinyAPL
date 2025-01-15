@@ -13,6 +13,7 @@ import RunInterpreter from './components/RunInterpreter.tsx';
 import { Info, Primitive, Quad, Pages, Glyph } from './types.d.ts';
 import pages, { forcePages, loadPages, validatePages } from './pages.ts';
 import interpreters from './interpreters.ts';
+import { fullImageForPattern } from './images.ts';
 
 import { serveDir } from './deps/std/http.ts';
 import html, { h, HtmlOptions } from './deps/x/htm.ts';
@@ -71,14 +72,28 @@ async function render(page: JSX.Element, options: Partial<HtmlOptions>) {
 
 const index = () => render(<FullPage pages={pages}><Index body={pages.index} /></FullPage>, {
 	title: 'TinyAPL',
+	meta: {
+		'og:title': 'TinyAPL',
+		'og:description': 'TinyAPL is an APL derivative with a focus on expressiveness and experimentation.',
+		'og:image': '/banner.png',
+	}
 });
 
 const infoPage = (info: Info) => render(<FullPage pages={pages}><InfoPage info={info} /></FullPage>, {
 	title: `${info.name} - TinyAPL`,
+	meta: {
+		'og:title': `${info.name} - TinyAPL`,
+		'og:description': info.body.toString(),
+	}
 });
 
 const primitivePage = (primitive: Primitive) => render(<FullPage pages={pages}><PrimitivePage primitive={primitive} /></FullPage>, {
 	title: `${primitive.name} - TinyAPL`,
+	meta: {
+		'og:title': `${primitive.name} - TinyAPL`,
+		'og:description': primitive.body.toString(),
+		'og:image': `/generated/images/primitive/${primitive.name}.png`,
+	}
 });
 
 const primitiveIndexPage = () => render(<FullPage pages={pages}><Primitives pages={pages} /></FullPage>, {
@@ -87,6 +102,11 @@ const primitiveIndexPage = () => render(<FullPage pages={pages}><Primitives page
 
 const quadPage = (quad: Quad) => render(<FullPage pages={pages}><QuadPage quad={quad} /></FullPage>, {
 	title: `${quad.name} - TinyAPL`,
+	meta: {
+		'og:title': `${quad.name} - TinyAPL`,
+		'og:description': quad.body.toString(),
+		'og:image': `/generated/images/quad/${quad.name}.png`,
+	}
 });
 
 const glyphPage = (glyph: Glyph) => render(<FullPage pages={pages}><GlyphPage glyph={glyph} /></FullPage>, {
@@ -94,7 +114,7 @@ const glyphPage = (glyph: Glyph) => render(<FullPage pages={pages}><GlyphPage gl
 });
 
 const glyphIndexPage = () => render(<FullPage pages={pages}><Glyphs pages={pages} /></FullPage>, {
-	title: 'Glyphs - TinyAPL'
+	title: 'Glyphs - TinyAPL',
 });
 
 const runInterpreter = () => render(<RunInterpreter pages={pages} interpreters={interpreters} />, {
@@ -158,6 +178,14 @@ async function handler(req: Request) {
 				fsRoot: `interpreters/${v}`,
 			});
 		}
+	}
+
+	if (pathname.startsWith('/generated/images')) {
+		const [cat, name] = pathname.split('.')[0].split('/').slice(3);
+		if (cat === 'primitive' && name in pages.primitives)
+			return new Response(await fullImageForPattern(pages.primitives[name].pattern), { headers: { 'Content-Type': 'image/png' } });
+		if (cat === 'quad' && name in pages.quads)
+			return new Response(await fullImageForPattern(pages.quads[name].pattern), { headers: { 'Content-Type': 'image/png' } });
 	}
 
 	for (const [dir, typ] of Object.entries(directories)) {
