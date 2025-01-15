@@ -1,6 +1,7 @@
 import * as tinyapl from './interpreters/latest/tinyapl.js';
 
 import { createCanvas, Image, Fonts } from './deps/jsr/gfx/canvas.ts';
+import { exists } from './deps/std/fs.ts'
 
 Fonts.register(await Deno.readFile('./assets/TinyAPL386.ttf'), 'TinyAPL386');
 
@@ -34,6 +35,9 @@ async function imageForPattern(pattern: string) {
 
 	const canvas = createCanvas(100, 100);
 	const context = canvas.getContext('2d');
+	context.fillStyle = '#ffffff';
+	context.fillRect(0, 0, canvas.width, canvas.height);
+	
 	context.font = `200px TinyAPL386`;
 	const totalSize = context.measureText(pattern);
 	canvas.resize(Math.ceil(totalSize.width + padding * 2), Math.ceil(totalSize.fontBoundingBoxAscent + totalSize.fontBoundingBoxDescent + padding * 2));
@@ -51,12 +55,20 @@ async function imageForPattern(pattern: string) {
 
 const banner = await Image.load('./assets/banner.png');
 
+export function imageName(pattern: string) {
+	return `./assets/gen_img_${[...new TextEncoder().encode(pattern)].map(n => n.toString(16).padStart(2, '0')).join('.')}.png`;
+}
+
 export async function fullImageForPattern(pattern: string) {
+	if (await exists(imageName(pattern))) return await Deno.readFile(imageName(pattern));
+
 	const width = banner.width, height = 500;
 	const bottomHeight = banner.height, topHeight = height - bottomHeight;
 
 	const canvas = createCanvas(width, height);
 	const context = canvas.getContext('2d');
+	context.fillStyle = '#ffffff';
+	context.fillRect(0, 0, width, height);
 
 	context.drawImage(banner, 0, topHeight);
 
