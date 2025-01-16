@@ -3,3 +3,4 @@ dist-*
 cabal-dev
 .vscode
 tsconfig.tsbuildinfo
+*.prof

@@ -13,12 +13,15 @@ import qualified Data.List.NonEmpty as NE
 import Data.Fixed
 import Numeric.Natural
 import Control.Monad
+import qualified Data.Set as Set
 
 infixr 9 .:
 (.:) f g x y = f $ g x y
+{-# INLINE (.:) #-}
 
 on :: (b -> b -> c) -> (a -> b) -> a -> a -> c
 on f g x y = f (g x) (g y)
+{-# INLINE on #-}
 
 snoc :: [a] -> a -> [a]
 snoc [] x = [x]
@@ -211,9 +214,12 @@ unlessM p f = do
   x <- p
   unless x f
 
-distinct :: Eq a => [a] -> Bool
-distinct [] = True
-distinct (x:xs) = x `notElem` xs && distinct xs
+distinct :: Ord a => [a] -> Bool
+distinct = go Set.empty where
+  go _ [] = True
+  go unique (x:xs)
+    | x `Set.member` unique = False
+    | otherwise = go (Set.insert x unique) xs
 
 firstM :: Functor m => (a -> m a') -> (a, b) -> m (a', b)
 firstM f (a, b) = (, b) <$> f a

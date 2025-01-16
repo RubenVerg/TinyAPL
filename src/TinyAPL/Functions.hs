@@ -23,6 +23,7 @@ import Data.Ord (Down(..))
 import qualified Data.Matrix as M
 import qualified TinyAPL.Gamma.Gamma as Gamma
 import Data.Foldable (foldlM, foldrM)
+import qualified Data.Map.Strict as Map
 
 -- * Functions
 
@@ -1401,21 +1402,19 @@ until2 f p x y = let
 
 under :: MonadError Error m => (Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> m Noun
 under f g arr@(Array _ _) = do
-  let nums = fromJust $ arrayReshaped (arrayShape arr) $ Number . (:+ 0) <$> [1..]
-  pairs <- onScalars2 defaultCoreExtraArgs (atop enclose' pair) arr nums
+  let numsL = [1..fromIntegral $ product $ arrayShape arr]
+  let nums = fromJust $ arrayReshaped (arrayShape arr) $ Number . (:+ 0) <$> numsL
+  pairs <- each2 pair arr nums
   rs <- g pairs
-  nums' <- onScalars1 defaultCoreExtraArgs (compose (TinyAPL.Functions.last defaultCoreExtraArgs) (first defaultCoreExtraArgs)) rs
-  if Prelude.not $ distinct $ arrayContents rs then throwError $ DomainError "Under right operand must return each element at most once"
-  else do
-    res <- onScalars1 defaultCoreExtraArgs (compose (first defaultCoreExtraArgs) (first defaultCoreExtraArgs)) rs >>= f
-    if isScalar res then do
-      pure $ Array (arrayShape arr) $ zipWith (\num el -> if num `elem` (arrayContents nums') then headPromise $ arrayContents res else el) (arrayContents nums) (arrayContents arr)
-    else if arrayShape nums' == arrayShape res then do
-      let cs = zip (arrayContents nums') (arrayContents res)
-      pure $ Array (arrayShape arr) $ zipWith (\num el -> case find (\(num', _) -> num == num') cs of
-        Just (_, el') -> el'
-        Nothing -> el) (arrayContents nums) (arrayContents arr)
-    else throwError $ DomainError "Under left argument mustn't change the shape of the argument"
+  (nums'Sh, nums') <- liftA2 (,) arrayShape (fmap (\case { Number (x :+ 0) -> x; _ -> error "???" }) . arrayContents) <$> each1 (TinyAPL.Functions.last defaultCoreExtraArgs) rs
+  res <- onScalars1 defaultCoreExtraArgs (onContents1 defaultCoreExtraArgs $ first defaultCoreExtraArgs) rs >>= f
+  unless (distinct nums') $ throwError $ DomainError "Under right argument must return each element at most once"
+  if isScalar res then do
+    pure $ Array (arrayShape arr) $ zipWith (\num el -> if num `elem` nums' then headPromise $ arrayContents res else el) numsL (arrayContents arr)
+  else if nums'Sh == arrayShape res then do
+    let cs = Map.fromList $ zip nums' (arrayContents res)
+    pure $ Array (arrayShape arr) $ zipWith (\num el -> fromMaybe el $ Map.lookup num cs) numsL (arrayContents arr)
+  else throwError $ DomainError "Under left argument mustn't change the shape of the argument"
 under _ _ (Dictionary _ _) = throwError $ NYIError "Under on dictionaries"
 
 under2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> Noun -> m Noun
