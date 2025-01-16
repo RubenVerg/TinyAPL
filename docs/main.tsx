@@ -115,7 +115,7 @@ const glyphPage = (glyph: Glyph) => render(<FullPage pages={pages}><GlyphPage gl
 	meta: {
 		'og:title': `${glyph.glyph} ${glyph.name} - TinyAPL`,
 		'og:description': `${glyph.primitives.map(primitive => pages.primitives[primitive]!.name).join(' / ')}\n${stripHtml(glyph.body.toString()).result}`,
-		'og:image': `/generated/images/glyph/${Object.entries(pages.glyphs).find(([_, { name }]) => name === glyph.glyph)![0]}.png`,
+		'og:image': `/generated/images/glyph/${Object.entries(pages.glyphs).find(([_, { name }]) => name === glyph.name)![0]}.png`,
 	}
 });
 
