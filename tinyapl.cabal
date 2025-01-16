@@ -71,8 +71,9 @@ library
                     , regex-base ^>=0.94.0.2
                     , regex-pcre-builtin ^>=0.95.2.3.8.44
                     , array ^>=0.5.7.0
+                    , containers ^>=0.7
     if !os(wasi)
-        build-depends: template-haskell ^>=2.22.0.0
+        build-depends:template-haskell ^>=2.22.0.0
     hs-source-dirs:   src
                     , gamma
     default-language: Haskell2010
