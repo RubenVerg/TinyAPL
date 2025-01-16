@@ -215,11 +215,7 @@ unlessM p f = do
   unless x f
 
 distinct :: Ord a => [a] -> Bool
-distinct = go Set.empty where
-  go _ [] = True
-  go unique (x:xs)
-    | x `Set.member` unique = False
-    | otherwise = go (Set.insert x unique) xs
+distinct = liftA2 (==) length (Set.size . Set.fromList)
 
 firstM :: Functor m => (a -> m a') -> (a, b) -> m (a', b)
 firstM f (a, b) = (, b) <$> f a
