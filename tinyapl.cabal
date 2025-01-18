@@ -28,6 +28,7 @@ library
     exposed-modules:  TinyAPL.Glyphs
                     , TinyAPL.ArrayFunctionOperator
                     , TinyAPL.CoreQuads
+                    , TinyAPL.CoreQuads.Inspect
                     , TinyAPL.CoreQuads.Math
                     , TinyAPL.CoreQuads.Regex
                     , TinyAPL.CoreQuads.Unicode

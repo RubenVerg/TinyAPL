@@ -3,6 +3,7 @@ module TinyAPL.CoreQuads where
 
 import TinyAPL.ArrayFunctionOperator
 import TinyAPL.Complex
+import TinyAPL.CoreQuads.Inspect
 import TinyAPL.CoreQuads.Math
 import TinyAPL.CoreQuads.Regex
 import TinyAPL.CoreQuads.Unicode
@@ -93,7 +94,7 @@ measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction
   end <- realToFrac <$> liftToSt getPOSIXTime
   pure $ scalar $ Number $ (end - start) :+ 0) Nothing measure f) (G.quad : "_Measure") Nothing
 
-core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, math, regex ] [ exists, repr, delay, type_, unicode, print_, errorPrint ] [ measure ] []
+core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, math, regex, inspectNamespace ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF ] [ measure ] []
 
 makeImport :: (FilePath -> St String) -> Maybe ([String] -> St String) -> Function
 makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
