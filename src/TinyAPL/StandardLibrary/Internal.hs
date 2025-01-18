@@ -59,7 +59,7 @@ fileList top = go top "" where
     pure $ sortOn fst $ concat $ files : dirs
 
 listToStd :: [(FilePath, String)] -> [([String], String)]
-listToStd = map (first $ splitPath . dropExtension)
+listToStd = map (first $ fmap dropTrailingPathSeparator . splitPath . dropExtension)
 
 #ifndef wasm32_HOST_ARCH
 strToExp :: String -> Q Exp
