@@ -767,9 +767,11 @@ deal' cea count max = do
   vector . fmap (Number . (:+ 0) . fromInteger . toInteger) <$> deal cea c m
 
 indexCell :: MonadError Error m => CoreExtraArgs -> Integer -> Noun -> m Noun
-indexCell CoreExtraArgs { coreExtraArgsOrigin = o } i x@(Array _ _)
+indexCell CoreExtraArgs { coreExtraArgsOrigin = o, coreExtraArgsFill = f } i x@(Array _ _)
   | i < 0 = indexCell defaultCoreExtraArgs (genericLength (majorCells x) + i) x
-  | i - toInteger o >= genericLength (majorCells x) = throwError $ IndexError "Index out of bounds"
+  | i - toInteger o >= genericLength (majorCells x) = case f of
+    Just f' -> pure $ fromScalar f'
+    Nothing -> throwError $ IndexError "Index out of bounds"
   | otherwise = pure $ genericIndex (majorCells x) (i - toInteger o)
 indexCell _ _ (Dictionary _ _) = throwError $ DomainError "Dictionary cannot be cell-indexed"
 
@@ -787,9 +789,11 @@ squad cea i y@(Array _ _) = do
     go (is:iss) y =
       onScalars1 defaultCoreExtraArgs (\(Array [] [ind]) -> asNumber err ind >>= asInt err >>= flip (indexCell cea) y >>= go iss) is
   go axisIndices y
-squad _ i d@(Dictionary _ _) = indexElement (toScalar i) d >>= (\case
+squad CoreExtraArgs{ coreExtraArgsFill = f } i d@(Dictionary _ _) = indexElement (toScalar i) d >>= (\case
   Just r -> pure $ fromScalar r
-  Nothing -> throwError $ IndexError "Key not found in dictionary")
+  Nothing -> case f of
+    Just f' -> pure $ fromScalar f'
+    Nothing -> throwError $ IndexError "Key not found in dictionary")
 
 from :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 from cea x y = onScalars1 defaultCoreExtraArgs (\x' -> (first defaultCoreExtraArgs `before` squad cea) x' y) x
@@ -1007,8 +1011,8 @@ count :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 count = searchFunction (pure .: scalar .: Number .: (:+ 0) .: countEqual) (\e _ v -> pure $ Number $ countEqual e v :+ 0)
 
 indexOf :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-indexOf cea@CoreExtraArgs{ coreExtraArgsOrigin = o, coreExtraArgsBackward = b } = flip $ searchFunction
-  (pure .: scalar .: Number .: (:+ 0) .: (\n hs -> (+ fromIntegral o) $ fromMaybe (genericLength hs) $ (if b then genericElemLastIndex else genericElemIndex) n hs))
+indexOf cea@CoreExtraArgs{ coreExtraArgsOrigin = o, coreExtraArgsBackward = b, coreExtraArgsFill = f } = flip $ searchFunction
+  (pure .: scalar .: (\n hs -> fromMaybe (fromMaybe (Number $ genericLength hs :+ 0) f) $ Number . (:+ 0) . (+ fromIntegral o) <$> (if b then genericElemLastIndex else genericElemIndex) n hs))
   (\e k v -> case find (\(_, u) -> e == u) (zip k v) of
     Just (i, _) -> pure $ unTolerantL i
     Nothing -> throwError $ IndexError "Value not found in dictionary") cea
