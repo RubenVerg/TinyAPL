@@ -78,6 +78,9 @@ genericElemIndices x xs = genericFindIndices (== x) xs
 genericElemIndex :: (Eq a, Num n, Enum n) => a -> [a] -> Maybe n
 genericElemIndex = headMaybe .: genericElemIndices
 
+genericElemLastIndex :: (Eq a, Num n, Enum n) => a -> [a] -> Maybe n
+genericElemLastIndex = lastMaybe .: genericElemIndices
+
 showAplDouble :: Double -> String
 showAplDouble x 
   | isNaN x = "<NaN>"

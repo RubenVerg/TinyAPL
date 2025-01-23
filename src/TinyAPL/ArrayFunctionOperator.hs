@@ -1359,16 +1359,21 @@ coreExtraArgsOriginKey = "origin"
 coreExtraArgsFillKey :: String
 coreExtraArgsFillKey = "fill"
 
+coreExtraArgsBackwardKey :: String
+coreExtraArgsBackwardKey = "backward"
+
 data CoreExtraArgs = CoreExtraArgs
   { coreExtraArgsTolerance :: Double
   , coreExtraArgsOrigin :: Natural
-  , coreExtraArgsFill :: Maybe ScalarValue }
+  , coreExtraArgsFill :: Maybe ScalarValue
+  , coreExtraArgsBackward :: Bool }
 
 defaultCoreExtraArgs :: CoreExtraArgs
 defaultCoreExtraArgs = CoreExtraArgs
   { coreExtraArgsTolerance = comparisonTolerance
   , coreExtraArgsOrigin = 0
-  , coreExtraArgsFill = Nothing }
+  , coreExtraArgsFill = Nothing
+  , coreExtraArgsBackward = False }
 
 parseCoreExtraArgs :: MonadError Error m => ExtraArgs -> m CoreExtraArgs
 parseCoreExtraArgs ea = do
@@ -1380,7 +1385,10 @@ parseCoreExtraArgs ea = do
   let originErr = DomainError "Origin must be a scalar integer"
   origin <- fromMaybe (coreExtraArgsOrigin defaultCoreExtraArgs) <$> (mapM (asNumber originErr >=> asInt originErr) $ lookupStr coreExtraArgsOriginKey)
   let fill = lookupStr coreExtraArgsFillKey
+  let backwardErr = DomainError "Backward must be a scalar boolean"
+  backward <- fromMaybe (coreExtraArgsBackward defaultCoreExtraArgs) <$> (mapM (asBool backwardErr) $ lookupStr coreExtraArgsBackwardKey)
   pure CoreExtraArgs
     { coreExtraArgsTolerance = tolerance
     , coreExtraArgsOrigin = origin
-    , coreExtraArgsFill = fill }
+    , coreExtraArgsFill = fill
+    , coreExtraArgsBackward = backward }

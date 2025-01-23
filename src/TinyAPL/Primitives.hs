@@ -58,7 +58,7 @@ enclose = PrimitiveFunction (Just $ const F.enclose') (Just $ const F.partitionE
 first = PrimitiveFunction (Just $ withCoreExtraArgs1 F.first) Nothing [G.first] Nothing
 last = PrimitiveFunction (Just $ withCoreExtraArgs1 F.last) (Just $ withCoreExtraArgs2 F.from) [G.last] Nothing
 take = PrimitiveFunction (Just $ withCoreExtraArgs1 F.mix) (Just $ withCoreExtraArgs2 F.take') [G.take] Nothing
-drop = PrimitiveFunction (Just $ const F.majorCells') (Just $ const F.drop') [G.drop] Nothing
+drop = PrimitiveFunction (Just $ const F.majorCells') (Just $ withCoreExtraArgs2 F.drop') [G.drop] Nothing
 left = PrimitiveFunction (Just $ \_ x -> pure x) (Just $ \_ x _ -> pure x) [G.left] Nothing
 right = PrimitiveFunction (Just $ \_ x -> pure x) (Just $ \_ _ y -> pure y) [G.right] Nothing
 iota = PrimitiveFunction (Just $ withCoreExtraArgs1 F.indexGenerator') (Just $ withCoreExtraArgs2 F.indexOf) [G.iota] Nothing
@@ -94,7 +94,7 @@ encode = PrimitiveFunction (Just $ withCoreExtraArgs1 F.encodeBase2) (Just $ wit
 histogram = PrimitiveFunction (Just $ const F.histogram) (Just $ withCoreExtraArgs2 F.count) [G.histogram] Nothing
 increment = PrimitiveFunction (Just $ const F.increment') Nothing [G.increment] Nothing
 decrement = PrimitiveFunction (Just $ const F.decrement') (Just $ const F.span') [G.decrement] Nothing
-range = PrimitiveFunction (Just $ const F.oneRange) (Just $ const F.range) [G.range] Nothing
+range = PrimitiveFunction (Just $ withCoreExtraArgs1 F.oneRange) (Just $ withCoreExtraArgs2 F.range) [G.range] Nothing
 keyValue = PrimitiveFunction (Just $ const F.fromPairs) (Just $ const F.keyValuePair) [G.keyValue] Nothing
 invertedTable = PrimitiveFunction (Just $ const F.fromInvertedTable) (Just $ const F.fromKeysAndValues') [G.invertedTable] Nothing
 group = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.group') [G.group] Nothing
@@ -268,6 +268,11 @@ originOne = PrimitiveAdverb
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
   , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsOriginKey, Number 1)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsOriginKey, Number 1)]) Nothing originOne f }
+backward = PrimitiveAdverb
+  { adverbRepr = [G.backward]
+  , adverbContext = Nothing
+  , adverbOnNoun = Nothing
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsBackwardKey, Number 1)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsBackwardKey, Number 1)]) Nothing backward f }
 
 adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   [ TinyAPL.Primitives.selfie
@@ -286,7 +291,8 @@ adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   , TinyAPL.Primitives.table
   , TinyAPL.Primitives.ident
   , TinyAPL.Primitives.onSimpleScalars
-  , TinyAPL.Primitives.originOne ]
+  , TinyAPL.Primitives.originOne
+  , TinyAPL.Primitives.backward ]
 
 -- * Primitive conjunctions
 
