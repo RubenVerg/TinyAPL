@@ -293,6 +293,7 @@ table = '⊞'
 ident = '⫤'
 onSimpleScalars = '⌓'
 originOne = '⑴'
+backward = '⤺'
 
 adverbs =
   [ TinyAPL.Glyphs.selfie
@@ -311,7 +312,8 @@ adverbs =
   , TinyAPL.Glyphs.table
   , TinyAPL.Glyphs.ident
   , TinyAPL.Glyphs.onSimpleScalars
-  , TinyAPL.Glyphs.originOne ]
+  , TinyAPL.Glyphs.originOne
+  , TinyAPL.Glyphs.backward ]
 
 -- * Conjunctions
 

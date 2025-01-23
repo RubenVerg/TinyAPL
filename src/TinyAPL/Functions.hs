@@ -547,6 +547,7 @@ rotate' cea rot arr = do
 
 take :: MonadError Error m => CoreExtraArgs -> [Integer] -> Noun -> m Noun
 take _ [] xs = pure xs
+take cea@CoreExtraArgs{ coreExtraArgsBackward = True } ts xs = TinyAPL.Functions.take cea{ coreExtraArgsBackward = False } (negate <$> ts) xs
 take cea@CoreExtraArgs{ coreExtraArgsFill = Nothing } (t:ts) xs = do
   let take' c = if c < 0 then Prelude.reverse . genericTake (negate c) . Prelude.reverse else genericTake c
   fromMajorCells . take' t <$> mapM (TinyAPL.Functions.take cea ts) (majorCells xs)
@@ -561,17 +562,18 @@ take' cea tak arr = do
   ts <- asVector err tak >>= mapM (asNumber err >=> asInt err)
   TinyAPL.Functions.take cea ts arr
 
-drop :: MonadError Error m => [Integer] -> Noun -> m Noun
-drop [] xs = pure xs
-drop (d:ds) xs = let
+drop :: MonadError Error m => CoreExtraArgs -> [Integer] -> Noun -> m Noun
+drop _ [] xs = pure xs
+drop cea@CoreExtraArgs{ coreExtraArgsBackward = True } ts xs = TinyAPL.Functions.drop cea{ coreExtraArgsBackward = False } (negate <$> ts) xs
+drop cea (d:ds) xs = let
   drop' c = if c < 0 then Prelude.reverse . genericDrop (negate c) . Prelude.reverse else genericDrop c
-  in fromMajorCells . drop' d <$> mapM (TinyAPL.Functions.drop ds) (majorCells xs)
+  in fromMajorCells . drop' d <$> mapM (TinyAPL.Functions.drop cea ds) (majorCells xs)
 
-drop' :: MonadError Error m => Noun -> Noun -> m Noun
-drop' dro arr = do
+drop' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+drop' cea dro arr = do
   let err = DomainError "Drop left argument must be an integer vector"
   ds <- asVector err dro >>= mapM (asNumber err >=> asInt err)
-  TinyAPL.Functions.drop ds arr
+  TinyAPL.Functions.drop cea ds arr
 
 enclose :: MonadError Error m => Noun -> m ScalarValue
 enclose y = pure $ box y
@@ -640,10 +642,10 @@ last _ (Dictionary _ vs) = pure $ vector vs
 
 indexGenerator :: MonadError Error m => CoreExtraArgs -> Natural -> m Noun
 indexGenerator _ 0 = pure $ vector []
-indexGenerator CoreExtraArgs { coreExtraArgsOrigin = o } i = pure $ vector $ Number . fromInteger . toInteger . (+ o) <$> [0..i - 1]
+indexGenerator CoreExtraArgs { coreExtraArgsOrigin = o, coreExtraArgsBackward = b } i = pure $ vector $ (if b then Prelude.reverse else id) $ Number . fromInteger . toInteger . (+ o) <$> [0..i - 1]
 
 indexGeneratorN :: MonadError Error m => CoreExtraArgs -> [Natural] -> m Noun
-indexGeneratorN CoreExtraArgs { coreExtraArgsOrigin = o } is = pure $ fromJust $ arrayReshaped is $ box . fromJust . arrayReshaped [genericLength is] . fmap (Number . fromInteger . toInteger . (+ o)) <$> generateIndices is
+indexGeneratorN CoreExtraArgs { coreExtraArgsOrigin = o, coreExtraArgsBackward = b } is = pure $ fromJust $ arrayReshaped is $ (if b then Prelude.reverse else id) $ box . fromJust . arrayReshaped [genericLength is] . fmap (Number . fromInteger . toInteger . (+ o)) <$> generateIndices is
 
 indexGenerator' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 indexGenerator' cea arr = do
@@ -652,11 +654,11 @@ indexGenerator' cea arr = do
   if isScalar arr then indexGenerator cea $ headPromise is
   else indexGeneratorN cea is
 
-range :: MonadError Error m => Noun -> Noun -> m Noun
-range = commute $ (indexGenerator' defaultCoreExtraArgs `atop` span') `leftFork` eachLeft add' -- IO of … should always be zero
+range :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+range cea = commute $ (indexGenerator' cea{ coreExtraArgsOrigin = 0 } `atop` span') `leftFork` eachLeft add'
 
-oneRange :: MonadError Error m => Noun -> m Noun
-oneRange = range $ scalar $ Number 1
+oneRange :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+oneRange cea = range cea $ scalar $ Number 1
 
 replicate :: MonadError Error m => [Natural] -> [a] -> m [a]
 replicate [] [] = pure []
@@ -765,9 +767,11 @@ deal' cea count max = do
   vector . fmap (Number . (:+ 0) . fromInteger . toInteger) <$> deal cea c m
 
 indexCell :: MonadError Error m => CoreExtraArgs -> Integer -> Noun -> m Noun
-indexCell CoreExtraArgs { coreExtraArgsOrigin = o } i x@(Array _ _)
+indexCell CoreExtraArgs { coreExtraArgsOrigin = o, coreExtraArgsFill = f } i x@(Array _ _)
   | i < 0 = indexCell defaultCoreExtraArgs (genericLength (majorCells x) + i) x
-  | i - toInteger o >= genericLength (majorCells x) = throwError $ IndexError "Index out of bounds"
+  | i - toInteger o >= genericLength (majorCells x) = case f of
+    Just f' -> pure $ fromScalar f'
+    Nothing -> throwError $ IndexError "Index out of bounds"
   | otherwise = pure $ genericIndex (majorCells x) (i - toInteger o)
 indexCell _ _ (Dictionary _ _) = throwError $ DomainError "Dictionary cannot be cell-indexed"
 
@@ -785,9 +789,11 @@ squad cea i y@(Array _ _) = do
     go (is:iss) y =
       onScalars1 defaultCoreExtraArgs (\(Array [] [ind]) -> asNumber err ind >>= asInt err >>= flip (indexCell cea) y >>= go iss) is
   go axisIndices y
-squad _ i d@(Dictionary _ _) = indexElement (toScalar i) d >>= (\case
+squad CoreExtraArgs{ coreExtraArgsFill = f } i d@(Dictionary _ _) = indexElement (toScalar i) d >>= (\case
   Just r -> pure $ fromScalar r
-  Nothing -> throwError $ IndexError "Key not found in dictionary")
+  Nothing -> case f of
+    Just f' -> pure $ fromScalar f'
+    Nothing -> throwError $ IndexError "Key not found in dictionary")
 
 from :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 from cea x y = onScalars1 defaultCoreExtraArgs (\x' -> (first defaultCoreExtraArgs `before` squad cea) x' y) x
@@ -816,6 +822,7 @@ join' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 join' cea = TinyAPL.Functions.join cea . majorCells
 
 gradeUp :: MonadError Error m => Ord a => CoreExtraArgs -> [a] -> m [Natural]
+gradeUp cea@CoreExtraArgs{ coreExtraArgsBackward = True } xs = gradeDown cea{ coreExtraArgsBackward = False } xs
 gradeUp CoreExtraArgs{ coreExtraArgsOrigin = o } xs = pure $ map ((+ o) . fst) $ sortOn snd $ zip [0..genericLength xs] xs
 
 gradeUp' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
@@ -823,6 +830,7 @@ gradeUp' cea@CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = vecto
 gradeUp' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary ks vs) = vector . fmap unTolerantL <$> sortByUp (TolerantL t <$> ks) (TolerantL t <$> vs)
 
 gradeDown :: MonadError Error m => Ord a => CoreExtraArgs -> [a] -> m [Natural]
+gradeDown cea@CoreExtraArgs{ coreExtraArgsBackward = True } xs = gradeUp cea{ coreExtraArgsBackward = False } xs
 gradeDown CoreExtraArgs{ coreExtraArgsOrigin = o } xs = pure $ map ((+ o) . fst) $ sortOn snd $ zip [0..genericLength xs] (Down <$> xs)
 
 gradeDown' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
@@ -833,6 +841,7 @@ sortByUp :: MonadError Error m => Ord b => [a] -> [b] -> m [a]
 sortByUp as bs = pure $ map fst $ sortOn snd $ zip as bs
 
 sortByUp' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+sortByUp' cea@CoreExtraArgs{ coreExtraArgsBackward = True } as bs = sortByDown' cea{ coreExtraArgsBackward = False } as bs
 sortByUp' CoreExtraArgs{ coreExtraArgsTolerance = t } as@(Array _ _) bs@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortByUp (TolerantL t <$> majorCells as) (TolerantL t <$> majorCells bs)
 sortByUp' _ _ _ = throwError $ DomainError "Only arrays can be sorted"
 
@@ -840,6 +849,7 @@ sortByDown :: MonadError Error m => Ord b => [a] -> [b] -> m [a]
 sortByDown as bs = pure $ map fst $ sortOn snd $ zip as $ Down <$> bs
 
 sortByDown' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+sortByDown' cea@CoreExtraArgs{ coreExtraArgsBackward = True } as bs = sortByUp' cea{ coreExtraArgsBackward = False } as bs
 sortByDown' CoreExtraArgs{ coreExtraArgsTolerance = t } as@(Array _ _) bs@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortByDown (TolerantL t <$> majorCells as) (TolerantL t <$> majorCells bs)
 sortByDown' _ _ _ = throwError $ DomainError "Only arrays can be sorted"
 
@@ -847,6 +857,7 @@ sortUp :: MonadError Error m => Ord a =>[a] -> m [a]
 sortUp = pure . sort
 
 sortUp' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+sortUp' cea@CoreExtraArgs{ coreExtraArgsBackward = True } arr = sortDown' cea{ coreExtraArgsBackward = False } arr
 sortUp' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortUp (TolerantL t <$> majorCells arr)
 sortUp' _ _ = throwError $ DomainError "Only arrays can be sorted"
 
@@ -854,6 +865,7 @@ sortDown :: MonadError Error m => Ord a => [a] -> m [a]
 sortDown = pure . fmap getDown . sort . fmap Down
 
 sortDown' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+sortDown' cea@CoreExtraArgs{ coreExtraArgsBackward = True } arr = sortUp' cea{ coreExtraArgsBackward = False } arr
 sortDown' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortDown (TolerantL t <$> majorCells arr)
 sortDown' _ _ = throwError $ DomainError "Only arrays can be sorted"
 
@@ -999,8 +1011,8 @@ count :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 count = searchFunction (pure .: scalar .: Number .: (:+ 0) .: countEqual) (\e _ v -> pure $ Number $ countEqual e v :+ 0)
 
 indexOf :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-indexOf cea@CoreExtraArgs{ coreExtraArgsOrigin = o } = flip $ searchFunction
-  (pure .: scalar .: Number .: (:+ 0) .: (\n hs -> (+ fromIntegral o) $ fromMaybe (genericLength hs) $ n `genericElemIndex` hs))
+indexOf cea@CoreExtraArgs{ coreExtraArgsOrigin = o, coreExtraArgsBackward = b, coreExtraArgsFill = f } = flip $ searchFunction
+  (pure .: scalar .: (\n hs -> fromMaybe (fromMaybe (Number $ genericLength hs :+ 0) f) $ Number . (:+ 0) . (+ fromIntegral o) <$> (if b then genericElemLastIndex else genericElemIndex) n hs))
   (\e k v -> case find (\(_, u) -> e == u) (zip k v) of
     Just (i, _) -> pure $ unTolerantL i
     Nothing -> throwError $ IndexError "Value not found in dictionary") cea
@@ -1094,10 +1106,10 @@ format' :: MonadError Error m => Noun -> m Noun
 format' x = vector . fmap Character <$> format x
 
 find' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-find' cea n hs = do
+find' cea@CoreExtraArgs{ coreExtraArgsBackward = b } n hs = do
   when (arrayRank n > arrayRank hs) $ throwError $ DomainError "Find left argument must have rank at most equal to the right argument's"
   n' <- rerank (arrayRank hs) n
-  onInfixes 0 (identical' cea n') ((, 1, 6, []) <$> arrayShape n') hs
+  onInfixes 0 (identical' cea n') ((, 1, if b then -6 else 6, []) <$> arrayShape n') hs
 
 histogram :: MonadError Error m => Noun -> m Noun
 histogram = (((indexGenerator' defaultCoreExtraArgs `compose` first defaultCoreExtraArgs) `compose` reduce' max') `compose` increment') `leftHook` TinyAPL.Functions.count defaultCoreExtraArgs
