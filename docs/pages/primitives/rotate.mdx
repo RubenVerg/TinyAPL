@@ -5,3 +5,7 @@ name: Rotate
 ---
 
 `x` must be a scalar or vector of integers. `r` is the result of rotating each axis of `y` by the amount specified by the corresponding item of `x`. If `x` is positive, the first `x` elements are moved to the back; if `x` is negative, the last `x` elements are moved to the front; if `x` is zero, no rotation is performed.
+
+## Shift
+
+If the `fill` extra argument is provided, the array is shifted instead of rotated, that is, instead of cycling values that fall off one end of the array to the other end, all missing values are replaced with the fill.

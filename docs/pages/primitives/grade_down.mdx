@@ -4,6 +4,8 @@ pattern: 'r←⍒y'
 name: Grade Down
 ---
 
-If `y` is an array, `r` is the indices that would sort the major cells of `y` in descending order according to [total array ordering](/info/ordering). Grading is stable, that is, the indices of two cells that are equal appear in `r` in the same order as the cells themselves.
+If `y` is an array, `r` is the indices that would sort the major cells of `y` in descending order according to [total array ordering](/info/ordering). Grading is stable, that is, the indices of two cells that are equal appear in `r` in the same order as the cells themselves. Supports the `origin` extra argument, which offsets the result by the origin; supports the `tolerance` extra argument for the comparisons.
 
 If `y` is a dictionary, `r` is the keys that would sort the values in descending order.
+
+Supports the `tolerance` extra argument for the comparisons; supports the `backward` extra argument, which returns the&nbsp;<primitive key="grade_up" />&nbsp;of `y`.

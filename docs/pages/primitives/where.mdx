@@ -4,6 +4,6 @@ pattern: 'r←⍸y'
 name: Where
 ---
 
-`y` is an array of naturals. `r` is a vector containing all the indices of the elements of `y`, with a multiplicity equal to the element itself. This means that a `0` corresponds to that index not appearing in `r`, a `1` appearing once, a `2` appearing twice, et cetera.
+`y` is an array of naturals. `r` is a vector containing all the indices of the elements of `y`, with a multiplicity equal to the element itself. This means that a `0` corresponds to that index not appearing in `r`, a `1` appearing once, a `2` appearing twice, et cetera. Supports the `origin` extra argument, which offsets the result by the origin.
 
 `y` is a dictionary with natural values. `r` is a vector containing all keys of `y`, with a multiplicity equal to the corresponding value.

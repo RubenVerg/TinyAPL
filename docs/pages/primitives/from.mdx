@@ -7,3 +7,5 @@ name: From
 If `y` is an array, `x` must be a either a simple array of integers or a array of nested simple arrays of integers; if `x` is simple, `r` is the major cells of `y` selected by the indices `x` (negative indices select from the end); if `x` is nested, `r` is an array with the same shape as `x` where each entry is the element indexed by the corresponding entry of `x` in `y`.
 
 If `y` is a dictionary, each element of `x` is used as a key for <primitive key="index" />.
+
+Supports the `origin` extra argument, which offsets the result by the origin (if `y` is an array); supports the `fill` extra argument, which is the default value returned when the index is out of bounds or doesn't appear in the dictionary.

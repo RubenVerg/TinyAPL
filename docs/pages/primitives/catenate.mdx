@@ -13,6 +13,6 @@ If `x` and `y` are arrays:
 * if one of the arguments is scalar, it is reshaped to an array with leading axis of length 1 and trailing axes of the other argument
 * if both arguments are scalar, they are reshaped to 1-element vectors.
 
-After extension, `r` is the major cells of `x` followed by the major cells of `y`.
+After extension, `r` is the major cells of `x` followed by the major cells of `y`. Supports the `fill` extra argument, which is used to pad the two arrays to have matching shape.
 
-If `x` and `y` are dictionaries, `r` is the dictionary containing all entries from `x` and `y`, right-biased.
+If `x` and `y` are dictionaries, `r` is the dictionary containing all entries from `x` and `y`, right-biased. Supports the `tolerance` extra argument for the comparison of the keys.
