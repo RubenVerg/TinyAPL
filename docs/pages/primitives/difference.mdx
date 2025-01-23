@@ -4,4 +4,4 @@ pattern: 'r←x~y'
 name: Difference
 ---
 
-`r` is the difference of the major cells of `x` and `y`, i.e. the cells of `x` that don't appear in `y`: `r←x⌿⍨~x∊y`. The difference of two dictionaries is the dictionary with keys that appear in `x` but not in `y`.
+`r` is the difference of the major cells of `x` and `y`, i.e. the cells of `x` that don't appear in `y`: `r←x⌿⍨~x∊y`. The difference of two dictionaries is the dictionary with keys that appear in `x` but not in `y`. Supports the `tolerance` extra argument for the comparison.

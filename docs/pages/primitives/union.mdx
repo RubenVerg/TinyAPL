@@ -4,4 +4,4 @@ pattern: 'r←x∪y'
 name: Union
 ---
 
-`r` is the union of the major cells of `x` and `y`, i.e. all cells of `x` followed by all cells of `y` not in `x`: `r←x⍪y⌿⍨~y∊x`. The union of two dictionaries is the left-biased join of the entries: `r←x⍪⍨y`.
+`r` is the union of the major cells of `x` and `y`, i.e. all cells of `x` followed by all cells of `y` not in `x`: `r←x⍪y⌿⍨~y∊x`. The union of two dictionaries is the left-biased join of the entries: `r←x⍪⍨y`. Supports the `tolerance` extra argument for the comparison.

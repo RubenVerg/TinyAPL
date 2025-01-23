@@ -4,4 +4,4 @@ pattern: 'r←x§y'
 name: Symmetric Difference
 ---
 
-`r` is the symmetric difference of the major cells of `x` and `y`, that is, the cells of `x` that don't appear in `y` and the cells of `y` that don't appear in `x`: `r←(x~y)⍪y~x`. The symmetric difference of two dictionaries is the dictionary with keys that appear in `x` but not in `y` and with keys that appear in `y` but not in `x`.
+`r` is the symmetric difference of the major cells of `x` and `y`, that is, the cells of `x` that don't appear in `y` and the cells of `y` that don't appear in `x`: `r←(x~y)⍪y~x`. The symmetric difference of two dictionaries is the dictionary with keys that appear in `x` but not in `y` and with keys that appear in `y` but not in `x`. Supports the `tolerance` extra argument for the comparison.

@@ -4,4 +4,4 @@ pattern: 'r←x⍳y'
 name: Index Of
 ---
 
-`r` is the index of corresponding cells of `y` in the major cells of `x`. If a cell of `y` does not appear in the cells of `x`, the corresponding element of `r` is the tally of `x`.
+`r` is the index of corresponding cells of `y` in the major cells of `x`. If a cell of `y` does not appear in the cells of `x`, the corresponding element of `r` is the tally of `x`. Supports the `origin` extra argument, which offsets the result by the origin; supports the `tolerance` extra argument for the comparisons; supports the `backward` extra argument, which returns the last index; supports the `fill` extra argument, which is returned when a cell is not found.

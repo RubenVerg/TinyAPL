@@ -7,3 +7,5 @@ name: Index
 If `y` is an array, `x` is a vector of integers with length less than or equal to the rank of `y`, and depth at most two. `r` is the selection of cells from axes of `y`, where nested entries of `x` indicate that multiple cells are selected, and negative `x` indicates indexing from the end.
 
 If `y` is a dictionary, `r` is the item of `y` with key `r`.
+
+Supports the `origin` extra argument, which offsets `x` by the origin (if `y` is an array); supports the `fill` extra argument, which is the default value returned when the index is out of bounds or doesn't appear in the dictionary.

@@ -9,3 +9,5 @@ name: At Rank
 If `x` is not provided, `r` is the result of applying `F` to cells of `y` of rank `a`. If `x` is provided, `r` is the result of applying `F` to cells of `x` of rank `b` and cells of `y` of rank `c`.
 
 If `a`, `b` or `c` are positive, they indicate the maximum rank that the cells should have when applying the function. If they are negative, they indicate how many ranks should be dropped before applying the function.
+
+Supports the `fill` extra argument, which is used to pad the results of `F` to have matching shape.

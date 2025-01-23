@@ -1,0 +1,12 @@
+---
+name: Extra Arguments
+---
+
+*Extra arguments* are a novel concept in TinyAPL which are inspired by [Variant](https://aplwiki.com/wiki/Variant) from Dyalog, Custom from A Dictionary of APL, take syntax similar to [function axis](https://aplwiki.com/wiki/Function_axis), and have keys somewhat like Python keyword arguments. They are a way to pass extra information to a function or modifier that slightly changes its behavior. These extra arguments are keyed and are in fact [dictionaries](/docs/info/dictionaries). To pass extra arguments to a function or modifier, use&nbsp;<hl code="F⦋dict⦌" />. Alternatively, you can pass a series of keys and values directly:&nbsp;<hl code="F⦋'a': 3 ⋄ 'hello': 10⦌" />. Inside a defined function or modifier, you can access the extra arguments you were passed using&nbsp;<hl code="ɛ" />, which is a normal dictionary. Usually there will be some calls where you want the extra arguments passed outside to apply, and others where you don't; for example you might want to use an&nbsp;<primitive key="index_generator" />&nbsp; that has the origin requested from outside, but then also need to generate all bit masks of a certain length, where you'll need the index origin to stay at zero. Because of this, extra arguments passed to a dfn do not automatically apply to calls inside its definition; instead the dfn can opt in where it wants to by writing&nbsp;<hl code="⦋ɛ⦌" />&nbsp;next to the calls.
+
+There are a set of extra arguments that are understood by some primitives; these are known as "core extra arguments". For those, there exist "shorthand" modifiers which set a core extra argument to a function or (derived function of a) modifier.
+
+* <hl code='"fill"' />&nbsp;is generally used for filling in missing values; it accepts any scalar; the shorthand modifier is&nbsp;<primitive key="fill" />
+* <hl code='"tolerance"' />&nbsp;sets the comparison tolerance, which is a real scalar; `0` indicates exact comparison, a positive number indicates relative tolerance and a negative number indicates absolute tolerance; the shorthand modifier is&nbsp;<primitive key="approximate" />
+* <hl code='"origin"' />&nbsp;sets the index origin, which is a natural scalar; the shorthand modifier is&nbsp;<primitive key="origin_one" />, which only allows setting origin to `1`
+* <hl code='"backward"' />&nbsp;"reverses" a primitive's behavior; it is a boolean scalar; the shorthand modifier is&nbsp;<primitive key="backward" />
