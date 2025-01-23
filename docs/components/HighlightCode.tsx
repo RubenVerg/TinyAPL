@@ -11,13 +11,13 @@ const colors = {
 	string: 'text-primary',
 	stringEscaoe: 'text-primary-emphasis',
 	arrayName: 'text-danger',
-	primArray: 'text-danger-emphasis',
+	primArray: 'text-danger',
 	functionName: 'text-success',
-	primFunction: 'text-success-emphasis',
+	primFunction: 'text-success',
 	adverbName: 'text-info',
-	primAdverb: 'text-info-emphasis',
+	primAdverb: 'text-info',
 	conjunctionName: 'text-warning',
-	primConjunction: 'text-warning-emphasis',
+	primConjunction: 'text-warning',
 	comment: 'text-secondary',
 }
 
