@@ -161,9 +161,9 @@ Marked features are supported, unmarked features are planned
 		* [x] `⍳` index of
 		* [x] `⍸` interval index
 		* [x] `∊` element of
-		* [ ] `⍷` find
-		* [ ] `⋷` histogram (inverse of where)
-		* [x] `⋷` count
+		* [x] `⍷` find
+		* [x] `⋵` histogram (inverse of where)
+		* [x] `⋵` count
 		* [x] `≡` depth
 		* [x] `⍴` shape
 		* [x] `≢` tally
@@ -226,8 +226,8 @@ Marked features are supported, unmarked features are planned
 		* [x] `⊢`/`⊣` same
 		* [x] `⊢` right
 		* [x] `⊣` left
-		* [ ] `⍎` execute
-		* [ ] `⍕` format
+		* [x] `⍎` execute
+		* [x] `⍕` format
 		* [x] `↗` raise
 		* [x] `⇂` minimal (TAO minimum)
 		* [x] `↾` maximal (TAO maximum)
@@ -238,7 +238,7 @@ Marked features are supported, unmarked features are planned
 		* [x] `⍅` fold back
 		* [x] `↟` on prefixes
 		* [x] `↡` on suffixes
-		* [ ] `↡` on infixes
+		* [x] `↡` on infixes
 		* [ ] `↟` on outfixes
 		* [x] `¨` each
 		* [x] `ᐵ` each-left
