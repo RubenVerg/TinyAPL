@@ -195,6 +195,7 @@ partition = '⊆'
 execute = '⍎'
 format = '⍕'
 find = '⍷'
+mask = '⋷'
 
 functions =
   [ TinyAPL.Glyphs.plus
@@ -272,7 +273,8 @@ functions =
   , TinyAPL.Glyphs.partition
   , TinyAPL.Glyphs.execute
   , TinyAPL.Glyphs.format
-  , TinyAPL.Glyphs.find ]
+  , TinyAPL.Glyphs.find
+  , TinyAPL.Glyphs.mask ]
 
 -- * Adverbs
 

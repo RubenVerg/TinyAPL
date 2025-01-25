@@ -162,6 +162,7 @@ Marked features are supported, unmarked features are planned
 		* [x] `⍸` interval index
 		* [x] `∊` element of
 		* [x] `⍷` find
+		* [x] `⋷` mask
 		* [x] `⋵` histogram (inverse of where)
 		* [x] `⋵` count
 		* [x] `≡` depth
