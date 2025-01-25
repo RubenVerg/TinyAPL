@@ -1111,6 +1111,22 @@ find' cea@CoreExtraArgs{ coreExtraArgsBackward = b } n hs = do
   n' <- rerank (arrayRank hs) n
   onInfixes 0 (identical' cea n') ((, 1, if b then -6 else 6, []) <$> arrayShape n') hs
 
+mask' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+mask' cea n hs = do
+  when (arrayRank n > arrayRank hs) $ throwError $ DomainError "Mask left argument must have rank at most equal to the right argument's"
+  n' <- rerank (arrayRank hs) n
+  wh <- find' cea{ coreExtraArgsBackward = False } n' hs >>= indices defaultCoreExtraArgs
+  inds <- indexGeneratorN defaultCoreExtraArgs (arrayShape n') >>= ravel'
+  allInds <- indexGeneratorN defaultCoreExtraArgs (arrayShape hs)
+  masks <- each1 (eachLeft add' inds >=> TinyAPL.Functions.count cea allInds) wh >>= mix cea >>= pure . majorCells
+  nonOverlapping <- Prelude.reverse . fst <$> foldlM (\(f, a) mask -> do
+    ov <- arrayContents <$> lcm' defaultCoreExtraArgs a mask
+    if any (== Number 1) ov then pure (f, a)
+    else do
+      a' <- gcd' defaultCoreExtraArgs a mask
+      pure (mask : f, a')) ([], (arrayReshapedNE (arrayShape hs) $ Number <$> 0 NE.:| Prelude.repeat 0)) masks
+  zipWithM (\(Array sh cs) ind -> Array sh <$> mapM (times (Number $ fromIntegral ind :+ 0)) cs) nonOverlapping [1..] >>= fold add' (arrayReshapedNE (arrayShape hs) $ Number <$> 0 NE.:| Prelude.repeat 0)
+
 histogram :: MonadError Error m => Noun -> m Noun
 histogram = (((indexGenerator' defaultCoreExtraArgs `compose` first defaultCoreExtraArgs) `compose` reduce' max') `compose` increment') `leftHook` TinyAPL.Functions.count defaultCoreExtraArgs
 
