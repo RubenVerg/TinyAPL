@@ -29,7 +29,7 @@ Some of the primitives are pretty much simple applications of other primitives:
 * <primitive key="on_simple_scalars" />&nbsp;is `F⍥0`
 * <primitive key="polar" />&nbsp;is `×∘(0ᴊ1∘×⍛*)`
 * <primitive key="rank" />&nbsp;is `≠⍤⍴`
-* <primitive key="join" />&nbsp;is `⊃⍤(⍪¨⍆)`
+* <primitive key="join" />&nbsp;is `⊃⍤(⍪¨/)`
 * <primitive key="root" />&nbsp;is `*∘÷⍨`
 * <primitive key="sort_down" />&nbsp;is `⍒⍨`
 * <primitive key="sort_up" />&nbsp;is `⍋⍨`
@@ -76,7 +76,7 @@ All combinators can be rewritten using trains, as described in [Combinators ↔ 
 ```tinyapl
 { 0=ϼ⍵: ■⍵
 ⋄ 1=ϼ⍵: ■⊃⍵
-⋄ ⍵⍴⍨(×⍆2↑⍴⍵)⍪2↓⍴⍵ }
+⋄ ⍵⍴⍨(×/2↑⍴⍵)⍪2↓⍴⍵ }
 ```
 
 <primitive key="rerank" />&nbsp;is
@@ -143,8 +143,8 @@ Min/max are also easy:
 
 Reductions are special cases of folds where the initial value is the first/last cell of the array.
 
-* <primitive key="reduce" />&nbsp;is `_{(⊃↓⍵)⍶⍶⍆(1↓↓⍵)}`
-* <primitive key="reduce_back" />&nbsp;is `_{(⊇↓⍵)⍶⍶⍆(¯1↓⍵)}`
+* <primitive key="reduce" />&nbsp;is `_{(⊃↓⍵)⍶⍶/(1↓⍵)}`
+* <primitive key="reduce_back" />&nbsp;is `_{(⊇↓⍵)⍶⍶\(¯1↓⍵)}`
 
 ## Remainder, GCD and LCM
 
@@ -167,7 +167,7 @@ Reductions are special cases of folds where the initial value is the first/last 
 { (0≡ϼ⍵)∧⍵≡⊂⍵: ■0
 ⋄ 0≡ϼ⍵: ■1+∇⊃⍵
 ⋄ 0∊⍴⍵:■1
-⋄ 1+⌈⍆∇ᑒ¨,⍵ }
+⋄ 1+⌈/∇ᑒ¨,⍵ }
 ```
 
 ## Repeat and Until

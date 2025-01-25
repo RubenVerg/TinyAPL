@@ -8,9 +8,9 @@ name: Reshape
 
 `r` is the elements of `y` reshaped to the shape defined by `x`:
 
-* if `×⍆x` is equal to `×⍆⍴y`, the elements of `y` are simply reordered to fit the new shape `x`
-* if `×⍆x` is positive and less than `×⍆⍴y`, elements of `y` are dropped from the end to fit the new shape
-* if `×⍆x` is greater than `×⍆⍴y`, elements of `y` are repeated cyclically to fit the new shape
-* if `¯1∊x`, the product of all elements of `x` that are not `¯1` must be a divisor of the amount of elements of `y`, and the resulting shape is obtained by substituting `(×⍆⍴y)÷×⍆x⌿⍨¯1≠x` for the `¯1` in `x`.
+* if `×/x` is equal to `×/⍴y`, the elements of `y` are simply reordered to fit the new shape `x`
+* if `×/x` is positive and less than `×/⍴y`, elements of `y` are dropped from the end to fit the new shape
+* if `×/x` is greater than `×/⍴y`, elements of `y` are repeated cyclically to fit the new shape
+* if `¯1∊x`, the product of all elements of `x` that are not `¯1` must be a divisor of the amount of elements of `y`, and the resulting shape is obtained by substituting `(×/⍴y)÷×/x⌿⍨¯1≠x` for the `¯1` in `x`.
 
 Fails if `y` is empty and `x` describes a nonempty shape.

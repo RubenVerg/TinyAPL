@@ -279,8 +279,8 @@ functions =
 -- * Adverbs
 
 selfie = '⍨'
-reduce = '⍆'
-reduceBack = '⍅'
+reduce = '/'
+reduceBack = '\\'
 onPrefixes = '↟'
 onSuffixes = '↡'
 each = '¨'
