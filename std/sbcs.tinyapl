@@ -14,8 +14,8 @@ table ⇇ ,
 ⋄ "…⌺⧺ⵧ‥߹∻⫇⋵····ɛ⦋⦌"
 ⋄ "·············⑴≈⬚"
 ⋄ "«»⊩⫣∙⁖⍣⇽⇾⸚⟜⊸⍛∘⍥⍤"
-⋄ "⫤⊞ᑒᑣ⌓◠◡⌸ᑈᐵ¨↡↟⍅⍆⍨" ]
+⋄ "⫤⊞ᑒᑣ⌓◠◡⌸ᑈᐵ¨↡↟··⍨" ]
 
-Encode⇇{ t←⎕Exists'⍺'⍰⍺⍠table ⋄ bytes←t⍳⍵ ⋄ ∨⍆bytes≥≢t: 2↗"invalid character" ⋄ bytes }
+Encode⇇{ t←⎕Exists'⍺'⍰⍺⍠table ⋄ bytes←t⍳⍵ ⋄ ∨/bytes≥≢t: 2↗"invalid character" ⋄ bytes }
 
-Decode⇇{ t←⎕Exists'⍺'⍰⍺⍠table ⋄ ∨⍆⍵≥≢t: 2↗"invalid code" ⋄ ⍵⊇t }
+Decode⇇{ t←⎕Exists'⍺'⍰⍺⍠table ⋄ ∨/⍵≥≢t: 2↗"invalid code" ⋄ ⍵⊇t }

@@ -58,7 +58,7 @@ const keyboard = [
 	['KeyG', 'g', 'G', '∇', '⍢', '⫇', undefined],
 	['KeyH', 'h', 'H', '∆', '⍙', '⊸', '⟜'],
 	['KeyJ', 'j', 'J', '∘', '⍤', 'ᴊ', undefined],
-	['KeyK', 'k', 'K', '⍆', '⌸', '⍅', undefined],
+	['KeyK', 'k', 'K', undefined, '⌸', undefined, undefined],
 	['KeyL', 'l', 'L', '⎕', '⌷', undefined, undefined],
 	['Semicolon', ';', ':', '⍎', '≡', '⍮', '⍠'],
 	['Quote', '\'', '"', '⍕', '≢', '⍘', '⍞'],

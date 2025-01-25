@@ -233,10 +233,10 @@ Marked features are supported, unmarked features are planned
 		* [x] `⇂` minimal (TAO minimum)
 		* [x] `↾` maximal (TAO maximum)
 	* operators
-		* [x] `⍆` reduce (left-to-right)
-		* [x] `⍆` fold (seeded reduce)
-		* [x] `⍅` reduce back (right-to-left)
-		* [x] `⍅` fold back
+		* [x] `/` reduce (left-to-right)
+		* [x] `/` fold (seeded reduce)
+		* [x] `\` reduce back (right-to-left)
+		* [x] `\` fold back
 		* [x] `↟` on prefixes
 		* [x] `↡` on suffixes
 		* [x] `↡` on infixes
