@@ -230,13 +230,22 @@ async function fancyShow(result: tinyapl.Value, depth: number = 0): Promise<Node
 		table.className = 'matrix';
 		const tbody = document.createElement('tbody');
 		table.appendChild(tbody);
+		const allNumbers = result.contents.every(x => Array.isArray(x));
+		const allShown = await Promise.all(result.contents.map(e => tinyapl.show({ type: 'array', shape: [], contents: [e] })))
+		const maxLength = Math.max(...allShown.map(x => x.length));
 		for (let y = 0; y < result.shape[0]; y++) {
 			const tr = document.createElement('tr');
 			tbody.appendChild(tr);
 			for (let x = 0; x < result.shape[1]; x++) {
-				const el = result.contents[y * result.shape[1] + x];
+				const idx = y * result.shape[1] + x;
 				const td = document.createElement('td');
-				td.appendChild(await fsScalar(el));
+				if (allNumbers) {
+					const el = allShown[idx];
+					td.append(el.padStart(maxLength));
+				} else {
+					const el = result.contents[idx];
+					td.appendChild(await fsScalar(el));
+				}	
 				tr.appendChild(td);
 			}
 		}
@@ -247,6 +256,9 @@ async function fancyShow(result: tinyapl.Value, depth: number = 0): Promise<Node
 		table.className = 'cube';
 		const tbody = document.createElement('tbody');
 		table.appendChild(tbody);
+		const allNumbers = result.contents.every(x => Array.isArray(x));
+		const allShown = await Promise.all(result.contents.map(e => tinyapl.show({ type: 'array', shape: [], contents: [e] })))
+		const maxLength = Math.max(...allShown.map(x => x.length));
 		for (let y = 0; y < a * b; y++) {
 			const tr = document.createElement('tr');
 			tbody.appendChild(tr);
@@ -256,8 +268,14 @@ async function fancyShow(result: tinyapl.Value, depth: number = 0): Promise<Node
 				const c2 = x - c0;
 				const td = document.createElement('td');
 				if (0 <= c0 && c0 < a && 0 <= c1 && c1 < b && 0 <= c2 && c2 < c) {
-					const el = result.contents[c0 * b * c + c1 * c + c2];
-					td.appendChild(await fsScalar(el));
+					const idx = c0 * b * c + c1 * c + c2;
+					if (allNumbers) {
+						const el = allShown[idx];
+						td.append(el.padStart(maxLength));
+					} else {
+						const el = result.contents[idx];
+						td.appendChild(await fsScalar(el));
+					}
 				} else {
 					td.classList.add('filler');
 				}
