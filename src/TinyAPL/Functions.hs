@@ -909,8 +909,7 @@ orient :: MonadError Error m => CoreExtraArgs -> [Integer] -> Noun -> m Noun
 orient cea is arr = orient' cea (vector $ Number . fromIntegral <$> is) arr
 
 dyadicTranspose' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-dyadicTranspose' cea@CoreExtraArgs{ coreExtraArgsBackward = True } = orient' cea
-dyadicTranspose' cea = reorderAxes' cea
+dyadicTranspose' cea@CoreExtraArgs{ coreExtraArgsBackward = b } = (if b then orient' else reorderAxes') cea
 
 invertedTable :: MonadError Error m => Noun -> m ([ScalarValue], [ScalarValue])
 invertedTable (Dictionary ks vs) = pure (ks, vs)
@@ -919,11 +918,9 @@ invertedTable _ = throwError $ DomainError "Inverted Table argument must be a di
 invertedTable' :: MonadError Error m => Noun -> m Noun
 invertedTable' = invertedTable >=> uncurry (pair `on` vector)
 
-transpose :: MonadError Error m => Noun -> m Noun
-transpose arr@(Array _ _) = do
-  r <- rank' arr >>= indexGenerator' defaultCoreExtraArgs >>= reverse'
-  reorderAxes' defaultCoreExtraArgs r arr
-transpose dict@(Dictionary _ _) = invertedTable' dict
+transpose :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+transpose CoreExtraArgs{ coreExtraArgsBackward = b } arr@(Array _ _) = (if b then orient else reorderAxes) defaultCoreExtraArgs [-1] arr
+transpose _ dict@(Dictionary _ _) = invertedTable' dict
 
 factorial :: MonadError Error m => ScalarValue -> m ScalarValue
 factorial (Number n) = case asInt (DomainError "") n of
