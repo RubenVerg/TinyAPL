@@ -760,11 +760,11 @@ deal CoreExtraArgs { coreExtraArgsOrigin = o } count max
     go count $ fmap (+ o) [0..max-1]
 
 deal' :: (MonadError Error m, MonadIO m) => CoreExtraArgs -> Noun -> Noun -> m Noun
-deal' cea count max = do
+deal' cea shape max = do
   let err = DomainError "Deal arguments must be natural numbers"
-  c <- asScalar err count >>= asNumber err >>= asNat err
+  s <- asVector err shape >>= mapM (asNumber err >=> asNat err)
   m <- asScalar err max >>= asNumber err >>= asNat err
-  vector . fmap (Number . (:+ 0) . fromInteger . toInteger) <$> deal cea c m
+  Array s . fmap (Number . (:+ 0) . fromInteger . toInteger) <$> deal cea (product s) m
 
 indexCell :: MonadError Error m => CoreExtraArgs -> Integer -> Noun -> m Noun
 indexCell CoreExtraArgs { coreExtraArgsOrigin = o, coreExtraArgsFill = f } i x@(Array _ _)
