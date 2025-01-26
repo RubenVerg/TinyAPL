@@ -9,3 +9,7 @@ name: Transpose
 If `x` contains no duplicates, it must be a permutation of `⍳ϼy`. `r` is the permutation of the elements of `y` such that for each index `i`, `i⌷x⍉y` is `(x⊇i)⌷y`.
 
 If `x` contains duplicates, the duplicate axes only collect entries where the indices match, effectively selecting diagonals.
+
+If `x` is shorter than `⍳ϼy`, the remaining axes are filled with axes not mentioned.
+
+Supports the `origin` extra argument, which offsets `x` by the origin; supports the `backward` extra argument, which inverts the permutation `x` before transposing.

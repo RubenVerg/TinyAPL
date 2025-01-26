@@ -869,19 +869,48 @@ sortDown' cea@CoreExtraArgs{ coreExtraArgsBackward = True } arr = sortUp' cea{ c
 sortDown' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortDown (TolerantL t <$> majorCells arr)
 sortDown' _ _ = throwError $ DomainError "Only arrays can be sorted"
 
-reorderAxes' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-reorderAxes' cea x@(Array _ _) y@(Array _ _) = do
+reorderAxesInner :: MonadError Error m => Noun -> Noun -> m Noun
+reorderAxesInner x@(Array _ _) y@(Array _ _) = do
   shy <- shape' y
   sx <- sortUp' defaultCoreExtraArgs x
   is <- sortByUp' defaultCoreExtraArgs shy x
   is' <- key' ((reduce' min') `atop` (pure .: flip const)) sx is
-  iota <- indexGenerator' cea is'
-  indices <- eachRight (from cea) x iota
-  from cea indices y
-reorderAxes' _ _ _ = throwError $ DomainError "Dictionaries cannot be transposed"
+  iota <- indexGenerator' defaultCoreExtraArgs is'
+  indices <- eachRight (from defaultCoreExtraArgs) x iota
+  from defaultCoreExtraArgs indices y
+reorderAxesInner _ _ = throwError $ DomainError "Dictionaries cannot be transposed"
 
-reorderAxes :: MonadError Error m => CoreExtraArgs -> [Natural] -> Noun -> m Noun
-reorderAxes cea is arr = reorderAxes' cea (vector $ Number . fromInteger . toInteger <$> is) arr
+reorderAxes' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+reorderAxes' CoreExtraArgs{ coreExtraArgsOrigin = o } x y = do
+  let err = DomainError "Transpose left argument must be a vector of integers not exceeding the rank of the right argument"
+  x' <- asVector err x
+    >>= mapM (asNumber err >=> asInt err)
+    >>= mapM (\i -> pure $ if i < 0 then fromInteger $ i + toInteger (arrayRank y) else fromInteger $ i - toInteger o)
+    >>= mapM (\i -> i <$ when (i >= arrayRank y) (throwError err))
+  let iry = [0..arrayRank y - 1]
+  axes <- genericTake (arrayRank y) . (x' ++) <$> difference iry x'
+  reorderAxesInner (vector $ Number . fromIntegral <$> axes) y
+
+reorderAxes :: MonadError Error m => CoreExtraArgs -> [Integer] -> Noun -> m Noun
+reorderAxes cea is arr = reorderAxes' cea (vector $ Number . fromIntegral <$> is) arr
+
+orient' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+orient' cea x y = do
+  let err = DomainError "Orient left argument must be a vector of integers not exceeding the rank of the right argument"
+  x' <- asVector err x
+    >>= mapM (asNumber err >=> asInt err)
+    >>= mapM (\i -> pure $ if i < 0 then fromInteger $ i + toInteger (arrayRank y) else fromInteger $ i - toInteger (coreExtraArgsOrigin cea))
+    >>= mapM (\i -> i <$ when (i >= arrayRank y) (throwError err))
+  let iry = [0..arrayRank y - 1]
+  axes <- difference iry x' >>= gradeUp defaultCoreExtraArgs . genericTake (arrayRank y) . (x' ++)
+  reorderAxesInner (vector $ Number . fromIntegral <$> axes) y
+
+orient :: MonadError Error m => CoreExtraArgs -> [Integer] -> Noun -> m Noun
+orient cea is arr = orient' cea (vector $ Number . fromIntegral <$> is) arr
+
+dyadicTranspose' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+dyadicTranspose' cea@CoreExtraArgs{ coreExtraArgsBackward = True } = orient' cea
+dyadicTranspose' cea = reorderAxes' cea
 
 invertedTable :: MonadError Error m => Noun -> m ([ScalarValue], [ScalarValue])
 invertedTable (Dictionary ks vs) = pure (ks, vs)
@@ -1478,15 +1507,10 @@ onInfixesFill 4 [] count ys
 onInfixesFill _ _ _ _ = throwError $ DomainError "On Infixes: invalid fill mode or parameters"
 
 encloseAnAxis :: MonadError Error m => Natural -> Noun -> m [Noun]
-encloseAnAxis n arr = do
-  move <- gradeUp defaultCoreExtraArgs $ n : filter (/= n) [0..arrayRank arr - 1]
-  majorCells <$> reorderAxes defaultCoreExtraArgs move arr
+encloseAnAxis n arr = majorCells <$> orient defaultCoreExtraArgs [fromIntegral n] arr
 
 mixAnAxis :: MonadError Error m => Natural -> [Noun] -> m Noun
-mixAnAxis n arrs = do
-  let am = fromMajorCells arrs
-  let move = n : filter (/= n) [0..arrayRank am - 1]
-  reorderAxes defaultCoreExtraArgs move am
+mixAnAxis n arrs = reorderAxes defaultCoreExtraArgs [fromIntegral n] $ fromMajorCells arrs
 
 onInfixes :: MonadError Error m => Natural -> (Noun -> m Noun) -> [(Natural, Natural, Integer, [ScalarValue])] -> Noun -> m Noun
 onInfixes _ _ [] y = pure y
