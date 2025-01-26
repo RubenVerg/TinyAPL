@@ -9,7 +9,7 @@ if [[ $PWD == */js ]]; then
 fi
 
 cd js
-(tsc > /dev/null) || (echo "Compilation failed")
+tsc
 cd ..
 
 echo "Compiled, copying files"
