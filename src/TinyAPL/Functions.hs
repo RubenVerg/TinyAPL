@@ -640,6 +640,18 @@ last CoreExtraArgs{ coreExtraArgsFill = Just fill } (Array _ []) = pure $ fromSc
 last _ (Array _ xs) = pure $ fromScalar $ Prelude.last xs
 last _ (Dictionary _ vs) = pure $ vector vs
 
+firstCell :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+firstCell CoreExtraArgs{ coreExtraArgsFill = Nothing } (Array _ []) = throwError $ DomainError "First cell on empty array"
+firstCell CoreExtraArgs{ coreExtraArgsFill = Just fill } (Array _ []) = pure $ fromScalar fill
+firstCell _ arr@Array{} = pure $ headPromise $ majorCells arr
+firstCell _ _ = throwError $ DomainError "First cell on dictionary"
+
+lastCell :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+lastCell CoreExtraArgs{ coreExtraArgsFill = Nothing } (Array _ []) = throwError $ DomainError "Last cell on empty array"
+lastCell CoreExtraArgs{ coreExtraArgsFill = Just fill } (Array _ []) = pure $ fromScalar fill
+lastCell _ arr@Array{} = pure $ Prelude.last $ majorCells arr
+lastCell _ _ = throwError $ DomainError "Last cell on dictionary"
+
 indexGenerator :: MonadError Error m => CoreExtraArgs -> Natural -> m Noun
 indexGenerator _ 0 = pure $ vector []
 indexGenerator CoreExtraArgs { coreExtraArgsOrigin = o, coreExtraArgsBackward = b } i = pure $ vector $ (if b then Prelude.reverse else id) $ Number . fromInteger . toInteger . (+ o) <$> [0..i - 1]

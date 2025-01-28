@@ -291,6 +291,20 @@ spec = do
         it "marks positions of the first occurrence of each element" $ do
           m P.notEqual (vector [Number 1, Number 2, Number 1, Number 3, Number 3]) `shouldReturn` pure (vector [Number 1, Number 1, Number 0, Number 1, Number 0])
 
+    describe [G.greater] $ do
+      describe "first cell" $ do
+        it "returns the first cell of the array" $ do
+          m P.greater (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 1)
+          m P.greater (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 1, Number 2])
+          m P.greater (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 1)
+
+    describe [G.greaterEqual] $ do
+      describe "last cell" $ do
+        it "returns the last cell of the array" $ do
+          m P.greaterEqual (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 3)
+          m P.greaterEqual (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 3, Number 4])
+          m P.greaterEqual (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 1)
+
     describe [G.and] $ do
       describe "promote" $ do
         it "adds a unit leading axis to arrays" $ do
