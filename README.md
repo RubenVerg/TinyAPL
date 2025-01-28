@@ -220,8 +220,8 @@ Marked features are supported, unmarked features are planned
 	* lookup functions
 		* [x] `⊃` first
 		* [x] `⊇` last
-		* [ ] `>` first cell
-		* [ ] `≥` last cell
+		* [x] `>` first cell
+		* [x] `≥` last cell
 		* [x] `⊇` from
 		* [x] `⌷` index
 		* [ ] `⊃` pick
