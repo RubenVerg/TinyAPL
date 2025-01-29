@@ -987,18 +987,18 @@ decode ns cs =
   if length ns /= length cs then throwError $ LengthError "Decode arguments must have the same length"
   else pure $ sum $ zipWith (*) (Prelude.reverse $ scanl1 (*) (init $ 1 : Prelude.reverse ns)) cs
 
-decode' :: MonadError Error m => Noun -> Noun -> m Noun
-decode' a@(Array _ _) b@(Array _ _) = atRank2 defaultCoreExtraArgs (\ns cs -> do
+decode' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
+decode' CoreExtraArgs{ coreExtraArgsBackward = back } a@(Array _ _) b@(Array _ _) = atRank2 defaultCoreExtraArgs (\ns cs -> do
   let err = DomainError "Decode arguments must be number arrays"
   cs' <- asVector err cs >>= mapM (asNumber err)
   ns' <- case asScalar err ns of
     Right x -> Prelude.replicate (length cs') <$> asNumber err x
     Left _ -> asVector err ns >>= mapM (asNumber err)
-  scalar . Number <$> decode ns' cs') (1, 1) a b
-decode' _ _ = throwError $ DomainError "Decode arguments must be number arrays"
+  scalar . Number <$> decode ns' (if back then Prelude.reverse cs' else cs')) (1, 1) a b
+decode' _ _ _ = throwError $ DomainError "Decode arguments must be number arrays"
 
-decodeBase2 :: MonadError Error m => Noun -> m Noun
-decodeBase2 = decode' (scalar $ Number 2)
+decodeBase2 :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+decodeBase2 cea = decode' cea (scalar $ Number 2)
 
 encode :: MonadError Error m => CoreExtraArgs -> [Complex Double] -> Complex Double -> m [Complex Double]
 encode _ [] _ = pure []
@@ -1019,12 +1019,13 @@ encodeScalar cea@CoreExtraArgs { coreExtraArgsTolerance = t } b n = do
   else (`snoc` rem) <$> encodeScalar cea b div
 
 encode' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-encode' cea a@(Array _ _) b@(Array _ _) = atRank2 defaultCoreExtraArgs (\b n -> do
+encode' cea@CoreExtraArgs{ coreExtraArgsBackward = True } a@(Array _ _) b@(Array _ _) = atRank2 defaultCoreExtraArgs{ coreExtraArgsFill = Just $ Number 0 } (\b n -> do
   let err = DomainError "Encode arguments must be number arrays"
   n' <- asScalar err n >>= asNumber err
   case asScalar err b of
-    Right b' -> vector . fmap Number . (\xs -> if null xs then [0] else xs) <$> (asNumber err b' >>= flip (encodeScalar cea) n')
-    Left _ -> vector . fmap Number <$> (asVector err b >>= mapM (asNumber err) >>= flip (encode cea) n')) (1, 0) a b
+    Right b' -> vector . fmap Number . Prelude.reverse . (\xs -> if null xs then [0] else xs) <$> (asNumber err b' >>= flip (encodeScalar cea) n')
+    Left _ -> vector . fmap Number . Prelude.reverse <$> (asVector err b >>= mapM (asNumber err) >>= flip (encode cea) n')) (1, 0) a b
+encode' cea a@(Array _ _) b@(Array _ _) = encode' cea{ coreExtraArgsBackward = True } a b >>= atRank1 defaultCoreExtraArgs reverse' 1
 encode' _ _ _ = throwError $ DomainError "Encode arguments must be number arrays"
 
 encodeBase2 :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
