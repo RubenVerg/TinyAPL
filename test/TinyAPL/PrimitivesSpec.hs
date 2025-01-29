@@ -1063,6 +1063,24 @@ spec = do
           aam P.ident (scalar $ Character 'a') (scalar $ Number 1) `shouldReturn` pure (scalar $ Character 'a')
           aad P.ident (scalar $ Character 'a') (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Character 'a')
 
+    describe [G.bitwise] $ do
+      describe "monad bitwise" $ do
+        it "applies a bitwise operation to a number" $ do
+          Right sum <- af P.reduce P.plus
+          afm P.bitwise P.difference (scalar $ Number 10) `shouldReturn` pure (scalar $ Number -11)
+          afm P.bitwise P.difference (scalar $ Number -10) `shouldReturn` pure (scalar $ Number 9)
+          afm P.bitwise P.right (scalar $ Number 10) `shouldReturn` pure (scalar $ Number 10)
+          afm P.bitwise P.right (scalar $ Number -10) `shouldReturn` pure (scalar $ Number -10)
+          afm P.bitwise P.notIdentical (scalar $ Number 10) `shouldReturn` pure (scalar $ Number 4)
+          afm P.bitwise sum (scalar $ Number 10) `shouldReturn` pure (scalar $ Number 2)
+      describe "dyad bitwise" $ do
+        it "applies a bitwise operation to two numbers" $ do
+          afd P.bitwise P.and (scalar $ Number 7) (scalar $ Number 9) `shouldReturn` pure (scalar $ Number 1)
+          afd P.bitwise P.and (scalar $ Number -7) (scalar $ Number 9) `shouldReturn` pure (scalar $ Number 9)
+          afd P.bitwise P.and (scalar $ Number 7) (scalar $ Number -9) `shouldReturn` pure (scalar $ Number 7)
+          afd P.bitwise P.and (scalar $ Number -7) (scalar $ Number -9) `shouldReturn` pure (scalar $ Number -15)
+          afd P.bitwise P.or (scalar $ Number 3) (scalar $ Number -11) `shouldReturn` pure (scalar $ Number -9)
+
   describe "conjunctions" $ do
     describe [G.atop] $ do
       describe "at rank" $ do

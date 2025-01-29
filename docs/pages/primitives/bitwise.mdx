@@ -1,0 +1,27 @@
+---
+glyph: '∵'
+pattern: 'r←[x](F∵)y'
+name: Bitwise
+---
+
+`F` is a function that either accepts boolean vectors and returns a scalar, or both accepts boolean vectors and returns a number vector and accepts boolean scalars and returns a boolean scalar; applies to simple scalars of `x` and `y` which are integers.
+
+If `x` is not provided, `F` is called on the bits of `y`, except that if `y` is negative the `¯1` "bit" returned by&nbsp;<primitive key="encode" />&nbsp;is dropped. If the result is a scalar, it is returned. If the result is a vector, `F` is called again with `y<0`. The result is then the base 2 decode of the first result of `y`, catenating `¯1` if the second result was `1`.
+
+If `x` is provided, `F` is called on the bits of `x` and `y`, without `¯1`s, padded to be of the same length, padding with `1`s if the number is negative and `0`s otherwise. If the result is a scalar, it is returned. If the result is a vector, `F` is called again with `x<0` and `y<0`. The result is then the base 2 decode of the first result of `y`, catenating `¯1` if the second result was `1`.
+
+## Common usages
+
+* `~∵` is bitwise NOT
+* `∧∵` is bitwise AND
+* `∨∵` is bitwise OR
+* `≠∵` is bitwise XOR
+* `⍲∵` is bitwise NAND
+* `⍱∵` is bitwise NOR
+* `=∵` is bitwise XNOR
+* `≤∵` is bitwise implication
+* `≥∵` is bitwise converse implication
+* `>∵` is bitwise non-implication
+* `<∵` is bitwise converse non-implication
+* `+/∵` is popcnt (amount of bits set)
+* `≢∵` is bit length

@@ -265,6 +265,7 @@ Marked features are supported, unmarked features are planned
 		* [ ] `⌺` stencil
 		* [x] `⁖` valences (call left if monad and right if dyad)
 		* [x] `⍢` strucutral under
+		* [x] `∵` bitwise
 	* combinators
 		* [x] `⍨` constant
 		* [x] `⍨` commute
