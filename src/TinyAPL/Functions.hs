@@ -534,6 +534,7 @@ reverse' = onMajorCells TinyAPL.Functions.reverse
 
 rotate :: MonadError Error m => CoreExtraArgs -> [Integer] -> Noun -> m Noun
 rotate _ [] xs = pure xs
+rotate _ _ sc@(Array [] _) = pure sc
 rotate cea@CoreExtraArgs{ coreExtraArgsFill = Nothing } (r:rs) xs = fromMajorCells . TinyAPL.Util.rotate r <$> mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs)
 rotate cea@CoreExtraArgs{ coreExtraArgsFill = Just fill } (r:rs) xs = do
   re <- fromMajorCells . genericDrop r <$> mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs)
