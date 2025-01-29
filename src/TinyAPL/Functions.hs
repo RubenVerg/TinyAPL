@@ -1606,3 +1606,39 @@ onInfixes' f x y = do
     args <- if length vec < 4 then pure [] else asVector err $ fromScalar $ vec !! 3
     pure (size, skip, mode, args)) rows
   onInfixes 0 f specs y
+
+bitwise1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> ScalarValue -> m ScalarValue
+bitwise1 cea@CoreExtraArgs{ coreExtraArgsBackward = b } f y'@(Number _) = do
+  enc <- (if y' < Number 0 then if b then init else tailPromise else id) <$> (encodeBase2 cea (scalar y') >>= asVector unreachable >>= mapM (asNumber unreachable))
+  res <- f $ vector $ Number <$> enc
+  case asScalar (DomainError "") res of
+    Right r -> pure r
+    Left _ -> do
+      let err = DomainError "Bitwise operation must return a scalar or vector of numbers"
+      res' <- asVector err res >>= mapM (asNumber err)
+      signBit <- (f $ scalar $ Number $ if y' < Number 0 then 1 else 0) >>= asScalar err >>= asNumber err
+      (decodeBase2 cea $ vector $ fmap Number $ (if signBit /= 0 then if b then (:> -1) else (-1 :) else id) $ res') >>= asScalar unreachable
+bitwise1 _ _ _ = throwError expectedNumber
+
+bitwise1' :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Noun -> m Noun
+bitwise1' cea f = scalarMonad (bitwise1 cea f)
+
+bitwise2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> ScalarValue -> ScalarValue -> m ScalarValue
+bitwise2 cea@CoreExtraArgs{ coreExtraArgsBackward = b } f x'@(Number _) y'@(Number _) = do
+  encX <- (if x' < Number 0 then if b then init else tailPromise else id) <$> (encodeBase2 cea (scalar x') >>= asVector unreachable >>= mapM (asNumber unreachable))
+  encY <- (if y' < Number 0 then if b then init else tailPromise else id) <$> (encodeBase2 cea (scalar y') >>= asVector unreachable >>= mapM (asNumber unreachable))
+  let maxLen = (Prelude.max `on` genericLength) encX encY
+  padX <- take' cea{ coreExtraArgsFill = Just $ Number $ if x' < Number 0 then 1 else 0 } (scalar $ Number $ (-maxLen) :+ 0) (vector $ Number <$> encX) >>= asVector unreachable >>= mapM (asNumber unreachable)
+  padY <- take' cea{ coreExtraArgsFill = Just $ Number $ if y' < Number 0 then 1 else 0 } (scalar $ Number $ (-maxLen) :+ 0) (vector $ Number <$> encY) >>= asVector unreachable >>= mapM (asNumber unreachable)
+  res <- f (vector $ Number <$> padX) (vector $ Number <$> padY)
+  case asScalar (DomainError "") res of
+    Right r -> pure r
+    Left _ -> do
+      let err = DomainError "Bitwise operation must return a scalar or vector of numbers"
+      res' <- asVector err res >>= mapM (asNumber err)
+      signBit <- (f (scalar $ Number $ if x' < Number 0 then 1 else 0) (scalar $ Number $ if y' < Number 0 then 1 else 0)) >>= asScalar err >>= asNumber err
+      (decodeBase2 cea $ vector $ fmap Number $ (if signBit /= 0 then if b then (:> -1) else (-1 :) else id) $ res') >>= asScalar unreachable
+bitwise2 _ _ _ _ = throwError expectedNumber
+
+bitwise2' :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+bitwise2' cea f = scalarDyad (bitwise2 cea f)

@@ -275,6 +275,11 @@ backward = PrimitiveAdverb
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
   , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsBackwardKey, Number 1)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsBackwardKey, Number 1)]) Nothing backward f }
+bitwise = PrimitiveAdverb
+  { adverbRepr = [G.bitwise]
+  , adverbContext = Nothing
+  , adverbOnNoun = Nothing
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.bitwise1' $ callMonad f []) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.bitwise2' $ callDyad f []) (ea' ++ ea)) Nothing onCells f }
 
 adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   [ TinyAPL.Primitives.selfie
@@ -294,7 +299,8 @@ adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   , TinyAPL.Primitives.ident
   , TinyAPL.Primitives.onSimpleScalars
   , TinyAPL.Primitives.originOne
-  , TinyAPL.Primitives.backward ]
+  , TinyAPL.Primitives.backward
+  , TinyAPL.Primitives.bitwise ]
 
 -- * Primitive conjunctions
 

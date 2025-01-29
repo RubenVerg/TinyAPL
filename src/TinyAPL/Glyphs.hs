@@ -296,6 +296,7 @@ ident = '⫤'
 onSimpleScalars = '⌓'
 originOne = '⑴'
 backward = '⤺'
+bitwise = '∵'
 
 adverbs =
   [ TinyAPL.Glyphs.selfie
@@ -315,7 +316,8 @@ adverbs =
   , TinyAPL.Glyphs.ident
   , TinyAPL.Glyphs.onSimpleScalars
   , TinyAPL.Glyphs.originOne
-  , TinyAPL.Glyphs.backward ]
+  , TinyAPL.Glyphs.backward
+  , TinyAPL.Glyphs.bitwise ]
 
 -- * Conjunctions
 
