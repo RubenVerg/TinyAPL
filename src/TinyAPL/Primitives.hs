@@ -280,6 +280,16 @@ bitwise = PrimitiveAdverb
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
   , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.bitwise1' $ callMonad f []) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.bitwise2' $ callDyad f []) (ea' ++ ea)) Nothing onCells f }
+cellsLeft = PrimitiveAdverb
+  { adverbRepr = [G.cellsLeft]
+  , adverbContext = Nothing
+  , adverbOnNoun = Just $ \ea x -> pure $ DerivedFunctionNoun Nothing (Just $ \ea' -> withCoreExtraArgs2 (flip F.cellsLeft $ F.constant2 x) (ea' ++ ea)) Nothing cellsLeft x
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction Nothing (Just $ \ea' -> withCoreExtraArgs2 (flip F.cellsLeft $ callDyad f []) (ea' ++ ea)) Nothing cellsLeft f }
+cellsRight = PrimitiveAdverb
+  { adverbRepr = [G.cellsRight]
+  , adverbContext = Nothing
+  , adverbOnNoun = Just $ \ea x -> pure $ DerivedFunctionNoun Nothing (Just $ \ea' -> withCoreExtraArgs2 (flip F.cellsRight $ F.constant2 x) (ea' ++ ea)) Nothing cellsRight x
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction Nothing (Just $ \ea' -> withCoreExtraArgs2 (flip F.cellsRight $ callDyad f []) (ea' ++ ea)) Nothing cellsRight f }
 
 adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   [ TinyAPL.Primitives.selfie
@@ -300,7 +310,9 @@ adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   , TinyAPL.Primitives.onSimpleScalars
   , TinyAPL.Primitives.originOne
   , TinyAPL.Primitives.backward
-  , TinyAPL.Primitives.bitwise ]
+  , TinyAPL.Primitives.bitwise
+  , TinyAPL.Primitives.cellsLeft
+  , TinyAPL.Primitives.cellsRight ]
 
 -- * Primitive conjunctions
 

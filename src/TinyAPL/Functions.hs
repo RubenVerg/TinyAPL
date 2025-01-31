@@ -1390,6 +1390,12 @@ onCells1 cea f = atRank1 cea f (-1)
 onCells2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 onCells2 cea f = atRank2 cea f (-1, -1)
 
+cellsLeft :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+cellsLeft cea f = atRank2 cea f (-1, likePositiveInfinity)
+
+cellsRight :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+cellsRight cea f = atRank2 cea f (likePositiveInfinity, -1)
+
 onScalars1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Noun -> m Noun
 onScalars1 cea f = atRank1 cea f 0
 
