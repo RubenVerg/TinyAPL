@@ -1019,6 +1019,16 @@ spec = do
           afd P.onCells P.pair (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (fromMajorCells [vector [Number 5, Number 6], vector [Number 7, Number 8]]) `shouldReturn` pure (fromMajorCells [vector [box $ vector [Number 1, Number 2], box $ vector [Number 5, Number 6]], vector [box $ vector [Number 3, Number 4], box $ vector [Number 7, Number 8]]])
         it "replaces major cells of an array with a value" $ do
           aam P.onCells (scalar $ Number 3) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 3, Number 3])
+
+    describe [G.cellsLeft] $ do
+      describe "cells left" $ do
+        it "applies a function to cells of an array and the whole other array" $ do
+          afd P.cellsLeft P.intersection (fromMajorCells [vector [Number 1, Number 2, Number 4], vector [Number 1, Number 3, Number 5]]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 1, Number 3]])
+
+    describe [G.cellsRight] $ do
+      describe "cells left" $ do
+        it "applies a function to cells of an array and the whole other array" $ do
+          afd P.cellsRight P.intersection (vector [Number 1, Number 2, Number 3]) (fromMajorCells [vector [Number 1, Number 2, Number 4], vector [Number 1, Number 3, Number 5]]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 1, Number 3]])
     
     describe [G.onScalars] $ do
       describe "on scalars" $ do

@@ -256,6 +256,8 @@ Marked features are supported, unmarked features are planned
 		* [x] `⍤` at rank
 		* [x] `◡` on cells (`⍤¯1`)
 		* [x] `◠` on scalars (`⍤0`)
+		* [x] `ᓗ` cells-left (`⍤¯1‿∞`)
+		* [x] `ᓚ` cells-right (`⍤∞‿¯1`)
 		* [x] `⍥` at depth
 		* [x] `⌓` on simple scalars (`⍥0`)
 		* [ ] `@` at
