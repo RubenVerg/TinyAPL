@@ -537,7 +537,7 @@ rotate _ [] xs = pure xs
 rotate _ _ sc@(Array [] _) = pure sc
 rotate cea@CoreExtraArgs{ coreExtraArgsFill = Nothing } (r:rs) xs = fromMajorCells . TinyAPL.Util.rotate r <$> mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs)
 rotate cea@CoreExtraArgs{ coreExtraArgsFill = Just fill } (r:rs) xs = do
-  re <- fromMajorCells . genericDrop r <$> mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs)
+  re <- fromMajorCells . (if r < 0 then Prelude.reverse . genericDrop (negate r) . Prelude.reverse else genericDrop r) <$> mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs)
   if r < 0 then reverse' re >>= reverse' . fillArray (arrayShape xs) fill else pure $ fillArray (arrayShape xs) fill re
 
 rotate' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
