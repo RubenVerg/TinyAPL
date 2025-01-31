@@ -98,6 +98,7 @@ data Token
   | TokenTernary (NonEmpty Token) (NonEmpty Token) (NonEmpty Token) SourcePos
   | TokenExtraArgs [(NonEmpty Token, NonEmpty Token)] SourcePos
   | TokenSpreadExtraArgs (NonEmpty Token) SourcePos
+  | TokenNothing SourcePos
 
 instance Eq Token where
   (TokenNumber x _) == (TokenNumber y _) = x == y
@@ -148,6 +149,7 @@ instance Eq Token where
   (TokenTernary xh xt xf _) == (TokenTernary yh yt yf _) = xh == yh && xt == yt && xf == yf
   (TokenExtraArgs xes _) == (TokenExtraArgs yes _) = xes == yes
   (TokenSpreadExtraArgs x _) == (TokenSpreadExtraArgs y _) = x == y
+  (TokenNothing _) == (TokenNothing _) = True
   _ == _ = False
 
 instance Show Token where
@@ -199,6 +201,7 @@ instance Show Token where
   show (TokenTernary xh xt xf _) = "(ternary " ++ unwords (NE.toList $ show <$> xh) ++ [' ', fst G.ternary, ' '] ++ unwords (NE.toList $ show <$> xt) ++ [' ', snd G.ternary, ' '] ++ unwords (NE.toList $ show <$> xf) ++ ")"
   show (TokenExtraArgs xs _) = "(extra args " ++ [fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> unwords (NE.toList $ show <$> k) ++ [G.guard] ++ unwords (NE.toList $ show <$> v)) <$> xs) ++ [snd G.extraArgs] ++ ")"
   show (TokenSpreadExtraArgs x _) = "(spread extra args " ++ [fst G.extraArgs] ++ unwords (NE.toList $ show <$> x) ++ [snd G.extraArgs] ++ ")"
+  show (TokenNothing _) = "(nothing)"
 
 tokenPos :: Token -> SourcePos
 tokenPos (TokenNumber _ pos) = pos
@@ -249,6 +252,7 @@ tokenPos (TokenTie _ pos) = pos
 tokenPos (TokenTernary _ _ _ pos) = pos
 tokenPos (TokenExtraArgs _ pos) = pos
 tokenPos (TokenSpreadExtraArgs _ pos) = pos
+tokenPos (TokenNothing pos) = pos
 
 emptyPos :: SourcePos
 emptyPos = SourcePos "<empty>" (mkPos 1) (mkPos 1)
@@ -332,6 +336,9 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
       lexeme $ char G.tie
       rest <- sepBy1 bit' (lexeme $ char G.tie)
       pure $ tie (first :| rest) pos, pure first]
+
+  nothing :: Parser Token
+  nothing = withPos $ TokenNothing <$ lexeme (char G.nothing)
 
   array' :: Parser Token
   array' = number <|> charVec <|> str <|> try (withPos $ TokenArrayName <$> arrayName) <|> dictionaryNotation <|> vectorNotation <|> highRankNotation <|> primArray <|> wrap <|> struct where
@@ -495,10 +502,10 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
   separator = void $ lexeme (char G.separator) <|> char '\n' <* some (char '\n')
 
   bit' :: Parser Token
-  bit' = lexeme $ bracketed <|> conjunction' <|> adverb' <|> function' <|> array'
+  bit' = lexeme $ bracketed <|> nothing <|> conjunction' <|> adverb' <|> function' <|> array'
 
   bit :: Parser Token
-  bit = lexeme $ conjunction'' <|> adverb'' <|> function'' <|> array'' <|>
+  bit = lexeme $ nothing <|> conjunction'' <|> adverb'' <|> function'' <|> array'' <|>
     maybeQualifiedTie
       TokenTie
       [ (TokenQualifiedConjunctionName, TokenQualifiedConjunctionAssign, try conjunctionName)
@@ -565,6 +572,7 @@ data Category
   | CatAdverb
   | CatConjunction
   | CatExtraArgs
+  | CatNothing
   deriving (Enum, Bounded, Eq, Ord)
 
 instance Show Category where
@@ -574,6 +582,7 @@ instance Show Category where
   show CatAdverb          = "monadic operator"
   show CatConjunction     = "dyadic operator"
   show CatExtraArgs       = "extra args"
+  show CatNothing         = "nothing"
 
 data Tree
   = Leaf { leafCategory :: Category, leafToken :: Token }
@@ -855,6 +864,7 @@ categorize name source = tokenize name source >>= mapM (\xs -> case NE.nonEmpty 
   tokenToTree (TokenSpreadExtraArgs es _)                   = categorizeAndBind es >>= (\e -> case treeCategory e of
     CatArray -> pure $ UnboundExtraArgsBranch e
     _ -> throwError $ makeSyntaxError (tokenPos $ NE.head es) source $ "Extra args must be arrays")
+  tokenToTree (TokenNothing pos)                            = pure $ Leaf CatNothing (TokenNothing pos)
 
 parse :: String -> String -> Result [Maybe Tree]
 parse name = categorize name >=> mapM (\xs -> case NE.nonEmpty xs of
