@@ -197,6 +197,9 @@ spec = do
       tok "⦋1:2⋄3:4⦌" `shouldBe` pure [[TokenExtraArgs [([TokenNumber 1 emptyPos], [TokenNumber 2 emptyPos]), ([TokenNumber 3 emptyPos], [TokenNumber 4 emptyPos])] emptyPos]]
       tok "⦋1:2⋄3:4⋄5:6⦌" `shouldBe` pure [[TokenExtraArgs [([TokenNumber 1 emptyPos], [TokenNumber 2 emptyPos]), ([TokenNumber 3 emptyPos], [TokenNumber 4 emptyPos]), ([TokenNumber 5 emptyPos], [TokenNumber 6 emptyPos])] emptyPos]]
       tok "⦋hi⦌" `shouldBe` pure [[TokenSpreadExtraArgs [TokenArrayName "hi" emptyPos] emptyPos]]
+    
+    it "parses nothing" $ do
+      tok "·" `shouldBe` pure [[TokenNothing emptyPos]]
 
   describe "binder" $ do
     let e2m (Right x) = Just x
@@ -334,3 +337,4 @@ spec = do
         par "⦅1 2 3⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ Leaf CatArray (TokenNumber 1 emptyPos), Just $ Leaf CatArray (TokenNumber 2 emptyPos), Just $ Leaf CatArray (TokenNumber 3 emptyPos)]]
         par "⦅+ 1⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ Leaf CatFunction (TokenPrimFunction '+' emptyPos), Just $ Leaf CatArray (TokenNumber 1 emptyPos)]]
         par "⦅+⍨ 1⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ AdverbCallBranch (Leaf CatFunction (TokenPrimFunction '+' emptyPos)) (Leaf CatAdverb (TokenPrimAdverb '⍨' emptyPos)), Just $ Leaf CatArray (TokenNumber 1 emptyPos)]]
+        par "⦅+·-1⦆" `shouldBe` pure [Just $ TrainBranch CatFunction [Just $ Leaf CatFunction (TokenPrimFunction '+' emptyPos), Just $ Leaf CatNothing (TokenNothing emptyPos), Just $ Leaf CatFunction (TokenPrimFunction '-' emptyPos), Just $ Leaf CatArray (TokenNumber 1 emptyPos)]]

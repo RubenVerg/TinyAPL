@@ -241,6 +241,14 @@ evalLeaf (TokenConjunctionName name _)
     gets contextScope >>= readRef >>= scopeLookupConjunction True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VConjunction)
 evalLeaf _                             = throwError $ DomainError "Invalid leaf type in evaluation"
 
+evalLeafOrNothing :: Token -> St (Maybe Value)
+evalLeafOrNothing (TokenNothing _) = pure Nothing
+evalLeafOrNothing tok = Just <$> evalLeaf tok
+
+evalOrNothing :: Tree -> St (Maybe Value)
+evalOrNothing (Leaf _ tok) = evalLeafOrNothing tok
+evalOrNothing t = Just <$> eval t
+
 evalQualified :: Value -> NonEmpty String -> St Value
 evalQualified head ns = do
   let err = DomainError "Qualified name head should be a scalar struct"
@@ -748,7 +756,7 @@ evalTrain cat es = let
   in do
     us <- mapM (\case
       Nothing -> pure Nothing
-      Just x -> Just <$> eval x) $ reverse es
+      Just x -> evalOrNothing x) $ reverse es
     t <- train us
     r <- withTrainRepr (reverse us) t
     case (cat, r) of
