@@ -1167,8 +1167,8 @@ mask' cea n hs = do
       pure (mask : f, a')) ([], (arrayReshapedNE (arrayShape hs) $ Number <$> 0 NE.:| Prelude.repeat 0)) masks
   zipWithM (\(Array sh cs) ind -> Array sh <$> mapM (times (Number $ fromIntegral ind :+ 0)) cs) nonOverlapping [1..] >>= fold add' (arrayReshapedNE (arrayShape hs) $ Number <$> 0 NE.:| Prelude.repeat 0)
 
-histogram :: MonadError Error m => Noun -> m Noun
-histogram = (((indexGenerator' defaultCoreExtraArgs `compose` first defaultCoreExtraArgs) `compose` reduce' max') `compose` increment') `leftHook` TinyAPL.Functions.count defaultCoreExtraArgs
+histogram :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+histogram cea@CoreExtraArgs{ coreExtraArgsOrigin = o } = (((indexGenerator' cea `compose` first defaultCoreExtraArgs) `compose` reduce' max') `compose` ((flip sub' $ scalar $ Number $ fromIntegral o) `compose` increment')) `leftHook` TinyAPL.Functions.count defaultCoreExtraArgs
 
 -- * Modifiers
 
