@@ -80,6 +80,8 @@ sign' :: MonadError Error m => Noun -> m Noun
 sign' = scalarMonad sign
 
 times :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
+times z@(Number 0) _ = pure z
+times _ z@(Number 0) = pure z
 times (Number x) (Number y) = pure $ Number $ x * y
 times _ _ = throwError expectedNumber
 
