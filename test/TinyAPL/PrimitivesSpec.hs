@@ -189,6 +189,9 @@ spec = do
       describe "multiply" $ do
         it "multiplies complex numbers" $ do
           d P.times (scalar $ Number (2 :+ 1)) (vector [Number 2, Number -1, Number (3 :+ -1)]) `shouldReturn` pure (vector [Number (4 :+ 2), Number (-2 :+ -1), Number (7 :+ 1)])
+        it "always returns zero when an argument is zero" $ do
+          d P.times (scalar $ Number 0) (scalar $ Number $ inf :+ 0) `shouldReturn` pure (scalar $ Number 0)
+          d P.times (scalar $ Number $ ninf :+ 0) (scalar $ Number 0) `shouldReturn` pure (scalar $ Number 0)
     
     describe [G.divide] $ do
       describe "reciprocal" $ do
