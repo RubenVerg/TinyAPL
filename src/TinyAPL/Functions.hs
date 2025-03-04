@@ -1054,7 +1054,7 @@ count = searchFunction (pure .: scalar .: Number .: (:+ 0) .: countEqual) (\e _ 
 
 indexOf :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 indexOf cea@CoreExtraArgs{ coreExtraArgsOrigin = o, coreExtraArgsBackward = b, coreExtraArgsFill = f } = flip $ searchFunction
-  (pure .: scalar .: (\n hs -> fromMaybe (fromMaybe (Number $ genericLength hs :+ 0) f) $ Number . (:+ 0) . (+ fromIntegral o) <$> (if b then genericElemLastIndex else genericElemIndex) n hs))
+  (pure .: scalar .: (\n hs -> fromMaybe (fromMaybe (Number $ (genericLength hs + fromIntegral o) :+ 0) f) $ Number . (:+ 0) . (+ fromIntegral o) <$> (if b then genericElemLastIndex else genericElemIndex) n hs))
   (\e k v -> case find (\(_, u) -> e == u) (zip k v) of
     Just (i, _) -> pure $ unTolerantL i
     Nothing -> throwError $ IndexError "Value not found in dictionary") cea
