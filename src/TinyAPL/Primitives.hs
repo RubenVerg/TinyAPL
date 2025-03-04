@@ -6,6 +6,7 @@ import qualified TinyAPL.Glyphs as G
 import TinyAPL.Error
 import TinyAPL.Util (headPromise, rollR)
 import TinyAPL.Complex (Complex((:+)))
+import Debug.Trace
 
 
 withCoreExtraArgs1 :: (CoreExtraArgs -> a -> St r) -> ExtraArgs -> a -> St r
@@ -269,12 +270,12 @@ originOne = PrimitiveAdverb
   { adverbRepr = [G.originOne]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsOriginKey, Number 1)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsOriginKey, Number 1)]) Nothing originOne f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea' -> callMonad f $ (box $ vector $ Character <$> coreExtraArgsOriginKey, Number 1) : ea') (Just $ \ea' -> callDyad f $ (box $ vector $ Character <$> coreExtraArgsOriginKey, Number 1) : ea') Nothing originOne f }
 backward = PrimitiveAdverb
   { adverbRepr = [G.backward]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsBackwardKey, Number 1)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsBackwardKey, Number 1)]) Nothing backward f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea' -> callMonad f $ (box $ vector $ Character <$> coreExtraArgsBackwardKey, Number 1) : ea') (Just $ \ea' -> callDyad f $ (box $ vector $ Character <$> coreExtraArgsBackwardKey, Number 1) : ea') Nothing backward f }
 bitwise = PrimitiveAdverb
   { adverbRepr = [G.bitwise]
   , adverbContext = Nothing
@@ -455,14 +456,14 @@ approximate = PrimitiveConjunction
   , conjOnFunctionNoun = Just $ \_ f v -> do
     let err = DomainError $ "Approximate right operand must be a scalar real or function returning a scalar real"
     tolerance <- asScalar err v >>= asNumber err >>= asReal err
-    pure $ DerivedFunctionFunctionNoun (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)]) Nothing approximate f v
+    pure $ DerivedFunctionFunctionNoun (Just $ \ea' -> callMonad f $ (box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0) : ea') (Just $ \ea' -> callDyad f $ (box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0) : ea') Nothing approximate f v
   , conjOnFunctionFunction = Just $ \_ f g -> do
     let err = DomainError $ "Approximate right operand must be a scalar real or function returning a scalar real"
-    pure $ DerivedFunctionFunctionFunction (Just $ const $ \y -> do
+    pure $ DerivedFunctionFunctionFunction (Just $ \ea' y -> do
       tolerance <- callMonad g [] y >>= asScalar err >>= asNumber err >>= asReal err
-      callMonad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)] y) (Just $ const $ \x y -> do
+      callMonad f ((box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0) : ea') y) (Just $ \ea' x y -> do
       tolerance <- callDyad g [] x y >>= asScalar err >>= asNumber err >>= asReal err
-      callDyad f [(box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0)] x y) Nothing approximate f g }
+      callDyad f ((box $ vector $ Character <$> coreExtraArgsToleranceKey, Number $ tolerance :+ 0) : ea') x y) Nothing approximate f g }
 fill = PrimitiveConjunction
   { conjRepr = [G.fill]
   , conjContext = Nothing
@@ -470,12 +471,12 @@ fill = PrimitiveConjunction
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Just $ \_ f v -> do
     let fl = toScalar v
-    pure $ DerivedFunctionFunctionNoun (Just $ const $ callMonad f [(box $ vector $ Character <$> coreExtraArgsFillKey, fl)]) (Just $ const $ callDyad f [(box $ vector $ Character <$> coreExtraArgsFillKey, fl)]) Nothing fill f v
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ \y -> do
+    pure $ DerivedFunctionFunctionNoun (Just $ \ea' -> callMonad f $ (box $ vector $ Character <$> coreExtraArgsFillKey, fl) : ea') (Just $ \ea' -> callDyad f $ (box $ vector $ Character <$> coreExtraArgsFillKey, fl) : ea') Nothing fill f v
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ \ea' y -> do
       fl <- toScalar <$> callMonad g [] y
-      callMonad f [(box $ vector $ Character <$> coreExtraArgsFillKey, fl)] y) (Just $ const $ \x y -> do
+      callMonad f ((box $ vector $ Character <$> coreExtraArgsFillKey, fl) : ea') y) (Just $ \ea' x y -> do
       fl <- toScalar <$> callDyad g [] x y
-      callDyad f [(box $ vector $ Character <$> coreExtraArgsFillKey, fl)] x y) Nothing fill f g }
+      callDyad f ((box $ vector $ Character <$> coreExtraArgsFillKey, fl) : ea') x y) Nothing fill f g }
 
 conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
   [ TinyAPL.Primitives.atop
