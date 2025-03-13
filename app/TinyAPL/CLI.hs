@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP, LambdaCase #-}
 
-#define is_linux defined(unix_HOST_OS) || defined(__unix___HOST_OS) || defined(__unix_HOST_OS) || defined(linux_HOST_OS) || defined(__linux___HOST_OS) || defined(__linux_HOST_OS)
+#if defined(unix_HOST_OS) || defined(__unix___HOST_OS) || defined(__unix_HOST_OS) || defined(linux_HOST_OS) || defined(__linux___HOST_OS) || defined(__linux_HOST_OS)
+#define is_linux 1
+#endif
 
 module TinyAPL.CLI where
 
@@ -21,7 +23,7 @@ import Data.List (singleton)
 import Data.IORef
 import System.Info
 import Control.DeepSeq
-#if is_linux
+#ifdef is_linux
 import TinyAPL.Highlighter
 import qualified System.Console.Edited as E
 #endif
@@ -281,13 +283,13 @@ doubleCharacters =
 
 repl :: Context -> IO ()
 repl context = let
-#if is_linux
+#ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
   go :: Int -> Context -> IO ()
 #endif
   go el context = do
-#if is_linux
+#ifdef is_linux
     line <- E.getString el
 #else
     putStr "      "
@@ -329,7 +331,7 @@ repl context = let
     putStrLn $ "* array assignment with array notation of names"
     putStrLn $ "* comments: " ++ [G.comment] ++ " until end of line, " ++ [fst G.inlineComment, snd G.inlineComment] ++ " inline"
     
-#if is_linux
+#ifdef is_linux
     el <- E.edited "TinyAPL"
     E.setEditor el E.Emacs
     E.setPrompt' el "      "
