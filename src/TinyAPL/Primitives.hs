@@ -6,7 +6,6 @@ import qualified TinyAPL.Glyphs as G
 import TinyAPL.Error
 import TinyAPL.Util (headPromise, rollR)
 import TinyAPL.Complex (Complex((:+)))
-import Debug.Trace
 
 
 withCoreExtraArgs1 :: (CoreExtraArgs -> a -> St r) -> ExtraArgs -> a -> St r

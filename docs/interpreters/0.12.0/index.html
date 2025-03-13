@@ -1,0 +1,336 @@
+<!doctype html>
+
+<head>
+	<meta charset="utf-8">
+	<title>TinyAPL Interpreter</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="icon" type="img/svg+xml" href="/logo.svg">
+	<link rel="stylesheet" href="/style.css">
+	<style>
+		kbd {
+			font-family: var(--font-mono);
+			font-size: 0.8em;
+			border: 1px solid black;
+			border-radius: 2px;
+			background: #eee;
+			padding: 1px;
+		}
+
+		label {
+			font-family: var(--font-mono);
+		}
+
+		#loading {
+			font-family: var(--font-mono);
+		}
+
+		#buttons {
+			position: sticky;
+			top: 0;
+			background: white;
+			margin-bottom: 5px;
+			z-index: 100000000000;
+		}
+
+		#buttons button {
+			font-family: var(--font-mono);
+			border: 1px solid black;
+			background-color: unset;
+			width: 2ch;
+			text-align: center;
+			padding: 0;
+			font-size: 1.25em;
+		}
+
+		#keyboard {
+			width: auto;
+			max-width: 100%;
+		}
+
+		#output {
+			height: 90%;
+			font-family: var(--font-mono);
+		}
+
+		#output * {
+			text-wrap: wrap;
+			overflow-wrap: break-word;
+		}
+
+		#input, #highlighted {
+			width: 97.5%;
+			font-family: var(--font-mono);
+			margin: 2.5px;
+			padding: 2.5px;
+			grid-row: 1;
+			grid-column: 1;
+			overflow-x: auto;
+			white-space: nowrap;
+			font-size: 1rem;
+			border: 1px solid black;
+		}
+
+		#input {
+			z-index: 1;
+			color: transparent;
+			background-color: transparent;
+			caret-color: black;
+			resize: none;
+			white-space-collapse: preserve;
+		}
+
+		#highlighted {
+			z-index: 0;
+		}
+
+		#button {
+			width: auto;
+			font-family: var(--font-mono);
+		}
+
+		#input-wrapper {
+			display: inline-grid;
+			width: 90%;
+		}
+
+		#info {
+			font-family: var(--font-mono);
+			font-size: 0.9em;
+			display: none;
+		}
+
+		#info.shown {
+			display: initial;
+		}
+
+		#info .hl {
+			display: inline-block;
+			margin: 0;
+		}
+
+		.char {
+			display: inline-block;
+			min-width: 1ch;
+		}
+
+		.code {
+			color: grey;
+		}
+
+		.error {
+			background: #ffcccc;
+			color: red;
+		}
+
+		.result {
+			color: black;
+		}
+
+		.quad {
+			color: dimgrey;
+		}
+
+		.image {
+			border: 1px solid black;
+			display: block;
+			margin-block: 2px;
+		}
+
+		.pad {
+			display: inline-flex;
+			width: 6ch;
+			height: 1ch;
+			justify-content: end;
+			padding-inline-end: 1ch;
+		}
+
+		.plot {
+			display: inline-block;
+		}
+
+		.result * {
+			vertical-align: top;
+		}
+
+		table.vector, table.vector > tbody > tr, table.vector > tbody > tr > td,
+		table.matrix, table.matrix > tbody > tr, table.matrix > tbody > tr > td,
+		table.dictionary, table.dictionary > tbody > tr {
+			border: 2px solid black;
+			border-collapse: collapse;
+		}
+
+		table.cube {
+			border-collapse: collapse;
+		}
+
+		table.cube td:not(.filler) {
+			border: 2px solid black;
+		}
+
+		.dictionary td:first-child {
+			text-align: right;
+		}
+
+		.dictionary td:nth-child(2) {
+			vertical-align: middle;
+		}
+
+		.struct ul {
+			margin-block: 0;
+		}
+
+		.loader {
+			width: 1ch;
+			height: 1ch;
+			border: 1px solid limegreen;
+			border-bottom-color: transparent;
+			border-radius: 50%;
+			display: inline-block;
+			box-sizing: border-box;
+			animation: loader-rotation 1s linear infinite;
+		}
+
+		.executed {
+			display: flex;
+		}
+
+		@keyframes loader-rotation {
+			0% {
+				transform: rotate(0deg);
+			}
+
+			100% {
+				transform: rotate(360deg);
+			}
+		}
+
+		@keyframes l3 {
+			to {
+				transform: rotate(1turn)
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<h1 id="loading">Loading...</h1>
+	<input id="fancyarrays" type="checkbox" checked>
+	<label for="fancyarrays">Show some arrays as tables</label>
+	<br />
+	<button id="infobutton" type="button" disabled>Info</button>
+	<div id="info">
+		<h1>Info</h1>
+		<h2>Inputting Glyphs</h2>
+		<p>
+			To input glyphs, you can either use the language bar, or the prefix key, which is <kbd id="prefixkey"></kbd>.
+			The keyboard layout is shown in the image below.
+			To input a glyph in the middle column, press the prefix key once and then the corresponding key (shown in the first column), holding <kbd>Shift</kbd> if it's in the upper row.
+			To input a glyph in the last column, press the prefix key twice and then the corresponding key, shifing as before.
+			Note that many (probably most) available glyphs currently correspond to no behavior and will error when ran.
+		</p>
+		<h2>Controls</h2>
+		<p>
+			To run your code, you can press <kbd>Enter</kbd> or the Run button.
+			To edit code you already ran, click on it.
+			Similarly, you can click on an output to put it into the input bar.
+			You can also scroll through previously ran code with <kbd>Shift</kbd>+<kbd>↑</kbd> and <kbd>Shift</kbd>+<kbd>↓</kbd>.
+			To insert a newline in the code, you can press <kbd>Shift</kbd>+<kbd>Enter</kbd>.
+		</p>
+		<h2>Quads</h2>
+		<p>
+			In addition to all the quad names available normally in TinyAPL, there are additional ones:
+		</p>
+		<ul>
+			<li><div>
+				<pre class="hl">⎕Debug</pre>: acts exactly like <pre class="hl">⊢</pre>,
+				except the input(s) are printed to the JavaScript console.
+				Useful if you want to create your own quads and want to look at the JS structure of arrays.
+			</div></li>
+			<li><div>
+				<pre class="hl">id←⎕CreateImage size</pre>: adds a blank image of size <pre class="hl">size</pre>,
+				which can either be a scalar number (creating a square image) or a vector of <pre class="hl">⟨height⋄width⟩</pre>.
+				Returns an <pre class="hl">id</pre> (which is currently a number, but it's an implementation detail)
+				which can be used to update the image display.
+			</div></li>
+			<li><div>
+				<pre class="hl">[id] ⎕DisplayImage data</pre>: renders an image, either to a new display or to the one indicated by <pre class="hl">id</pre>.
+				<pre class="hl">data</pre> should be a real array of rank <pre class="hl">2</pre> or <pre class="hl">3</pre>
+				(if it's of rank <pre class="hl">2</pre> a trailing unit axis is introduced as in <pre class="hl">∧⍤0 data</pre>)
+				and the last axis must be of length <pre class="hl">1</pre>, <pre class="hl">2</pre>, <pre class="hl">3</pre>, <pre class="hl">4</pre>.
+				If the last axis has length <pre class="hl">1</pre>, <pre class="hl">data</pre> is interpreted as grayscale;
+				if it has length <pre class="hl">2</pre>, it is interpreted as grayscale + alpha,
+				if it has length <pre class="hl">3</pre>, it is interpreted as RGB,
+				if it has length <pre class="hl">4</pre>, it is interpreted as RGBA.
+				In all cases, <pre class="hl">0</pre> is the lowest value of the channel and <pre class="hl">1</pre> is the highest value in the channel.
+				All data outside this range is clamped.
+			</div></li>
+			<div><li>
+				<pre class="hl">[delay] ⎕PlayAnimation data</pre>: plays an animation.
+				<pre class="hl">data</pre> should be a real array of rank <pre class="hl">3</pre> or <pre class="hl">4</pre>.
+				Each major cell of <pre class="hl">data</pre> is used as a frame for the animation, in the way described for <pre class="hl">⎕DisplayImage</pre>.
+				<pre class="hl">delay</pre> is the delay between frames in seconds and defaults to <pre class="hl">0.1</pre>.
+			</li></div>
+			<li><div>
+				<pre class="hl">[mode] ⎕ScatterPlot data</pre>: renders a plot.
+				<pre class="hl">data</pre> should be a real array of rank <pre class="hl">2</pre> or <pre class="hl">3</pre>
+				(if it's of rank <pre class="hl">2</pre> a leading unit axis is introduce as in <pre class="hl">∧data</pre>)
+				and the last axis must be of length <pre class="hl">2</pre>.
+				Matrices of <pre class="hl">data</pre> are interpreted as scatter plot datasets, with each vector of the matrix being a <pre class="hl">⟨x⋄y⟩</pre> pair.
+				If <pre class="hl">mode</pre> is provided, it must be one of <pre class="hl">"markers"</pre>, which is the default and displays dots;
+				<pre class="hl">"lines"</pre>, which connects the provided points (and attempts to do so smoothly);
+				<pre class="hl">"lines+markers"</pre>, which displays both.
+			</div></li>
+			<li><div>
+				<pre class="hl">[start] fns ⎕_Graph end</pre>: graphs functions.
+				<pre class="hl">fns</pre> should be a function, a vector of functions, or a vector of pairs of functions and labels.
+				The default labels are the representations of the functions.
+				<pre class="hl">start</pre> and <pre class="hl">end</pre> are the start and end of the graph, respectively. The default <pre class="hl">start</pre> is <pre class="hl">0</pre>.
+				The function is evaluated at <pre class="hl">501</pre> points evenly spaced between <pre class="hl">start</pre> and <pre class="hl">end</pre>.
+			</div></li>
+			<li><div>
+				<pre class="hl">[sampleRate] ⎕PlayAudio data</pre>: plays audio.
+				<pre class="hl">data</pre> should be a real array of rank <pre class="hl">1</pre> or <pre class="hl">2</pre>
+				(if it's of rank <pre class="hl">1</pre> a leading unit axis is introduced as in <pre class="hl">∧data</pre>).
+				Vectors of <pre class="hl">data</pre> are channels containing samples.
+				<pre class="hl">sampleRate</pre> is the sample rate of <pre class="hl">data</pre> and defaults to <pre class="hl">44100</pre>.
+			</div></li>
+			<li><div>
+				<pre class="hl">data←[type] ⎕Fetch url</pre>: fetches data from the web.
+				<pre class="hl">url</pre> must be a string.
+				If <pre class="hl">type</pre> is not provided, <pre class="hl">url</pre> is fetched and <pre class="hl">data</pre> is the text content of the result.
+				If <pre class="hl">type</pre> is provided, <pre class="hl">url</pre> is fetched as binary and it is interpreted according to <pre class="hl">type</pre>:
+				<ul>
+					<li><pre class="hl">1</pre>: bits</li>
+					<li><pre class="hl">8</pre>: unsigned 8-bit</li>
+					<li><pre class="hl">¯8</pre>: signed 8-bit</li>
+					<li><pre class="hl">16</pre>: unsigned 16-bit little endian</li>
+					<li><pre class="hl">¯16</pre>: signed 16-bit little endian</li>
+					<li><pre class="hl">0ᴊ16</pre>: unsigned 16-bit big endian</li>
+					<li><pre class="hl">0ᴊ¯16</pre>: signed 16-bit big endian</li>
+					<li><pre class="hl">32</pre>: unsigned 32-bit little endian</li>
+					<li><pre class="hl">¯32</pre>: signed 32-bit little endian</li>
+					<li><pre class="hl">0ᴊ32</pre>: unsigned 32-bit big endian</li>
+					<li><pre class="hl">0ᴊ¯32</pre>: signed 32-bit big-endian</li>
+					<li><pre class="hl">0.32</pre>: 32-bit float little endian</li>
+					<li><pre class="hl">0ᴊ0.32</pre>: 32-bit float big endian</li>
+					<li><pre class="hl">0.64</pre>: 64-bit float little endian</li>
+					<li><pre class="hl">0ᴊ0.64</pre>: 64-bit float big endian</li>
+				</ul>
+				64-bit integers are not provided as they cannot be losslessly loaded into float64s, TinyAPL's native real number type.
+			</div></li>
+			<li><div>
+				<pre class="hl">⎕last</pre>, <pre class="hl">⎕Last</pre>, <pre class="hl">⎕_Last</pre>, <pre class="hl">⎕_Last_</pre>: access the result of the last successful code ran.
+			</div></li>
+		</ul>
+	</div>
+	<div id="buttons"></div>
+	<img id="keyboard" src="./kbd.svg" alt="TinyAPL keyboard layout" />
+	<pre id="output"></pre>
+	<div id="input-wrapper">
+		<textarea id="input"  autocomplete="off" spellcheck="false" autocorrect="off" cols="1" rows="1"></textarea>
+		<pre id="highlighted" aria-hidden="true"></pre>
+	</div>
+	<button id="button" type="button" disabled>Run</button>
+	<pre id="test"></pre>
+	<script type="module" src="./index.js"></script>
+</body>
