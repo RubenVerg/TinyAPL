@@ -320,30 +320,30 @@ atop = PrimitiveConjunction
   { conjRepr = [G.atop]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
-  , conjOnNounFunction = Nothing
-  , conjOnFunctionNoun = Just $ \ea f r -> pure $ DerivedFunctionFunctionNoun (Just $ \ea' -> withCoreExtraArgs1 (rollR F.atRank1' (callMonad f []) r) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (rollR F.atRank2' (callDyad f []) r) (ea' ++ ea)) Nothing atop f r
+  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ \_ y -> callDyad g [] x y) Nothing Nothing atop x g
+  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ \_ x -> callDyad f [] x y) Nothing Nothing atop f y
   , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.compose (callMonad f []) (callMonad g [])) (Just $ const $ F.atop (callMonad f []) (callDyad g [])) Nothing atop f g }
 over = PrimitiveConjunction
   { conjRepr = [G.over]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
   , conjOnNounFunction = Nothing
-  , conjOnFunctionNoun = Just $ \_ f d -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.atDepth1' (callMonad f []) d) (Just $ const $ F.atDepth2' (callDyad f []) d) Nothing over f d
+  , conjOnFunctionNoun = Nothing
   , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.compose (callMonad f []) (callMonad g [])) (Just $ const $ F.over (callDyad f []) (callMonad g [])) Nothing over f g }
-after = PrimitiveConjunction
-  { conjRepr = [G.after]
+reverseAtop = PrimitiveConjunction
+  { conjRepr = [G.reverseAtop]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
-  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ \_ y -> callDyad g [] x y) Nothing Nothing after x g
-  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ \_ x -> callDyad f [] x y) Nothing Nothing after f y
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.compose (callMonad f []) (callMonad g [])) (Just $ const $ F.after (callDyad f []) (callMonad g [])) Nothing after f g }
-before = PrimitiveConjunction
-  { conjRepr = [G.before]
+  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ \_ y -> callDyad g [] x y) (Just $ \_ x' y -> callDyad g [] x' y) Nothing reverseAtop x g
+  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ \_ x -> callDyad f [] x y) (Just $ \_ x y' -> callDyad f [] x y') Nothing reverseAtop f y
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.reverseCompose (callMonad f []) (callMonad g [])) (Just $ const $ F.reverseAtop (callDyad f []) (callMonad g [])) Nothing reverseAtop f g }
+reverseOver = PrimitiveConjunction
+  { conjRepr = [G.reverseOver]
   , conjContext = Nothing
   , conjOnNounNoun = Nothing
-  , conjOnNounFunction = Just $ \_ x g -> pure $ DerivedFunctionNounFunction (Just $ \_ y -> callDyad g [] x y) (Just $ \_ x' y -> callDyad g [] x' y) Nothing before x g
-  , conjOnFunctionNoun = Just $ \_ f y -> pure $ DerivedFunctionFunctionNoun (Just $ \_ x -> callDyad f [] x y) (Just $ \_ x y' -> callDyad f [] x y') Nothing before f y
-  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.reverseCompose (callMonad f []) (callMonad g [])) (Just $ const $ F.before (callMonad f []) (callDyad g [])) Nothing before f g }
+  , conjOnNounFunction = Nothing
+  , conjOnFunctionNoun = Nothing
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.reverseCompose (callMonad f []) (callMonad g [])) (Just $ const $ F.reverseOver (callMonad f []) (callDyad g [])) Nothing reverseOver f g }
 leftHook = PrimitiveConjunction
   { conjRepr = [G.leftHook]
   , conjContext = Nothing
@@ -379,6 +379,20 @@ rightFork = PrimitiveConjunction
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Nothing
   , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.rightHook (callDyad f []) (callMonad g [])) (Just $ const $ F.rightFork (callDyad f []) (callDyad g [])) Nothing rightFork f g }
+atRank = PrimitiveConjunction
+  { conjRepr = [G.atRank]
+  , conjContext = Nothing
+  , conjOnNounNoun = Nothing
+  , conjOnNounFunction = Nothing
+  , conjOnFunctionNoun = Just $ \ea f r -> pure $ DerivedFunctionFunctionNoun (Just $ \ea' -> withCoreExtraArgs1 (rollR F.atRank1' (callMonad f []) r) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (rollR F.atRank2' (callDyad f []) r) (ea' ++ ea)) Nothing atop f r
+  , conjOnFunctionFunction = Nothing }
+atDepth = PrimitiveConjunction
+  { conjRepr = [G.atDepth]
+  , conjContext = Nothing
+  , conjOnNounNoun = Nothing
+  , conjOnNounFunction = Nothing
+  , conjOnFunctionNoun = Just $ \_ f d -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.atDepth1' (callMonad f []) d) (Just $ const $ F.atDepth2' (callDyad f []) d) Nothing over f d
+  , conjOnFunctionFunction = Nothing }
 repeat = PrimitiveConjunction
   { conjRepr = [G.repeat]
   , conjContext = Nothing
@@ -480,13 +494,15 @@ fill = PrimitiveConjunction
 conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
   [ TinyAPL.Primitives.atop
   , TinyAPL.Primitives.over
-  , TinyAPL.Primitives.after
-  , TinyAPL.Primitives.before
+  , TinyAPL.Primitives.reverseAtop
+  , TinyAPL.Primitives.reverseOver
   , TinyAPL.Primitives.leftHook
   , TinyAPL.Primitives.rightHook
   , TinyAPL.Primitives.mirror
   , TinyAPL.Primitives.leftFork
   , TinyAPL.Primitives.rightFork
+  , TinyAPL.Primitives.atRank
+  , TinyAPL.Primitives.atDepth
   , TinyAPL.Primitives.repeat
   , TinyAPL.Primitives.valences
   , TinyAPL.Primitives.under

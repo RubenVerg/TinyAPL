@@ -38,7 +38,7 @@ const keyboard = [
     ['KeyY', 'y', 'Y', '↑', '↟', 'ᓚ', undefined],
     ['KeyU', 'u', 'U', '↓', '↡', 'ᓗ', undefined],
     ['KeyI', 'i', 'I', '⍳', '⍸', '…', 'ℑ'],
-    ['KeyO', 'o', 'O', '○', '⍥', undefined, undefined],
+    ['KeyO', 'o', 'O', '○', '⍥', '⍜', undefined],
     ['KeyP', 'p', 'P', '◡', '◠', '⏨', '⌓'],
     ['BracketLeft', '[', '{', '←', '⟨', '⦅', '⦃'],
     ['BracketRight', ']', '}', '→', '⟩', '⦆', '⦄'],

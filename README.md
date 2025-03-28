@@ -249,7 +249,7 @@ Marked features are supported, unmarked features are planned
 		* [x] `ᐵ` each-left
 		* [x] `ᑈ` each-right
 		* [x] `ᑣ` boxed (`⊂⍤`)
-		* [x] `ᑒ` on contents (`⍥⊃`)
+		* [x] `ᑒ` on contents (`○⊃`)
 		* [x] `⍣` repeat
 		* [x] `⍣` until
 		* [x] `∙` inner product
@@ -281,7 +281,7 @@ Marked features are supported, unmarked features are planned
 		* [x] `⊸` left hook
 		* [x] `⟜` right hook
 		* [x] `⍤` atop
-		* [x] `⍥` over
+		* [x] `○` over
 		* [x] `⸚` mirror (`_{(⍵ ⍹⍹ ⍺)⍶⍶(⍺ ⍹⍹ ⍵)}_`)
 		* [x] `«`/`»` fork
 		* [x] `⇾` left fork (`_{(⍺ ⍶⍶ ⍵) ⍹⍹ ⍵}_`)

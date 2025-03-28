@@ -1183,11 +1183,17 @@ reverseCompose = flip compose
 atop :: MonadError Error m => (c -> m d) -> (a -> b -> m c) -> a -> b -> m d
 atop f g x y = g x y >>= f
 
+reverseAtop :: MonadError Error m => (a -> b -> m c) -> (c -> m d) -> a -> b -> m d
+reverseAtop = flip atop
+
 over :: MonadError Error m => (b -> b -> m c) -> (a -> m b) -> a -> a -> m c
 over f g x y = do
   x' <- g x
   y' <- g y
   f x' y'
+
+reverseOver :: MonadError Error m => (a -> m b) -> (b -> b -> m c) -> a -> a -> m c
+reverseOver = flip over
 
 after :: MonadError Error m => (a -> c -> m d) -> (b -> m c) -> a -> b -> m d
 after f g x y = do

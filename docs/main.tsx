@@ -24,14 +24,14 @@ types.set('tinyapl', 'text/plain');
 extensions.set('text/plain', [...extensions.get('text/plain')!, 'tinyapl']);
 
 const stylesheets = [
-	'https://unpkg.com/bootstrap@5.3.3/dist/css/bootstrap.min.css',
-	'https://unpkg.com/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
-	'https://unpkg.com/katex@0.16.0/dist/katex.min.css',
+	'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
+	'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
+	'https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css',
 	'/style.css',
 ];
 
 const scripts = [
-	'https://unpkg.com/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js',
+	'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js',
 ];
 
 const splashScript = `

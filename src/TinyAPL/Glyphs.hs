@@ -327,15 +327,17 @@ adverbs =
 
 -- * Conjunctions
 
-atop = '⍤'
-over = '⍥'
-after = '∘'
-before = '⍛'
+atop = '∘'
+over = '○'
+reverseAtop = '⍛'
+reverseOver = '⍜'
 leftHook = '⊸'
 rightHook = '⟜'
 mirror = '⸚'
 leftFork = '⇾'
 rightFork = '⇽'
+atRank = '⍤'
+atDepth = '⍥'
 repeat = '⍣'
 valences = '⁖'
 under = '⍢'
@@ -350,11 +352,13 @@ fill = '⬚'
 conjunctions =
   [ TinyAPL.Glyphs.atop
   , TinyAPL.Glyphs.over
-  , TinyAPL.Glyphs.after
-  , TinyAPL.Glyphs.before
+  , TinyAPL.Glyphs.reverseAtop
+  , TinyAPL.Glyphs.reverseOver
   , TinyAPL.Glyphs.leftHook 
   , TinyAPL.Glyphs.rightHook
   , TinyAPL.Glyphs.mirror
+  , TinyAPL.Glyphs.atRank
+  , TinyAPL.Glyphs.atDepth
   , TinyAPL.Glyphs.leftFork
   , TinyAPL.Glyphs.rightFork
   , TinyAPL.Glyphs.repeat
