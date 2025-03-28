@@ -7,10 +7,3 @@ Proto ⇇ {
 ⋄ 2=t: ■⊂∇¨⊃⍵
 ⋄ 2↗"Prototype of illegal type"
 }
-
-Overtake ⇇ {
-  (|⍺)≤≢⍵: ■⍺↑⍵
-⋄ ⍺>0: ■⍵⍪((⍺-≢⍵)⍪1↓⍴⍵)⍴Proto ⍵
-⋄ ⍺<0: ■⍵⍪⍨((-⍺+≢⍵)⍪1↓⍴⍵)⍴Proto ⍵
-⋄ 7↗"unreachable"
-}

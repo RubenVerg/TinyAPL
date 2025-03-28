@@ -12,10 +12,10 @@ table ⇇ ,
 ⋄ "⊇↑↓⊢⊣⍳⍸⌿∡ℜℑ∪∩§∊⌷"
 ⋄ "ϼ⍪⍒⍋⇂↾⍉⌹↗⊥⊤⋷⍕⍎⍷⊆"
 ⋄ "…⌺⧺ⵧ‥߹∻⫇⋵····ɛ⦋⦌"
-⋄ "········∵ᓗᓚ⍢⤺⑴≈⬚"
+⋄ "······⍜○∵ᓗᓚ⍢⤺⑴≈⬚"
 ⋄ "«»⊩⫣∙⁖⍣⇽⇾⸚⟜⊸⍛∘⍥⍤"
 ⋄ "⫤⊞ᑒᑣ⌓◠◡⌸ᑈᐵ¨↡↟··⍨" ]
 
-Encode⇇{ t←⎕Exists'⍺'⍰⍺⍠table ⋄ bytes←t⍳⍵ ⋄ ∨/bytes≥≢t: 2↗"invalid character" ⋄ bytes }
+Encode⇇table⍛{ bytes←⍺⍳⍵ ⋄ ∨/bytes≥≢⍺: 2↗"invalid character" ⋄ bytes }
 
-Decode⇇{ t←⎕Exists'⍺'⍰⍺⍠table ⋄ ∨/⍵≥≢t: 2↗"invalid code" ⋄ ⍵⊇t }
+Decode⇇table⍛{ ∨/⍵≥≢⍺: 2↗"invalid code" ⋄ ⍵⊇⍺ }

@@ -1096,132 +1096,48 @@ spec = do
 
   describe "conjunctions" $ do
     describe [G.atop] $ do
-      describe "at rank" $ do
-        it "applies functions to cells of specified rank" $ do
-          let a = Array [2, 3, 4] $ Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
-          let b = Array [2, 3, 4] $ Number <$> [24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
-
-          cfam P.atop P.enclose (scalar $ Number -1) a `shouldReturn` pure (vector [box $ Array [3, 4] (Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]), box $ Array [3, 4] (Number <$> [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24])])
-          cfam P.atop P.enclose (scalar $ Number 2) a `shouldReturn` pure (vector [box $ Array [3, 4] (Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]), box $ Array [3, 4] (Number <$> [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24])])
-          cfam P.atop P.enclose (scalar $ Number 1) a `shouldReturn` pure (Array [2, 3]
-            [ box $ vector $ Number <$> [1, 2, 3, 4], box $ vector $ Number <$> [5, 6, 7, 8], box $ vector $ Number <$> [9, 10, 11, 12]
-            , box $ vector $ Number <$> [13, 14, 15, 16], box $ vector $ Number <$> [17, 18, 19, 20], box $ vector $ Number <$> [21, 22, 23, 24] ])
-          
-          cfad P.atop P.pair (scalar $ Number -1) a b `shouldReturn` pure (Array [2, 2]
-            [ box $ Array [3, 4] $ Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], box $ Array [3, 4] $ Number <$> [24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13]
-            , box $ Array [3, 4] $ Number <$> [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], box $ Array [3, 4] $ Number <$> [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1] ])
-          cfad P.atop P.pair (scalar $ Number 1) a b `shouldReturn` pure (Array [2, 3, 2]
-            [ box $ vector $ Number <$> [1, 2, 3, 4], box $ vector $ Number <$> [24, 23, 22, 21]
-            , box $ vector $ Number <$> [5, 6, 7, 8], box $ vector $ Number <$> [20, 19, 18, 17]
-            , box $ vector $ Number <$> [9, 10, 11, 12], box $ vector $ Number <$> [16, 15, 14, 13]
-            
-            , box $ vector $ Number <$> [13, 14, 15, 16], box $ vector $ Number <$> [12, 11, 10, 9]
-            , box $ vector $ Number <$> [17, 18, 19, 20], box $ vector $ Number <$> [8, 7, 6, 5]
-            , box $ vector $ Number <$> [21, 22, 23, 24], box $ vector $ Number <$> [4, 3, 2, 1] ])
-          cfad P.atop P.pair (vector [Number 1, Number 2]) (Array [2, 3] $ Number <$> [1, 2, 3, 4, 5, 6]) b `shouldReturn` pure (Array [2, 2]
-            [ box $ vector $ Number <$> [1, 2, 3], box $ Array [3, 4] $ Number <$> [24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13]
-            , box $ vector $ Number <$> [4, 5, 6], box $ Array [3, 4] $ Number <$> [12, 11, 10, 9, 8,7, 6, 5, 4, 3, 2, 1] ])
-
       describe "atop" $ do
         it "monadically composes functions with F(Gy)" $ do
           cffm P.atop P.times P.minus (scalar $ Number 3) `shouldReturn` pure (scalar $ Number -1)
         it "dyadically composes functions with F(xGy)" $ do
           cffd P.atop P.times P.minus (scalar $ Number 3) (scalar $ Number 5) `shouldReturn` pure (scalar $ Number -1)
+
+      describe "bind" $ do
+        it "binds the left argument to a dyad" $ do
+          cafm P.atop (scalar $ Number 1) P.minus (scalar $ Number 2) `shouldReturn` pure (scalar $ Number -1)
+        it "binds the right argument to a dyad" $ do
+          cfam P.atop P.minus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 1)
+        it "fails if called dyadically" $ do
+          e2m <$> cafd P.atop (scalar $ Number 1) P.minus (scalar $ Number 2) (scalar $ Number 3) `shouldReturn` Nothing
+          e2m <$> cfad P.atop P.minus (scalar $ Number 1) (scalar $ Number 2) (scalar $ Number 3) `shouldReturn` Nothing
     
     describe [G.over] $ do
-      describe "at depth" $ do
-        it "applies functions to nested elements of specified depth" $ do
-          -- Adapted from https://github.com/abrudz/primitives/blob/main/depthQA.aplf
-
-          let a = vector [box $ vector [Number 1, Number 2], box $ vector [Number 3, Number 4], box $ vector [Number 5, Number 6]]
-          let b = vector [box $ vector [Number 10, Number 20, Number 30], box $ vector [Number 40, Number 50, Number 60]]
-          let c = vector [box $ vector $ Character <$> "abc", box $ vector [box $ vector $ Character <$> "def", box $ vector $ Character <$> "ghi"]]
-
-          do
-            Right factImpl <- do
-              prod <- fromRight' <$> af P.reduce P.times
-              incr <- fromRight' <$> caf P.after 1 P.plus
-              nums <- fromRight' <$> cff P.atop incr P.iota
-              cff P.atop prod nums
-            Right factA <- m P.factorial a
-            cfam P.over factImpl (scalar $ Number 0) a `shouldReturn` pure factA
-
-          do
-            Right encloseB <- m P.enclose b
-            Right aPlusEncloseB <- d P.plus a encloseB
-            cfad P.over P.plus (vector [Number 1, Number 2]) a b `shouldReturn` pure aPlusEncloseB
-            cfad P.over P.plus (vector [Number 1, Number 3]) a b `shouldReturn` pure aPlusEncloseB
-            cfad P.over P.plus (vector [Number -1, Number 2]) a b `shouldReturn` pure aPlusEncloseB
-
-          do
-            Right reverseEach <- af P.each P.reverse
-            Right reverseEachEach <- af P.each reverseEach
-            Right reverseC <- m P.reverse c
-            Right reverseEachC <- m reverseEach c
-            Right reverseEachEachC <- m reverseEachEach c
-            Right firstC <- m P.first c
-            Right lastC <- m P.last c
-            Right reverseFirstC <- m P.reverse firstC
-            Right reverseEachLastC <- afm P.each P.reverse lastC
-            cfam P.over P.reverse (scalar $ Number -1) c `shouldReturn` pure reverseEachC
-            cfam P.over P.reverse (scalar $ Number -2) c `shouldReturn` pure reverseEachEachC
-            cfam P.over P.reverse (scalar $ Number -3) c `shouldReturn` pure c
-            cfam P.over P.reverse (scalar $ Number 0) c `shouldReturn` pure c
-            cfam P.over P.reverse (scalar $ Number 1) c `shouldReturn` pure (vector [box $ reverseFirstC, box $ reverseEachLastC])
-            cfam P.over P.reverse (scalar $ Number 2) c `shouldReturn` pure reverseEachC
-            cfam P.over P.reverse (scalar $ Number 3) c `shouldReturn` pure reverseC
-
-          do
-            Right catEach <- af P.each P.catenate
-            Right encloseEachC <- afm P.each P.enclose c
-            Right res <- afd P.each catEach b encloseEachC
-            cfad P.over P.catenate (vector [Number 0, Number -1]) b c `shouldReturn` pure res
-            cfad P.over P.catenate (vector [Number 0, Number 2]) b c `shouldReturn` pure res
-
-          do
-            cfam P.over P.element (scalar $ Number -1) c `shouldReturn` pure (vector [box $ vector $ Character <$> "abc", box $ vector $ Character <$> "defghi"])
-            cfam P.over P.element (scalar $ Number -2) c `shouldReturn` pure (vector [box $ vector (box . vector . singleton . Character <$> "abc"), box $ vector [box $ vector $ Character <$> "def", box $ vector $ Character <$> "ghi"]])
-            cfam P.over P.element (scalar $ Number -3) c `shouldReturn` pure (vector [box $ vector (box . vector . singleton . Character <$> "abc"), box $ vector [box $ vector (box . vector . singleton . Character <$> "def"), box $ vector (box . vector . singleton . Character <$> "ghi")]])
-            cfam P.over P.element (scalar $ Number -4) c `shouldReturn` pure (vector [box $ vector (box . vector . singleton . Character <$> "abc"), box $ vector [box $ vector (box . vector . singleton . Character <$> "def"), box $ vector (box . vector . singleton . Character <$> "ghi")]])
-            cfam P.over P.element (scalar $ Number -0) c `shouldReturn` pure (vector [box $ vector (box . vector . singleton . Character <$> "abc"), box $ vector [box $ vector (box . vector . singleton . Character <$> "def"), box $ vector (box . vector . singleton . Character <$> "ghi")]])
-            cfam P.over P.element (scalar $ Number 1) c `shouldReturn` pure c
-            cfam P.over P.element (scalar $ Number 2) c `shouldReturn` pure (vector [box $ vector $ Character <$> "abc", box $ vector $ Character <$> "defghi"])
-            cfam P.over P.element (scalar $ Number 3) c `shouldReturn` pure (vector $ Character <$> "abcdefghi")
-            cfam P.over P.element (scalar $ Number 4) c `shouldReturn` pure (vector $ Character <$> "abcdefghi")
       describe "over" $ do
         it "monadically composes functions with F(Gy)" $ do
           cffm P.over P.times P.minus (scalar $ Number 3) `shouldReturn` pure (scalar $ Number -1)
-        it "dyadically composes functions with (Gy)F(Gx)" $ do
+        it "dyadically composes functions with (Gx)F(Gy)" $ do
           cffd P.over P.plus P.minus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number -3)
-
-    describe [G.after] $ do
-      describe "after" $ do
-        it "monadically composes functions with F(Gy)" $ do
-          cffm P.after P.times P.minus (scalar $ Number 3) `shouldReturn` pure (scalar $ Number -1)
-        it "dyadically composes functions with xF(Gy)" $ do
-          cffd P.after P.plus P.minus (scalar $ Number 2) (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 1)
-      describe "bind" $ do
-        it "binds the left argument to a dyad" $ do
-          cafm P.after (scalar $ Number 1) P.minus (scalar $ Number 2) `shouldReturn` pure (scalar $ Number -1)
-        it "binds the right argument to a dyad" $ do
-          cfam P.after P.minus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 1)
-        it "fails if called dyadically" $ do
-          e2m <$> cafd P.after (scalar $ Number 1) P.minus (scalar $ Number 2) (scalar $ Number 3) `shouldReturn` Nothing
-          e2m <$> cfad P.after P.minus (scalar $ Number 1) (scalar $ Number 2) (scalar $ Number 3) `shouldReturn` Nothing
     
-    describe [G.before] $ do
-      describe "before" $ do
+    describe [G.reverseAtop] $ do
+      describe "reverse atop" $ do
         it "monadically composes functions with G(Fy)" $ do
-          cffm P.before P.minus P.times (scalar $ Number 3) `shouldReturn` pure (scalar $ Number -1)  
-        it "dyadically composes functions with (Fx)Gy" $ do
-          cffd P.before P.minus P.plus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 1)
+          cffm P.reverseAtop P.minus P.times (scalar $ Number 3) `shouldReturn` pure (scalar $ Number -1)  
+        it "dyadically composes functions with G(xFy)" $ do
+          cffd P.reverseAtop P.minus P.times (scalar $ Number 3) (scalar $ Number 5) `shouldReturn` pure (scalar $ Number -1)
       describe "default bind" $ do
         it "binds the argument to a function when called monadically" $ do
-          cafm P.before (scalar $ Number 1) P.minus (scalar $ Number 2) `shouldReturn` pure (scalar $ Number -1)
-          cfam P.before P.minus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 1)
+          cafm P.reverseAtop (scalar $ Number 1) P.minus (scalar $ Number 2) `shouldReturn` pure (scalar $ Number -1)
+          cfam P.reverseAtop P.minus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 1)
         it "ignores the operand when called dyadically" $ do
-          cafd P.before (scalar $ Number 1) P.plus (scalar $ Number 2) (scalar $ Number 3) `shouldReturn` pure (scalar $ Number 5)
-          cfad P.before P.minus (scalar $ Number 1) (scalar $ Number 5) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 3)
+          cafd P.reverseAtop (scalar $ Number 1) P.plus (scalar $ Number 2) (scalar $ Number 3) `shouldReturn` pure (scalar $ Number 5)
+          cfad P.reverseAtop P.minus (scalar $ Number 1) (scalar $ Number 5) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 3)
+
+    describe [G.reverseOver] $ do
+      describe "reverse over" $ do
+        it "monadically composes functions with G(Fy)" $ do
+          cffm P.reverseOver P.minus P.times (scalar $ Number 3) `shouldReturn` pure (scalar $ Number -1)
+        it "dyadically composes functions with (Fx)G(Fy)" $ do
+          cffd P.reverseOver P.minus P.plus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number -3)
     
     describe [G.leftHook] $ do
       describe "left hook" $ do
@@ -1256,15 +1172,103 @@ spec = do
         it "dyadically composes functions with xF(xGy)" $ do
           cffd P.rightFork P.plus P.minus (scalar $ Number 2) (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 3)
 
+    describe [G.atRank] $ do
+      describe "at rank" $ do
+        it "applies functions to cells of specified rank" $ do
+          let a = Array [2, 3, 4] $ Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+          let b = Array [2, 3, 4] $ Number <$> [24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+          cfam P.atRank P.enclose (scalar $ Number -1) a `shouldReturn` pure (vector [box $ Array [3, 4] (Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]), box $ Array [3, 4] (Number <$> [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24])])
+          cfam P.atRank P.enclose (scalar $ Number 2) a `shouldReturn` pure (vector [box $ Array [3, 4] (Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]), box $ Array [3, 4] (Number <$> [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24])])
+          cfam P.atRank P.enclose (scalar $ Number 1) a `shouldReturn` pure (Array [2, 3]
+            [ box $ vector $ Number <$> [1, 2, 3, 4], box $ vector $ Number <$> [5, 6, 7, 8], box $ vector $ Number <$> [9, 10, 11, 12]
+            , box $ vector $ Number <$> [13, 14, 15, 16], box $ vector $ Number <$> [17, 18, 19, 20], box $ vector $ Number <$> [21, 22, 23, 24] ])
+          
+          cfad P.atRank P.pair (scalar $ Number -1) a b `shouldReturn` pure (Array [2, 2]
+            [ box $ Array [3, 4] $ Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], box $ Array [3, 4] $ Number <$> [24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13]
+            , box $ Array [3, 4] $ Number <$> [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], box $ Array [3, 4] $ Number <$> [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1] ])
+          cfad P.atRank P.pair (scalar $ Number 1) a b `shouldReturn` pure (Array [2, 3, 2]
+            [ box $ vector $ Number <$> [1, 2, 3, 4], box $ vector $ Number <$> [24, 23, 22, 21]
+            , box $ vector $ Number <$> [5, 6, 7, 8], box $ vector $ Number <$> [20, 19, 18, 17]
+            , box $ vector $ Number <$> [9, 10, 11, 12], box $ vector $ Number <$> [16, 15, 14, 13]
+            
+            , box $ vector $ Number <$> [13, 14, 15, 16], box $ vector $ Number <$> [12, 11, 10, 9]
+            , box $ vector $ Number <$> [17, 18, 19, 20], box $ vector $ Number <$> [8, 7, 6, 5]
+            , box $ vector $ Number <$> [21, 22, 23, 24], box $ vector $ Number <$> [4, 3, 2, 1] ])
+          cfad P.atRank P.pair (vector [Number 1, Number 2]) (Array [2, 3] $ Number <$> [1, 2, 3, 4, 5, 6]) b `shouldReturn` pure (Array [2, 2]
+            [ box $ vector $ Number <$> [1, 2, 3], box $ Array [3, 4] $ Number <$> [24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13]
+            , box $ vector $ Number <$> [4, 5, 6], box $ Array [3, 4] $ Number <$> [12, 11, 10, 9, 8,7, 6, 5, 4, 3, 2, 1] ])
+
+    describe [G.atDepth] $ do
+      describe "at depth" $ do
+        it "applies functions to nested elements of specified depth" $ do
+          -- Adapted from https://github.com/abrudz/primitives/blob/main/depthQA.aplf
+
+          let a = vector [box $ vector [Number 1, Number 2], box $ vector [Number 3, Number 4], box $ vector [Number 5, Number 6]]
+          let b = vector [box $ vector [Number 10, Number 20, Number 30], box $ vector [Number 40, Number 50, Number 60]]
+          let c = vector [box $ vector $ Character <$> "abc", box $ vector [box $ vector $ Character <$> "def", box $ vector $ Character <$> "ghi"]]
+
+          do
+            Right factImpl <- do
+              prod <- fromRight' <$> af P.reduce P.times
+              incr <- fromRight' <$> caf P.atop 1 P.plus
+              nums <- fromRight' <$> cff P.atop incr P.iota
+              cff P.atop prod nums
+            Right factA <- m P.factorial a
+            cfam P.atDepth factImpl (scalar $ Number 0) a `shouldReturn` pure factA
+
+          do
+            Right encloseB <- m P.enclose b
+            Right aPlusEncloseB <- d P.plus a encloseB
+            cfad P.atDepth P.plus (vector [Number 1, Number 2]) a b `shouldReturn` pure aPlusEncloseB
+            cfad P.atDepth P.plus (vector [Number 1, Number 3]) a b `shouldReturn` pure aPlusEncloseB
+            cfad P.atDepth P.plus (vector [Number -1, Number 2]) a b `shouldReturn` pure aPlusEncloseB
+
+          do
+            Right reverseEach <- af P.each P.reverse
+            Right reverseEachEach <- af P.each reverseEach
+            Right reverseC <- m P.reverse c
+            Right reverseEachC <- m reverseEach c
+            Right reverseEachEachC <- m reverseEachEach c
+            Right firstC <- m P.first c
+            Right lastC <- m P.last c
+            Right reverseFirstC <- m P.reverse firstC
+            Right reverseEachLastC <- afm P.each P.reverse lastC
+            cfam P.atDepth P.reverse (scalar $ Number -1) c `shouldReturn` pure reverseEachC
+            cfam P.atDepth P.reverse (scalar $ Number -2) c `shouldReturn` pure reverseEachEachC
+            cfam P.atDepth P.reverse (scalar $ Number -3) c `shouldReturn` pure c
+            cfam P.atDepth P.reverse (scalar $ Number 0) c `shouldReturn` pure c
+            cfam P.atDepth P.reverse (scalar $ Number 1) c `shouldReturn` pure (vector [box $ reverseFirstC, box $ reverseEachLastC])
+            cfam P.atDepth P.reverse (scalar $ Number 2) c `shouldReturn` pure reverseEachC
+            cfam P.atDepth P.reverse (scalar $ Number 3) c `shouldReturn` pure reverseC
+
+          do
+            Right catEach <- af P.each P.catenate
+            Right encloseEachC <- afm P.each P.enclose c
+            Right res <- afd P.each catEach b encloseEachC
+            cfad P.atDepth P.catenate (vector [Number 0, Number -1]) b c `shouldReturn` pure res
+            cfad P.atDepth P.catenate (vector [Number 0, Number 2]) b c `shouldReturn` pure res
+
+          do
+            cfam P.atDepth P.element (scalar $ Number -1) c `shouldReturn` pure (vector [box $ vector $ Character <$> "abc", box $ vector $ Character <$> "defghi"])
+            cfam P.atDepth P.element (scalar $ Number -2) c `shouldReturn` pure (vector [box $ vector (box . vector . singleton . Character <$> "abc"), box $ vector [box $ vector $ Character <$> "def", box $ vector $ Character <$> "ghi"]])
+            cfam P.atDepth P.element (scalar $ Number -3) c `shouldReturn` pure (vector [box $ vector (box . vector . singleton . Character <$> "abc"), box $ vector [box $ vector (box . vector . singleton . Character <$> "def"), box $ vector (box . vector . singleton . Character <$> "ghi")]])
+            cfam P.atDepth P.element (scalar $ Number -4) c `shouldReturn` pure (vector [box $ vector (box . vector . singleton . Character <$> "abc"), box $ vector [box $ vector (box . vector . singleton . Character <$> "def"), box $ vector (box . vector . singleton . Character <$> "ghi")]])
+            cfam P.atDepth P.element (scalar $ Number -0) c `shouldReturn` pure (vector [box $ vector (box . vector . singleton . Character <$> "abc"), box $ vector [box $ vector (box . vector . singleton . Character <$> "def"), box $ vector (box . vector . singleton . Character <$> "ghi")]])
+            cfam P.atDepth P.element (scalar $ Number 1) c `shouldReturn` pure c
+            cfam P.atDepth P.element (scalar $ Number 2) c `shouldReturn` pure (vector [box $ vector $ Character <$> "abc", box $ vector $ Character <$> "defghi"])
+            cfam P.atDepth P.element (scalar $ Number 3) c `shouldReturn` pure (vector $ Character <$> "abcdefghi")
+            cfam P.atDepth P.element (scalar $ Number 4) c `shouldReturn` pure (vector $ Character <$> "abcdefghi")
+    
     describe [G.repeat] $ do
       describe "repeat" $ do
         it "repeats a function n times" $ do
-          Right inc <- cfa P.after P.plus (scalar $ Number 1)
+          Right inc <- cfa P.atop P.plus (scalar $ Number 1)
           cfam P.repeat inc (scalar $ Number 3) (scalar $ Number 5) `shouldReturn` pure (scalar $ Number 8)
           cfad P.repeat P.plus (scalar $ Number 5) (scalar $ Number 2) (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 11)
       describe "until" $ do
         it "applies a function until a condition is met" $ do
-          Right step <- cff P.after P.plus P.divide
+          Right step <- cff P.rightHook P.plus P.divide
           cffd P.repeat step P.identical (scalar $ Number 1) (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 1.618033988749897)
 
     describe [G.valences] $ do
@@ -1277,11 +1281,11 @@ spec = do
     describe [G.under] $ do
       describe "under" $ do
         it "applies a function under another" $ do
-          Right inc <- cfa P.after P.plus (scalar $ Number 1)
-          Right t3 <- caf P.after (scalar $ Number 3) P.take
+          Right inc <- cfa P.atop P.plus (scalar $ Number 1)
+          Right t3 <- caf P.atop (scalar $ Number 3) P.take
           cffm P.under inc t3 (vector [Number 3, Number 2, Number 9, Number 5, Number 6]) `shouldReturn` pure (vector [Number 4, Number 3, Number 10, Number 5, Number 6])
         it "substitutes elements of the argument" $ do
-          Right t3 <- caf P.after (scalar $ Number 3) P.take
+          Right t3 <- caf P.atop (scalar $ Number 3) P.take
           cafm P.under (vector [Number 10, Number 11, Number 12]) t3 (vector [Number 2, Number 4, Number 1, Number 5, Number 3]) `shouldReturn` pure (vector [Number 10, Number 11, Number 12, Number 5, Number 3])
           cafm P.under (scalar $ Number 7) t3 (vector [Number 2, Number 9, Number 3, Number 0, Number 1]) `shouldReturn` pure (vector [Number 7, Number 7, Number 7, Number 0, Number 1])
         it "works with sort up right argument" $ do
