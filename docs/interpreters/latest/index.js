@@ -30,7 +30,7 @@ const keyboard = [
     ['Digit0', '0', ')', '∧', '⍲', '⍬', '⦌'],
     ['Minus', '-', '_', '×', '⊗', '⸚', 'ⵧ'],
     ['Equal', '=', '+', '÷', '⊕', '⌹', '⧺'],
-    ['KeyQ', 'q', 'Q', undefined, undefined, '⇾', '⇽'],
+    ['KeyQ', 'q', 'Q', '↗', undefined, '⇾', '⇽'],
     ['KeyW', 'w', 'W', '⍵', '⍹', undefined, undefined],
     ['KeyE', 'e', 'E', '∊', '⍷', '⋵', '⋷'],
     ['KeyR', 'r', 'R', '⍴', '√', 'ϼ', 'ℜ'],

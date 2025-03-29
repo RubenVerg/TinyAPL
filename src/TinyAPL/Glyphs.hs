@@ -198,6 +198,7 @@ execute = '⍎'
 format = '⍕'
 find = '⍷'
 mask = '⋷'
+raises = '↗'
 
 functions =
   [ TinyAPL.Glyphs.plus
@@ -276,7 +277,8 @@ functions =
   , TinyAPL.Glyphs.execute
   , TinyAPL.Glyphs.format
   , TinyAPL.Glyphs.find
-  , TinyAPL.Glyphs.mask ]
+  , TinyAPL.Glyphs.mask
+  , TinyAPL.Glyphs.raises ]
 
 -- * Adverbs
 

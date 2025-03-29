@@ -121,6 +121,19 @@ pow _ _ = throwError expectedNumber
 pow' :: MonadError Error m => Noun -> Noun -> m Noun
 pow' = scalarDyad pow
 
+square :: MonadError Error m => ScalarValue -> m ScalarValue
+square (Number y) = pure $ Number $ y * y
+square _ = throwError expectedNumber
+
+square' :: MonadError Error m => Noun -> m Noun
+square' = scalarMonad square
+
+raises :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
+raises = flip pow
+
+raises' :: MonadError Error m => Noun -> Noun -> m Noun
+raises' = scalarDyad raises
+
 ln :: MonadError Error m => ScalarValue -> m ScalarValue
 ln (Number 0) = throwError $ DomainError "Logarithm of zero"
 ln (Number y) = pure $ Number $ Prelude.log y
