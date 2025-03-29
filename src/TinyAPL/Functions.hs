@@ -7,6 +7,7 @@ import TinyAPL.Error
 import {-# SOURCE #-} TinyAPL.Interpreter
 import TinyAPL.Random
 import TinyAPL.Util
+import TinyAPL.Glyphs (deltaBar)
 
 import Control.Monad.Except (MonadError)
 import qualified TinyAPL.Complex as Cx
@@ -27,6 +28,54 @@ import qualified Data.Map.Strict as Map
 
 -- * Functions
 
+orStruct1 :: String -> (ScalarValue -> St ScalarValue) -> ScalarValue -> St ScalarValue
+orStruct1 name _ x@(Struct ctx) = do
+  scope <- readRef $ contextScope ctx
+  fn <- scopeLookupFunction False (deltaBar : name) scope
+  case fn of
+    Nothing -> throwError $ DomainError $ "Struct does not support operation " ++ name
+    Just fn' -> toScalar <$> callMonad fn' [] (scalar x)
+orStruct1 _ f x = f x
+
+orStruct1EA :: String -> (CoreExtraArgs -> ScalarValue -> St ScalarValue) -> CoreExtraArgs -> ScalarValue -> St ScalarValue
+orStruct1EA name _ cea x@(Struct ctx) = do
+  scope <- readRef $ contextScope ctx
+  fn <- scopeLookupFunction False (deltaBar : name) scope
+  case fn of
+    Nothing -> throwError $ DomainError $ "Struct does not support operation " ++ name
+    Just fn' -> toScalar <$> callMonad fn' (reprCoreExtraArgs cea) (scalar x)
+orStruct1EA _ f cea x = f cea x
+
+orStruct2 :: String -> (ScalarValue -> ScalarValue -> St ScalarValue) -> ScalarValue -> ScalarValue -> St ScalarValue
+orStruct2 name _ x@(Struct ctx) y = do
+  scope <- readRef $ contextScope ctx
+  fn <- scopeLookupFunction False (deltaBar : name) scope
+  case fn of
+    Nothing -> throwError $ DomainError $ "Struct does not support operation " ++ name
+    Just fn' -> toScalar <$> callDyad fn' [] (scalar x) (scalar y)
+orStruct2 name _ x y@(Struct ctx) = do
+  scope <- readRef $ contextScope ctx
+  fn <- scopeLookupFunction False (deltaBar : name) scope
+  case fn of
+    Nothing -> throwError $ DomainError $ "Struct does not support operation " ++ name
+    Just fn' -> toScalar <$> callDyad fn' [] (scalar x) (scalar y)
+orStruct2 _ f x y = f x y
+
+orStruct2EA :: String -> (CoreExtraArgs -> ScalarValue -> ScalarValue -> St ScalarValue) -> CoreExtraArgs -> ScalarValue -> ScalarValue -> St ScalarValue
+orStruct2EA name _ cea x@(Struct ctx) y = do
+  scope <- readRef $ contextScope ctx
+  fn <- scopeLookupFunction False (deltaBar : name) scope
+  case fn of
+    Nothing -> throwError $ DomainError $ "Struct does not support operation " ++ name
+    Just fn' -> toScalar <$> callDyad fn' (reprCoreExtraArgs cea) (scalar x) (scalar y)
+orStruct2EA name _ cea x y@(Struct ctx) = do
+  scope <- readRef $ contextScope ctx
+  fn <- scopeLookupFunction False (deltaBar : name) scope
+  case fn of
+    Nothing -> throwError $ DomainError $ "Struct does not support operation " ++ name
+    Just fn' -> toScalar <$> callDyad fn' (reprCoreExtraArgs cea) (scalar x) (scalar y)
+orStruct2EA _ f cea x y = f cea x y
+
 expectedNumber = DomainError "Expected number"
 expectedReal = DomainError "Expected real"
 expectedInteger = DomainError "Expected integer"
@@ -37,8 +86,11 @@ conjugate :: MonadError Error m => ScalarValue -> m ScalarValue
 conjugate (Number y) = pure $ Number $ Cx.conjugate y
 conjugate _ = throwError expectedNumber
 
-conjugate' :: MonadError Error m => Noun -> m Noun
-conjugate' = scalarMonad conjugate
+conjugateS :: ScalarValue -> St ScalarValue
+conjugateS = orStruct1 "Conjugate" conjugate
+
+conjugate' :: Noun -> St Noun
+conjugate' = scalarMonad conjugateS
 
 add :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 add (Number x) (Number y) = pure $ Number $ x + y
@@ -50,15 +102,21 @@ add (Character x) (Number y) = do
   pure $ Character $ chr $ ord x + y'
 add _ _ = throwError expectedNumber
 
-add' :: MonadError Error m => Noun -> Noun -> m Noun
-add' = scalarDyad add
+addS :: ScalarValue -> ScalarValue -> St ScalarValue
+addS = orStruct2 "Add" add
+
+add' :: Noun -> Noun -> St Noun
+add' = scalarDyad addS
 
 neg :: MonadError Error m => ScalarValue -> m ScalarValue
 neg (Number y) = pure $ Number $ negate y
 neg _ = throwError expectedNumber
 
-neg' :: MonadError Error m => Noun -> m Noun
-neg' = scalarMonad neg
+negS :: ScalarValue -> St ScalarValue
+negS = orStruct1 "Negate" neg
+
+neg' :: Noun -> St Noun
+neg' = scalarMonad negS
 
 sub :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 sub (Number x) (Number y) = pure $ Number $ x - y
@@ -68,16 +126,22 @@ sub (Character x) (Number y) = do
 sub (Character x) (Character y) = pure $ Number $ fromInteger . toInteger $ ord x - ord y
 sub _ _ = throwError expectedNumber
 
-sub' :: MonadError Error m => Noun -> Noun -> m Noun
-sub' = scalarDyad sub
+subS :: ScalarValue -> ScalarValue -> St ScalarValue
+subS = orStruct2 "Subtract" sub
+
+sub' :: Noun -> Noun -> St Noun
+sub' = scalarDyad subS
 
 sign :: MonadError Error m => ScalarValue -> m ScalarValue
 sign (Number y) = pure $ Number $ signum y
 sign (Character y) = pure $ Number $ if isUpperCase y then 1 else if isLowerCase y then -1 else 0
 sign _ = throwError expectedNumber
 
-sign' :: MonadError Error m => Noun -> m Noun
-sign' = scalarMonad sign
+signS :: ScalarValue -> St ScalarValue
+signS = orStruct1 "Sign" sign
+
+sign' :: Noun -> St Noun
+sign' = scalarMonad signS
 
 times :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 times z@(Number 0) _ = pure z
@@ -85,16 +149,22 @@ times _ z@(Number 0) = pure z
 times (Number x) (Number y) = pure $ Number $ x * y
 times _ _ = throwError expectedNumber
 
-times' :: MonadError Error m => Noun -> Noun -> m Noun
-times' = scalarDyad times
+timesS :: ScalarValue -> ScalarValue -> St ScalarValue
+timesS = orStruct2 "Times" times
+
+times' :: Noun -> Noun -> St Noun
+times' = scalarDyad timesS
 
 reciprocal :: MonadError Error m => ScalarValue -> m ScalarValue
 reciprocal (Number 0) = throwError $ DomainError "Divide by zero"
 reciprocal (Number y) = pure $ Number $ recip y
 reciprocal _ = throwError expectedNumber
 
-reciprocal' :: MonadError Error m => Noun -> m Noun
-reciprocal' = scalarMonad reciprocal
+reciprocalS :: ScalarValue -> St ScalarValue
+reciprocalS = orStruct1 "Reciprocal" reciprocal
+
+reciprocal' :: Noun -> St Noun
+reciprocal' = scalarMonad reciprocalS
 
 divide :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 divide (Number 0) (Number 0) = pure $ Number 1
@@ -102,15 +172,21 @@ divide _ (Number 0) = throwError $ DomainError "Divide by zero"
 divide (Number x) (Number y) = pure $ Number $ x / y
 divide _ _ = throwError expectedNumber
 
-divide' :: MonadError Error m => Noun -> Noun -> m Noun
-divide' = scalarDyad divide
+divideS :: ScalarValue -> ScalarValue -> St ScalarValue
+divideS = orStruct2 "Divide" divide
+
+divide' :: Noun -> Noun -> St Noun
+divide' = scalarDyad divideS
 
 ePow :: MonadError Error m => ScalarValue -> m ScalarValue
 ePow (Number y) = pure $ Number $ exp y
 ePow _ = throwError expectedNumber
 
-ePow' :: MonadError Error m => Noun -> m Noun
-ePow' = scalarMonad ePow
+ePowS :: ScalarValue -> St ScalarValue
+ePowS = orStruct1 "Exp" ePow
+
+ePow' :: Noun -> St Noun
+ePow' = scalarMonad ePowS
 
 pow :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 pow (Number x) (Number y) = case asNat (DomainError "") y of
@@ -118,29 +194,41 @@ pow (Number x) (Number y) = case asNat (DomainError "") y of
   Right y' -> pure $ Number $ x ^ y'
 pow _ _ = throwError expectedNumber
 
-pow' :: MonadError Error m => Noun -> Noun -> m Noun
-pow' = scalarDyad pow
+powS :: ScalarValue -> ScalarValue -> St ScalarValue
+powS = orStruct2 "Power" pow
+
+pow' :: Noun -> Noun -> St Noun
+pow' = scalarDyad powS
 
 square :: MonadError Error m => ScalarValue -> m ScalarValue
 square (Number y) = pure $ Number $ y * y
 square _ = throwError expectedNumber
 
-square' :: MonadError Error m => Noun -> m Noun
-square' = scalarMonad square
+squareS :: ScalarValue -> St ScalarValue
+squareS = orStruct1 "Square" square
+
+square' :: Noun -> St Noun
+square' = scalarMonad squareS
 
 raises :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 raises = flip pow
 
-raises' :: MonadError Error m => Noun -> Noun -> m Noun
-raises' = scalarDyad raises
+raisesS :: ScalarValue -> ScalarValue -> St ScalarValue
+raisesS = orStruct2 "Raises" raises
+
+raises' :: Noun -> Noun -> St Noun
+raises' = scalarDyad raisesS
 
 ln :: MonadError Error m => ScalarValue -> m ScalarValue
 ln (Number 0) = throwError $ DomainError "Logarithm of zero"
 ln (Number y) = pure $ Number $ Prelude.log y
 ln _ = throwError expectedNumber
 
-ln' :: MonadError Error m => Noun -> m Noun
-ln' = scalarMonad ln
+lnS :: ScalarValue -> St ScalarValue
+lnS = orStruct1 "Ln" ln
+
+ln' :: Noun -> St Noun
+ln' = scalarMonad lnS
 
 log :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 log (Number 1) (Number 1) = pure $ Number 1
@@ -149,22 +237,31 @@ log _ (Number 0) = throwError $ DomainError "Logarithm of zero"
 log (Number x) (Number y) = pure $ Number $ logBase x y
 log _ _ = throwError expectedNumber
 
-log' :: MonadError Error m => Noun -> Noun -> m Noun
-log' = scalarDyad TinyAPL.Functions.log
+logS :: ScalarValue -> ScalarValue -> St ScalarValue
+logS = orStruct2 "Log" TinyAPL.Functions.log
+
+log' :: Noun -> Noun -> St Noun
+log' = scalarDyad logS
 
 squareRoot :: MonadError Error m => ScalarValue -> m ScalarValue
 squareRoot (Number y) = pure $ Number $ sqrt y
 squareRoot _ = throwError expectedNumber
 
-squareRoot' :: MonadError Error m => Noun -> m Noun
-squareRoot' = scalarMonad squareRoot
+squareRootS :: ScalarValue -> St ScalarValue
+squareRootS = orStruct1 "Sqrt" squareRoot
+
+squareRoot' :: Noun -> St Noun
+squareRoot' = scalarMonad squareRootS
 
 root :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 root (Number x) (Number y) = pure $ Number $ y ** recip x
 root _ _ = throwError expectedNumber
 
-root' :: MonadError Error m => Noun -> Noun -> m Noun
-root' = scalarDyad root
+rootS :: ScalarValue -> ScalarValue -> St ScalarValue
+rootS = orStruct2 "Root" root
+
+root' :: Noun -> Noun -> St Noun
+root' = scalarDyad rootS
 
 matrixInverse :: MonadError Error m => M.Matrix (Complex Double) -> m (M.Matrix (Complex Double))
 matrixInverse y = do
@@ -195,29 +292,41 @@ floor CoreExtraArgs{ coreExtraArgsTolerance = t } (Number y) = pure $ Number $ c
 floor _ (Character y) = pure $ Character $ toLower y
 floor _ _ = throwError expectedNumber
 
-floor' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
-floor' = scalarMonad . TinyAPL.Functions.floor
+floorS :: CoreExtraArgs -> ScalarValue -> St ScalarValue
+floorS = orStruct1EA "Floor" TinyAPL.Functions.floor
+
+floor' :: CoreExtraArgs -> Noun -> St Noun
+floor' = scalarMonad . floorS
 
 ceil :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m ScalarValue
 ceil CoreExtraArgs{ coreExtraArgsTolerance = t } (Number y) = pure $ Number $ complexCeiling' t y
 ceil _ (Character y) = pure $ Character $ toUpper y
 ceil _ _ = throwError expectedNumber
 
-ceil' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
-ceil' = scalarMonad . ceil
+ceilS :: CoreExtraArgs -> ScalarValue -> St ScalarValue
+ceilS = orStruct1EA "Ceiling" ceil
+
+ceil' :: CoreExtraArgs -> Noun -> St Noun
+ceil' = scalarMonad . ceilS
 
 round :: MonadError Error m => ScalarValue -> m ScalarValue
 round (Number y) = pure $ Number $ componentFloor $ y + (0.5 :+ 0.5)
 round _ = throwError expectedNumber
 
-round' :: MonadError Error m => Noun -> m Noun
-round' = scalarMonad TinyAPL.Functions.round
+roundS :: ScalarValue -> St ScalarValue
+roundS = orStruct1 "Round" TinyAPL.Functions.round
+
+round' :: Noun -> St Noun
+round' = scalarMonad roundS
 
 roundTo :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 roundTo = commute $ leftFork (TinyAPL.Functions.round `atop` divide) times
 
-roundTo' :: MonadError Error m => Noun -> Noun -> m Noun
-roundTo' = scalarDyad roundTo
+roundToS :: ScalarValue -> ScalarValue -> St ScalarValue
+roundToS = orStruct2 "RoundTo" roundTo
+
+roundTo' :: Noun -> Noun -> St Noun
+roundTo' = scalarDyad roundToS
 
 min :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 min x y = pure $ Prelude.min x y
@@ -235,15 +344,21 @@ lcm :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m Sc
 lcm CoreExtraArgs{ coreExtraArgsTolerance = t } (Number x) (Number y) = pure $ Number $ complexLCM' t x y
 lcm _ _ _ = throwError expectedNumber
 
-lcm' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-lcm' = scalarDyad . TinyAPL.Functions.lcm
+lcmS :: CoreExtraArgs -> ScalarValue -> ScalarValue -> St ScalarValue
+lcmS = orStruct2EA "And" TinyAPL.Functions.lcm
+
+lcm' :: CoreExtraArgs -> Noun -> Noun -> St Noun
+lcm' = scalarDyad . lcmS
 
 gcd :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m ScalarValue
 gcd CoreExtraArgs{ coreExtraArgsTolerance = t } (Number x) (Number y) = pure $ Number $ complexGCD' t x y
 gcd _ _ _ = throwError expectedNumber
 
-gcd' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-gcd' = scalarDyad . TinyAPL.Functions.gcd
+gcdS :: CoreExtraArgs -> ScalarValue -> ScalarValue -> St ScalarValue
+gcdS = orStruct2EA "Or" TinyAPL.Functions.gcd
+
+gcd' :: CoreExtraArgs -> Noun -> Noun -> St Noun
+gcd' = scalarDyad . gcdS
 
 nand :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 nand (Number 0) (Number 0) = pure $ Number 1
@@ -252,8 +367,11 @@ nand (Number 1) (Number 0) = pure $ Number 1
 nand (Number 1) (Number 1) = pure $ Number 0
 nand _ _ = throwError expectedBool
 
-nand' :: MonadError Error m => Noun -> Noun -> m Noun
-nand' = scalarDyad nand
+nandS :: ScalarValue -> ScalarValue -> St ScalarValue
+nandS = orStruct2 "Nand" nand
+
+nand' :: Noun -> Noun -> St Noun
+nand' = scalarDyad nandS
 
 nor :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 nor (Number 0) (Number 0) = pure $ Number 1
@@ -262,94 +380,133 @@ nor (Number 1) (Number 0) = pure $ Number 0
 nor (Number 1) (Number 1) = pure $ Number 0
 nor _ _ = throwError expectedBool
 
-nor' :: MonadError Error m => Noun -> Noun -> m Noun
-nor' = scalarDyad nor
+norS :: ScalarValue -> ScalarValue -> St ScalarValue
+norS = orStruct2 "Nor" nor
+
+nor' :: Noun -> Noun -> St Noun
+nor' = scalarDyad norS
 
 imaginary :: MonadError Error m => ScalarValue -> m ScalarValue
 imaginary (Number y) = pure $ Number $ y * i
 imaginary _ = throwError expectedNumber
 
-imaginary' :: MonadError Error m => Noun -> m Noun
-imaginary' = scalarMonad imaginary
+imaginaryS :: ScalarValue -> St ScalarValue
+imaginaryS = orStruct1 "Imaginary" imaginary
+
+imaginary' :: Noun -> St Noun
+imaginary' = scalarMonad imaginaryS
 
 cartesian :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 cartesian (Number x) (Number y) = pure $ Number $ x + y * i
 cartesian _ _ = throwError expectedNumber
 
-cartesian' :: MonadError Error m => Noun -> Noun -> m Noun
-cartesian' = scalarDyad cartesian
+cartesianS :: ScalarValue -> ScalarValue -> St ScalarValue
+cartesianS = orStruct2 "Cartesian" cartesian
+
+cartesian' :: Noun -> Noun -> St Noun
+cartesian' = scalarDyad cartesianS
 
 unitPolar :: MonadError Error m => ScalarValue -> m ScalarValue
 unitPolar (Number y) = pure $ Number $ exp $ i * y
 unitPolar _ = throwError expectedNumber
 
-unitPolar' :: MonadError Error m => Noun -> m Noun
-unitPolar' = scalarMonad unitPolar
+unitPolarS :: ScalarValue -> St ScalarValue
+unitPolarS = orStruct1 "UnitPolar" unitPolar
+
+unitPolar' :: Noun -> St Noun
+unitPolar' = scalarMonad unitPolarS
 
 polar :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 polar (Number x) (Number y) = pure $ Number $ x * exp (i * y)
 polar _ _ = throwError expectedNumber
 
-polar' :: MonadError Error m => Noun -> Noun -> m Noun
-polar' = scalarDyad polar
+polarS :: ScalarValue -> ScalarValue -> St ScalarValue
+polarS = orStruct2 "Polar" polar
+
+polar' :: Noun -> Noun -> St Noun
+polar' = scalarDyad polarS
 
 abs :: MonadError Error m => ScalarValue -> m ScalarValue
 abs (Number y) = pure $ Number $ Prelude.abs y
 abs (Character y) = pure $ Character $ toLower $ toUpper y
 abs _ = throwError expectedNumber
 
-abs' :: MonadError Error m => Noun -> m Noun
-abs' = scalarMonad TinyAPL.Functions.abs
+absS :: ScalarValue -> St ScalarValue
+absS = orStruct1 "Abs" TinyAPL.Functions.abs
+
+abs' :: Noun -> St Noun
+abs' = scalarMonad absS
 
 remainder :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m ScalarValue
 remainder CoreExtraArgs{ coreExtraArgsTolerance = t } (Number x) (Number y) = pure $ Number $ complexRemainder' t x y
 remainder _ _ _ = throwError expectedNumber
 
-remainder' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-remainder' = scalarDyad . remainder
+remainderS :: CoreExtraArgs -> ScalarValue -> ScalarValue -> St ScalarValue
+remainderS = orStruct2EA "Modulo" remainder
+
+remainder' :: CoreExtraArgs -> Noun -> Noun -> St Noun
+remainder' = scalarDyad . remainderS
 
 phase :: MonadError Error m => ScalarValue -> m ScalarValue
 phase (Number y) = pure $ Number $ Cx.phase y :+ 0
 phase _ = throwError expectedNumber
 
-phase' :: MonadError Error m => Noun -> m Noun
-phase' = scalarMonad phase
+phaseS :: ScalarValue -> St ScalarValue
+phaseS = orStruct1 "Phase" phase
+
+phase' :: Noun -> St Noun
+phase' = scalarMonad phaseS
 
 real :: MonadError Error m => ScalarValue -> m ScalarValue
 real (Number y) = pure $ Number $ Cx.realPart y :+ 0
 real _ = throwError expectedNumber
 
-real' :: MonadError Error m => Noun -> m Noun
-real' = scalarMonad real
+realS :: ScalarValue -> St ScalarValue
+realS = orStruct1 "RealPart" real
+
+real' :: Noun -> St Noun
+real' = scalarMonad realS
 
 imag :: MonadError Error m => ScalarValue -> m ScalarValue
 imag (Number y) = pure $ Number $ Cx.imagPart y :+ 0
 imag _ = throwError expectedNumber
 
-imag' :: MonadError Error m => Noun -> m Noun
-imag' = scalarMonad imag
+imagS :: ScalarValue -> St ScalarValue
+imagS = orStruct1 "ImaginaryPart" imag
+
+imag' :: Noun -> St Noun
+imag' = scalarMonad imagS
 
 arctan :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 arctan (Number x) (Number y) = pure $ Number $ Cx.phase (y + x * i) :+ 0
 arctan _ _ = throwError expectedNumber
 
-arctan' :: MonadError Error m => Noun -> Noun -> m Noun
-arctan' = scalarDyad arctan
+arctanS :: ScalarValue -> ScalarValue -> St ScalarValue
+arctanS = orStruct2 "Arctan" arctan
+
+arctan' :: Noun -> Noun -> St Noun
+arctan' = scalarDyad arctanS
 
 not :: MonadError Error m => ScalarValue -> m ScalarValue
 not (Number y) = pure $ Number $ 1 - y
 not _ = throwError expectedNumber
 
-not' :: MonadError Error m => Noun -> m Noun
-not' = scalarMonad TinyAPL.Functions.not
+notS :: ScalarValue -> St ScalarValue
+notS = orStruct1 "Not" TinyAPL.Functions.not
+
+not' :: Noun -> St Noun
+not' = scalarMonad notS
 
 increment :: MonadError Error m => ScalarValue -> m ScalarValue
 increment (Number y) = pure $ Number $ y + 1
 increment (Character y) = pure $ Character $ chr $ ord y + 1
 increment _ = throwError expectedNumber
 
-increment' :: MonadError Error m => Noun -> m Noun
-increment' = scalarMonad increment
+incrementS :: ScalarValue -> St ScalarValue
+incrementS = orStruct1 "Increment" increment
+
+increment' :: Noun -> St Noun
+increment' = scalarMonad incrementS
 
 decrement :: MonadError Error m => ScalarValue -> m ScalarValue
 decrement (Number y) = pure $ Number $ y - 1
@@ -357,15 +514,21 @@ decrement (Character '\0') = pure $ Character '\0'
 decrement (Character y) = pure $ Character $ chr $ ord y - 1
 decrement _ = throwError expectedNumber
 
-decrement' :: MonadError Error m => Noun -> m Noun
-decrement' = scalarMonad decrement
+decrementS :: ScalarValue -> St ScalarValue
+decrementS = orStruct1 "Decrement" decrement
+
+decrement' :: Noun -> St Noun
+decrement' = scalarMonad decrementS
 
 span :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 span (Number x) (Number y) = pure $ Number $ 1 + x - y
 span _ _ = throwError expectedNumber
 
-span' :: MonadError Error m => Noun -> Noun -> m Noun
-span' = scalarDyad TinyAPL.Functions.span
+spanS :: ScalarValue -> ScalarValue -> St ScalarValue
+spanS = orStruct2 "Span" TinyAPL.Functions.span
+
+span' :: Noun -> Noun -> St Noun
+span' = scalarDyad spanS
 
 equal :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m Bool
 equal CoreExtraArgs{ coreExtraArgsTolerance = t } x y = pure $ equalsT t x y
@@ -683,7 +846,7 @@ indexGenerator' cea arr = do
   else indexGeneratorN cea is
 
 range :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-range cea = commute $ (indexGenerator' cea{ coreExtraArgsOrigin = 0 } `atop` span') `leftFork` eachLeft add'
+range cea = commute $ (indexGenerator' cea{ coreExtraArgsOrigin = 0 } `atop` (scalarDyad TinyAPL.Functions.span)) `leftFork` eachLeft (scalarDyad add)
 
 oneRange :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 oneRange cea = range cea $ scalar $ Number 1
@@ -958,8 +1121,11 @@ factorial (Number n) = case asInt (DomainError "") n of
     | otherwise -> pure $ Number $ Gamma.factorial i
 factorial _ = throwError expectedNumber
 
-factorial' :: MonadError Error m => Noun -> m Noun
-factorial' = scalarMonad factorial
+factorialS :: ScalarValue -> St ScalarValue
+factorialS = orStruct1 "Factorial" factorial
+
+factorial' :: Noun -> St Noun
+factorial' = scalarMonad factorialS
 
 binomial :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 binomial (Number x) (Number y) = let
@@ -980,8 +1146,11 @@ binomial (Number x) (Number y) = let
   in Number <$> go y x
 binomial _ _ = throwError expectedNumber
 
-binomial' :: MonadError Error m => Noun -> Noun -> m Noun
-binomial' = scalarDyad binomial
+binomialS :: ScalarValue -> ScalarValue -> St ScalarValue
+binomialS = orStruct2 "Binomial" binomial
+
+binomial' :: Noun -> Noun -> St Noun
+binomial' = scalarDyad binomialS
 
 raise :: MonadError Error m => Int -> String -> m ()
 raise = throwError .: fromErrorCode
@@ -1173,17 +1342,17 @@ mask' cea n hs = do
   wh <- find' cea{ coreExtraArgsBackward = False } n' hs >>= indices defaultCoreExtraArgs
   inds <- indexGeneratorN defaultCoreExtraArgs (arrayShape n') >>= ravel'
   allInds <- indexGeneratorN defaultCoreExtraArgs (arrayShape hs)
-  masks <- each1 (eachLeft add' inds >=> TinyAPL.Functions.count cea allInds) wh >>= mix cea >>= pure . majorCells
+  masks <- each1 (eachLeft (scalarDyad add) inds >=> TinyAPL.Functions.count cea allInds) wh >>= mix cea >>= pure . majorCells
   nonOverlapping <- Prelude.reverse . fst <$> foldlM (\(f, a) mask -> do
-    ov <- arrayContents <$> lcm' defaultCoreExtraArgs a mask
+    ov <- arrayContents <$> (scalarDyad . TinyAPL.Functions.lcm) defaultCoreExtraArgs a mask
     if any (== Number 1) ov then pure (f, a)
     else do
-      a' <- gcd' defaultCoreExtraArgs a mask
+      a' <- (scalarDyad . TinyAPL.Functions.gcd) defaultCoreExtraArgs a mask
       pure (mask : f, a')) ([], (arrayReshapedNE (arrayShape hs) $ Number <$> 0 NE.:| Prelude.repeat 0)) masks
-  zipWithM (\(Array sh cs) ind -> Array sh <$> mapM (times (Number $ fromIntegral ind :+ 0)) cs) nonOverlapping [1..] >>= fold add' (arrayReshapedNE (arrayShape hs) $ Number <$> 0 NE.:| Prelude.repeat 0)
+  zipWithM (\(Array sh cs) ind -> Array sh <$> mapM (times (Number $ fromIntegral ind :+ 0)) cs) nonOverlapping [1..] >>= fold (scalarDyad add) (arrayReshapedNE (arrayShape hs) $ Number <$> 0 NE.:| Prelude.repeat 0)
 
 histogram :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
-histogram cea@CoreExtraArgs{ coreExtraArgsOrigin = o } = (((indexGenerator' cea `compose` first defaultCoreExtraArgs) `compose` reduce' max') `compose` ((flip sub' $ scalar $ Number $ fromIntegral o) `compose` increment')) `leftHook` TinyAPL.Functions.count defaultCoreExtraArgs
+histogram cea@CoreExtraArgs{ coreExtraArgsOrigin = o } = (((indexGenerator' cea `compose` first defaultCoreExtraArgs) `compose` reduce' max') `compose` ((flip (scalarDyad sub) $ scalar $ Number $ fromIntegral o) `compose` (scalarMonad increment))) `leftHook` TinyAPL.Functions.count defaultCoreExtraArgs
 
 -- * Modifiers
 

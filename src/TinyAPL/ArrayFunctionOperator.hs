@@ -1392,3 +1392,14 @@ parseCoreExtraArgs ea = do
     , coreExtraArgsOrigin = origin
     , coreExtraArgsFill = fill
     , coreExtraArgsBackward = backward }
+
+reprCoreExtraArgs :: CoreExtraArgs -> ExtraArgs
+reprCoreExtraArgs CoreExtraArgs{ coreExtraArgsTolerance = tolerance, coreExtraArgsOrigin = origin, coreExtraArgsFill = fill, coreExtraArgsBackward = backward } =
+  let
+    key = box . vector . fmap Character
+  in
+    [ (key coreExtraArgsToleranceKey, Number $ tolerance :+ 0)
+    , (key coreExtraArgsOriginKey, Number $ (fromIntegral origin) :+ 0)
+    , (key coreExtraArgsBackwardKey, boolToScalar backward) ] ++ case fill of
+      Nothing -> []
+      Just f -> [(key coreExtraArgsFillKey, f)]

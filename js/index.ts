@@ -285,6 +285,7 @@ async function fancyShow(result: tinyapl.Value, depth: number = 0): Promise<Node
 		return table;
 	} else if (result.type === 'array' && result.shape.length === 0 && typeof result.contents[0] === 'object' && !Array.isArray(result.contents[0]) && (result.contents[0] as tinyapl.ScalarValue & { type: string }).type === 'struct') {
 		const struct = result.contents[0] as tinyapl.Struct;
+		if ('∆show' in struct.entries) return fancyShow(struct.entries['∆show'][1]);
 		const details = document.createElement('details');
 		details.open = depth === 0;
 		const summary = document.createElement('summary');
@@ -472,10 +473,10 @@ input.addEventListener('keydown', evt => {
 	} else if (evt.key === 'Enter' && !evt.shiftKey) {
 		evt.preventDefault();
 		if (!button.disabled) return run();
-	} else if (evt.key === 'ArrowUp' && evt.shiftKey && !evt.altKey && !evt.ctrlKey && !evt.metaKey) {
+	} else if (evt.key === 'ArrowUp' && evt.ctrlKey && !evt.altKey && !evt.shiftKey && !evt.metaKey) {
 		lastIndex--;
 		loadLast();
-	} else if (evt.key === 'ArrowDown' && evt.shiftKey && !evt.altKey && !evt.ctrlKey && !evt.metaKey) {
+	} else if (evt.key === 'ArrowDown' && evt.ctrlKey && !evt.altKey && !evt.shiftKey && !evt.metaKey) {
 		lastIndex++;
 		loadLast();
 	}
