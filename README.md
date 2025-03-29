@@ -124,6 +124,8 @@ Marked features are supported, unmarked features are planned
 		* [x] `⧺` increment
 		* [x] `ⵧ` decrement
 		* [x] `ⵧ` span
+		* [x] `↗` square
+		* [x] `↗` raises
 		* [x] `⊥` decode
 		* [x] `⊥` base 2 decode
 		* [x] `⊤` encode
@@ -233,7 +235,7 @@ Marked features are supported, unmarked features are planned
 		* [x] `⊣` left
 		* [x] `⍎` execute
 		* [x] `⍕` format
-		* [x] `↗` raise
+		* [x] `⨳` raise
 		* [x] `⇂` minimal (TAO minimum)
 		* [x] `↾` maximal (TAO maximum)
 	* operators

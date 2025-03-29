@@ -103,6 +103,7 @@ execute = PrimitiveFunction (Just $ const F.execute') Nothing [G.execute] Nothin
 format = PrimitiveFunction (Just $ const F.format') Nothing [G.format] Nothing
 find = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.find') [G.find] Nothing
 mask = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.mask') [G.mask] Nothing
+raises = PrimitiveFunction (Just $ const F.square') (Just $ const F.raises') [G.raises] Nothing
 
 functions = (\x -> (headPromise $ functionRepr x, x)) <$>
   [ TinyAPL.Primitives.plus
@@ -181,7 +182,8 @@ functions = (\x -> (headPromise $ functionRepr x, x)) <$>
   , TinyAPL.Primitives.execute
   , TinyAPL.Primitives.format
   , TinyAPL.Primitives.find
-  , TinyAPL.Primitives.mask ]
+  , TinyAPL.Primitives.mask
+  , TinyAPL.Primitives.raises ]
 
 -- * Primitive adverbs
 

@@ -18,7 +18,7 @@ function zip(as, bs) {
 const prefix = { code: 'Backquote', sym: '`' };
 const keyboard = [
     ['Backquote', '`', '~', undefined, '⍨', '⋄', '⌺'],
-    ['Digit1', '1', '!', '¨', '↗', undefined, '⑴'],
+    ['Digit1', '1', '!', '¨', '⨳', undefined, '⑴'],
     ['Digit2', '2', '@', '¯', undefined, undefined, undefined],
     ['Digit3', '3', '#', undefined, '⍒', undefined, undefined],
     ['Digit4', '4', '$', '≤', '⍋', '⊴', undefined],
@@ -30,7 +30,7 @@ const keyboard = [
     ['Digit0', '0', ')', '∧', '⍲', '⍬', '⦌'],
     ['Minus', '-', '_', '×', '⊗', '⸚', 'ⵧ'],
     ['Equal', '=', '+', '÷', '⊕', '⌹', '⧺'],
-    ['KeyQ', 'q', 'Q', undefined, undefined, '⇾', '⇽'],
+    ['KeyQ', 'q', 'Q', '↗', undefined, '⇾', '⇽'],
     ['KeyW', 'w', 'W', '⍵', '⍹', undefined, undefined],
     ['KeyE', 'e', 'E', '∊', '⍷', '⋵', '⋷'],
     ['KeyR', 'r', 'R', '⍴', '√', 'ϼ', 'ℜ'],

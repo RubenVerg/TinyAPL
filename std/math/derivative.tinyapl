@@ -1,4 +1,4 @@
-D  ↚ { cat←⊃⍵ ⋄ ⎕inspect→primitive≡cat: ■Dp ⊇⍵ ⋄ (cat≡'r')∧(⊏»≡1⊇⍵): ■Df⟨2⊇0 ⎕Inspect 2⊇⍵ ⋄ 3⊇0 ⎕Inspect 2⊇⍵ ⋄ 3⊇⍵⟩ ⋄ 2↗"unsupported function" }
+D  ↚ { cat←⊃⍵ ⋄ ⎕inspect→primitive≡cat: ■Dp ⊇⍵ ⋄ (cat≡'r')∧(⊏»≡1⊇⍵): ■Df⟨2⊇0 ⎕Inspect 2⊇⍵ ⋄ 3⊇0 ⎕Inspect 2⊇⍵ ⋄ 3⊇⍵⟩ ⋄ 2⨳"unsupported function" }
 
 Dp ↚ { ⍵⌷⟨+: 1⍨ ⋄ -: ¯1⍨ ⋄ ÷: ¯1«÷»(*∘2) ⋄ *: * ⋄ ⍟: ÷ ⋄ √: 0.5«÷»√ ⋄ |: × ⋄ ⧺: ⊢ ⋄ ⵧ: ⊢ ⋄ ⊢: 1⍨ ⋄ ⎕math→Sin: ⎕math→Cos ⋄ ⎕math→Cos: ¯1«×»⎕math→Sin ⟩ }
 

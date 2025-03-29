@@ -1,7 +1,7 @@
 ⍝⍝ std:prototype: functions that work with a pseudo-prototype system
 
 Proto ⇇ {
-  t←{⍵≡⍬:2↗"Prototype of empty array"⋄⊃⍵},⎕Type ⍵
+  t←{⍵≡⍬:2⨳"Prototype of empty array"⋄⊃⍵},⎕Type ⍵
 ⋄ 0=t: ■0
 ⋄ 1=t: ■' '
 ⋄ 2=t: ■⊂∇¨⊃⍵
