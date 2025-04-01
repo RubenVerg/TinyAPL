@@ -214,8 +214,8 @@ Marked features are supported, unmarked features are planned
 		* [x] `⍪` catenate
 		* [x] `⍴` reshape
 		* [x] `ϼ` rerank (generalized version of promote/demote: introduce leading length-1 axes or combine leading axes)
-		* [x] `⊖` reverse
-		* [x] `⊖` rotate
+		* [x] `⌽` reverse
+		* [x] `⌽` rotate
 		* [x] `⍉` transpose
 		* [x] `⍉` reorder axes
 		* [x] `∧` promote (introduce leading axis)
