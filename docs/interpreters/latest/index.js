@@ -24,7 +24,7 @@ const keyboard = [
     ['Digit4', '4', '$', '≤', '⍋', '⊴', undefined],
     ['Digit5', '5', '%', '⬚', '≈', '⤺', undefined],
     ['Digit6', '6', '^', '≥', '⍉', '⊵', undefined],
-    ['Digit7', '7', '&', undefined, '⊖', undefined, undefined],
+    ['Digit7', '7', '&', '⌽', undefined, undefined, undefined],
     ['Digit8', '8', '*', '≠', '⍣', '⍟', '∞'],
     ['Digit9', '9', '(', '∨', '⍱', '∻', '⦋'],
     ['Digit0', '0', ')', '∧', '⍲', '⍬', '⦌'],

@@ -8,7 +8,7 @@ table ⇇ ,
 ⋄ "`abcdefghijklmno"
 ⋄ "pqrstuvwxyz{|}~·"
 ⋄ "⍺⍵⍶⍹⍬×÷⍟√⌊⌈⸠∧∨⍲⍱"
-⋄ "≤≥≠⊲⊳⊴⊵≡≢⊕⊗⍴⊖⍮⊂⊃"
+⋄ "≤≥≠⊲⊳⊴⊵≡≢⊕⊗⍴⌽⍮⊂⊃"
 ⋄ "⊇↑↓⊢⊣⍳⍸⌿∡ℜℑ∪∩§∊⌷"
 ⋄ "ϼ⍪⍒⍋⇂↾⍉⌹↗⊥⊤⋷⍕⍎⍷⊆"
 ⋄ "…⌺⧺ⵧ‥߹∻⫇⋵⨳···ɛ⦋⦌"
@@ -16,6 +16,6 @@ table ⇇ ,
 ⋄ "«»⊩⫣∙⁖⍣⇽⇾⸚⟜⊸⍛∘⍥⍤"
 ⋄ "⫤⊞ᑒᑣ⌓◠◡⌸ᑈᐵ¨↡↟··⍨" ]
 
-Encode⇇table⍛{ bytes←⍺⍳⍵ ⋄ ∨/bytes≥≢⍺: 2↗"invalid character" ⋄ bytes }
+Encode⇇table⍛{ bytes←⍺⍳⍵ ⋄ ∨/bytes≥≢⍺: 2⨳"invalid character" ⋄ bytes }
 
-Decode⇇table⍛{ ∨/⍵≥≢⍺: 2↗"invalid code" ⋄ ⍵⊇⍺ }
+Decode⇇table⍛{ ∨/⍵≥≢⍺: 2⨳"invalid code" ⋄ ⍵⊇⍺ }

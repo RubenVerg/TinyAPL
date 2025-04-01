@@ -4,4 +4,4 @@ pattern: 'r←[x]⊥y'
 name: Decode
 ---
 
-If `x` is not provided, it defaults to the scalar `2`. If `x` is a scalar, it is reshaped to the shape of `y`. Operates on vectors of `x` and `y`. The vector `y` is interpreted in the mixed base defined by `x`, which is read as a list of weights: each value of `y` is multiplied with the corresponding value from `⊖×/↟¯1↓1⍪⊖x` and summed. Supports the `backward` extra argument, which reverses the vectors of `y` before decoding.
+If `x` is not provided, it defaults to the scalar `2`. If `x` is a scalar, it is reshaped to the shape of `y`. Operates on vectors of `x` and `y`. The vector `y` is interpreted in the mixed base defined by `x`, which is read as a list of weights: each value of `y` is multiplied with the corresponding value from `⌽×/↟¯1↓1⍪⌽x` and summed. Supports the `backward` extra argument, which reverses the vectors of `y` before decoding.
