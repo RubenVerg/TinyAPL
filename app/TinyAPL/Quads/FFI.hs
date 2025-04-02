@@ -33,13 +33,16 @@ data FFIType
   | FFIUInt8
   | FFIUInt16
   | FFIUInt32
+  | FFIUInt64
   | FFIInt8
   | FFIInt16
   | FFIInt32
+  | FFIInt64
   | FFIUInt
   | FFIInt
   | FFIULong
   | FFILong
+  | FFIUSize
   | FFIFloat
   | FFIDouble
   | FFIChar8
@@ -91,13 +94,16 @@ ffiArg FFIVoid _ = throwError $ DomainError "FFI void argument"
 ffiArg FFIUInt8 arr = ffiArgIntegral "uint8" FFI.argWord8 arr
 ffiArg FFIUInt16 arr = ffiArgIntegral "uint16" FFI.argWord16 arr
 ffiArg FFIUInt32 arr = ffiArgIntegral "uint32" FFI.argWord32 arr
+ffiArg FFIUInt64 arr = ffiArgIntegral "uint64" FFI.argWord64 arr
 ffiArg FFIInt8 arr = ffiArgIntegral "int8" FFI.argInt8 arr
 ffiArg FFIInt16 arr = ffiArgIntegral "int16" FFI.argInt16 arr
 ffiArg FFIInt32 arr = ffiArgIntegral "int32" FFI.argInt32 arr
+ffiArg FFIInt64 arr = ffiArgIntegral "int64" FFI.argInt64 arr
 ffiArg FFIUInt arr = ffiArgIntegral "uint" FFI.argCUInt arr
 ffiArg FFIInt arr = ffiArgIntegral "int" FFI.argCInt arr
 ffiArg FFIULong arr = ffiArgIntegral "long" FFI.argCULong arr
 ffiArg FFILong arr = ffiArgIntegral "ulong" FFI.argCLong arr
+ffiArg FFIUSize arr = ffiArgIntegral "usize" FFI.argCSize arr
 ffiArg FFIFloat arr = ffiArgFloating "float" FFI.argCFloat arr
 ffiArg FFIDouble arr = ffiArgFloating "double" FFI.argCDouble arr
 ffiArg FFIChar8 arr = ffiArgChar "char8" FFI.argWord8 arr
@@ -137,13 +143,16 @@ ffiPeek FFIVoid _ = throwError $ DomainError "FFI peek void"
 ffiPeek FFIUInt8 ptr = ffiPeekIntegral @Word8 ptr
 ffiPeek FFIUInt16 ptr = ffiPeekIntegral @Word16 ptr
 ffiPeek FFIUInt32 ptr = ffiPeekIntegral @Word32 ptr
+ffiPeek FFIUInt64 ptr = ffiPeekIntegral @Word64 ptr
 ffiPeek FFIInt8 ptr = ffiPeekIntegral @Int8 ptr
 ffiPeek FFIInt16 ptr = ffiPeekIntegral @Int16 ptr
 ffiPeek FFIInt32 ptr = ffiPeekIntegral @Int32 ptr
+ffiPeek FFIInt64 ptr = ffiPeekIntegral @Int64 ptr
 ffiPeek FFIUInt ptr = ffiPeekIntegral @CUInt ptr
 ffiPeek FFIInt ptr = ffiPeekIntegral @CInt ptr
 ffiPeek FFIULong ptr = ffiPeekIntegral @CULong ptr
 ffiPeek FFILong ptr = ffiPeekIntegral @CLong ptr
+ffiPeek FFIUSize ptr = ffiPeekIntegral @CSize ptr
 ffiPeek FFIFloat ptr = ffiPeekFloating @CFloat ptr
 ffiPeek FFIDouble ptr = ffiPeekFloating @CDouble ptr
 ffiPeek FFIChar8 ptr = ffiPeekChar @Word8 ptr
@@ -181,13 +190,16 @@ ffiPoke FFIVoid _ _ = throwError $ DomainError "FFI peek void"
 ffiPoke FFIUInt8 ptr arr = ffiPokeIntegral @Word8 "uint8" ptr arr
 ffiPoke FFIUInt16 ptr arr = ffiPokeIntegral @Word16 "uint16" ptr arr
 ffiPoke FFIUInt32 ptr arr = ffiPokeIntegral @Word32 "uint32" ptr arr
+ffiPoke FFIUInt64 ptr arr = ffiPokeIntegral @Word64 "uint64" ptr arr
 ffiPoke FFIInt8 ptr arr = ffiPokeIntegral @Int8 "int8" ptr arr
 ffiPoke FFIInt16 ptr arr = ffiPokeIntegral @Int16 "int16" ptr arr
 ffiPoke FFIInt32 ptr arr = ffiPokeIntegral @Int32 "int32" ptr arr
+ffiPoke FFIInt64 ptr arr = ffiPokeIntegral @Int64 "int64" ptr arr
 ffiPoke FFIUInt ptr arr = ffiPokeIntegral @CUInt "uint" ptr arr
 ffiPoke FFIInt ptr arr = ffiPokeIntegral @CInt "int" ptr arr
-ffiPoke FFIULong ptr arr = ffiPokeIntegral @CULong "long" ptr arr
-ffiPoke FFILong ptr arr = ffiPokeIntegral @CLong "ulong" ptr arr
+ffiPoke FFIULong ptr arr = ffiPokeIntegral @CULong "ulong" ptr arr
+ffiPoke FFILong ptr arr = ffiPokeIntegral @CLong "long" ptr arr
+ffiPoke FFIUSize ptr arr = ffiPokeIntegral @CSize "usize" ptr arr
 ffiPoke FFIFloat ptr arr = ffiPokeFloating @CFloat "float" ptr arr
 ffiPoke FFIDouble ptr arr = ffiPokeFloating @CDouble "double" ptr arr
 ffiPoke FFIChar8 ptr arr = ffiPokeChar @Word8 "char8" ptr arr
@@ -232,13 +244,16 @@ ffiNewArray FFIVoid _ = throwError $ DomainError "FFI void array"
 ffiNewArray FFIUInt8 arr = ffiNewArrayIntegral @Word8 "uint8" arr
 ffiNewArray FFIUInt16 arr = ffiNewArrayIntegral @Word16 "uint16" arr
 ffiNewArray FFIUInt32 arr = ffiNewArrayIntegral @Word32 "uint32" arr
+ffiNewArray FFIUInt64 arr = ffiNewArrayIntegral @Word64 "uint64" arr
 ffiNewArray FFIInt8 arr = ffiNewArrayIntegral @Int8 "int8" arr
 ffiNewArray FFIInt16 arr = ffiNewArrayIntegral @Int16 "int16" arr
 ffiNewArray FFIInt32 arr = ffiNewArrayIntegral @Int32 "int32" arr
+ffiNewArray FFIInt64 arr = ffiNewArrayIntegral @Int64 "int64" arr
 ffiNewArray FFIUInt arr = ffiNewArrayIntegral @CUInt "uint" arr
 ffiNewArray FFIInt arr = ffiNewArrayIntegral @CInt "int" arr
-ffiNewArray FFIULong arr = ffiNewArrayIntegral @CULong "long" arr
-ffiNewArray FFILong arr = ffiNewArrayIntegral @CLong "ulong" arr
+ffiNewArray FFIULong arr = ffiNewArrayIntegral @CULong "ulong" arr
+ffiNewArray FFILong arr = ffiNewArrayIntegral @CLong "long" arr
+ffiNewArray FFIUSize arr = ffiNewArrayIntegral @CSize "usize" arr
 ffiNewArray FFIFloat arr = ffiNewArrayFloating @CFloat "float" arr
 ffiNewArray FFIDouble arr = ffiNewArrayFloating @CDouble "double" arr
 ffiNewArray FFIChar8 arr = ffiNewArrayChar @Word8 "char8" arr
@@ -273,13 +288,16 @@ ffiSize FFIVoid = ffiSizeStorable @()
 ffiSize FFIUInt8 = ffiSizeStorable @Word8
 ffiSize FFIUInt16 = ffiSizeStorable @Word16
 ffiSize FFIUInt32 = ffiSizeStorable @Word32
+ffiSize FFIUInt64 = ffiSizeStorable @Word64
 ffiSize FFIInt8 = ffiSizeStorable @Int8
 ffiSize FFIInt16 = ffiSizeStorable @Int16
 ffiSize FFIInt32 = ffiSizeStorable @Int32
+ffiSize FFIInt64 = ffiSizeStorable @Int64
 ffiSize FFIUInt = ffiSizeStorable @CUInt
 ffiSize FFIInt = ffiSizeStorable @CInt
 ffiSize FFIULong = ffiSizeStorable @CULong
 ffiSize FFILong = ffiSizeStorable @CLong
+ffiSize FFIUSize = ffiSizeStorable @CSize
 ffiSize FFIFloat = ffiSizeStorable @CFloat
 ffiSize FFIDouble = ffiSizeStorable @CDouble
 ffiSize FFIChar8 = ffiSizeStorable @Word8
@@ -306,13 +324,16 @@ ffiReturn FFIVoid = pure (vector []) <$ FFI.retVoid
 ffiReturn FFIUInt8 = ffiReturnInteger FFI.retWord8
 ffiReturn FFIUInt16 = ffiReturnInteger FFI.retWord16
 ffiReturn FFIUInt32 = ffiReturnInteger FFI.retWord32
+ffiReturn FFIUInt64 = ffiReturnInteger FFI.retWord64
 ffiReturn FFIInt8 = ffiReturnInteger FFI.retInt8
 ffiReturn FFIInt16 = ffiReturnInteger FFI.retInt16
 ffiReturn FFIInt32 = ffiReturnInteger FFI.retInt32
+ffiReturn FFIInt64 = ffiReturnInteger FFI.retInt64
 ffiReturn FFIUInt = ffiReturnInteger FFI.retCUInt
 ffiReturn FFIInt = ffiReturnInteger FFI.retCInt
 ffiReturn FFIULong = ffiReturnInteger FFI.retCULong
 ffiReturn FFILong = ffiReturnInteger FFI.retCLong
+ffiReturn FFIUSize = ffiReturnInteger FFI.retCSize
 ffiReturn FFIFloat = ffiReturnFloating FFI.retCFloat
 ffiReturn FFIDouble = ffiReturnFloating FFI.retCDouble
 ffiReturn FFIChar8 = ffiReturnChar FFI.retWord8
@@ -370,13 +391,16 @@ parseFFI "void" = pure FFIVoid
 parseFFI "u8" = pure FFIUInt8
 parseFFI "u16" = pure FFIUInt16
 parseFFI "u32" = pure FFIUInt32
+parseFFI "u64" = pure FFIUInt64
 parseFFI "i8" = pure FFIInt8
 parseFFI "i16" = pure FFIInt16
 parseFFI "i32" = pure FFIInt32
+parseFFI "i64" = pure FFIInt64
 parseFFI "uint" = pure FFIUInt
 parseFFI "int" = pure FFIInt
 parseFFI "ulong" = pure FFIULong
 parseFFI "long" = pure FFILong
+parseFFI "usize" = pure FFIUSize
 parseFFI "f32" = pure FFIFloat
 parseFFI "f64" = pure FFIDouble
 parseFFI "c8" = pure FFIChar8
