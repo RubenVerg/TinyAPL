@@ -299,10 +299,10 @@ showJS :: JSVal -> IO JSString
 showJS val = do
   scope <- newIORef $ Scope [] [] [] [] Nothing
   id <- newIORef 0
-  r <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt val) (Context scope mempty undefined undefined undefined id)) :: IO (Either Error Value)
+  r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME showSt) (Context scope mempty undefined undefined undefined id)) :: IO (Either Error String)
   pure $ toJSString $ case r of
     Left err -> show err
-    Right val -> show val
+    Right val -> val
 
 foreign export javascript "tinyapl_repr" reprJS :: JSVal -> IO JSString
 

@@ -14,6 +14,9 @@ import qualified TinyAPL.Glyphs as G
 import qualified TinyAPL.Primitives as P
 import TinyAPL.Interpreter
 import TinyAPL.Quads.File (file)
+#ifndef wasm32_HOST_ARCH
+import TinyAPL.Quads.FFI (ffi)
+#endif
 
 import System.Environment
 import Control.Monad (void)
@@ -43,6 +46,13 @@ stdin = Nilad (Just $ let
         go $ ch : text
   in vector . fmap Character . reverse <$> go "") Nothing (G.quad : "stdin") Nothing
 
+ffiQuads :: Quads
+#ifdef wasm32_HOST_ARCH
+ffiQuads = mempty
+#else
+ffiQuads = quadsFromReprs [] [ ffi ] [] []
+#endif
+
 cli :: IO ()
 cli = do
   hSetEncoding stdout utf8
@@ -53,7 +63,7 @@ cli = do
   id <- newIORef 0
   let context = Context {
       contextScope = scope
-    , contextQuads = core <> quadsFromReprs [ makeSystemInfo os arch False, file, TinyAPL.CLI.stdin ] [ makeImport readImportFile Nothing ] [] []
+    , contextQuads = core <> ffiQuads <> quadsFromReprs [ makeSystemInfo os arch False, file, TinyAPL.CLI.stdin ] [ makeImport readImportFile Nothing ] [] []
     , contextIn = liftToSt getLine
     , contextOut = \str -> do
       liftToSt $ putStr str
@@ -79,7 +89,13 @@ runCode output file code context = do
   result <- runResult $ run file code context
   case result of
     Left err -> hPrint stderr err $> context
-    Right (res, context') -> if output then print res $> context' else return context'
+    Right (res, context') ->
+      if output then do
+        runResult $ flip runSt context $ do
+          str <- showSt res
+          liftToSt $ putStrLn str
+        pure context
+      else pure context'
 
 singleCharacters :: [(Char, Char)]
 singleCharacters =
@@ -129,7 +145,7 @@ singleCharacters =
   , (',', '⍪')
   , ('.', '∙')
   , ('/', '⌿')
-  , (' ', '`')
+  , (' ', '‿')
   
   , ('~', '⍨')
   , ('!', '⨳')
@@ -178,7 +194,7 @@ singleCharacters =
   , ('<', 'ᑈ')
   , ('>', 'ᐵ')
 --, ('?', ' ')
-  , (' ', '‿') ]
+  ]
 
 doubleCharacters :: [(Char, Char)]
 doubleCharacters =
@@ -229,7 +245,7 @@ doubleCharacters =
   , (',', '⊲')
   , ('.', '⊳')
 --, ('/', ' ')
---, (' ', ' ')
+  , (' ', '`')
   
   , ('~', '⌺')
   , ('!', '⑴')
@@ -278,7 +294,6 @@ doubleCharacters =
 --, ('<', ' ')
   , ('>', '■')
   , ('?', '⍰')
---, ('Space', ' ')
   ]
 
 repl :: Context -> IO ()

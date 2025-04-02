@@ -89,6 +89,7 @@ executable tinyapl
     -- Modules included in this executable, other than Main.
     other-modules:    TinyAPL.CLI
                     , TinyAPL.Files
+                    , TinyAPL.Quads.FFI
                     , TinyAPL.Quads.File
 
     -- LANGUAGE extensions used by modules in this package.
@@ -96,9 +97,14 @@ executable tinyapl
     build-depends:    base ^>=4.20.0.0
                     , deepseq
                     , exceptions
+                    , mtl
                     , tinyapl
     if os(linux)
         build-depends:edited
+    if !os(wasi)
+        build-depends:libffi ^>=0.2.1
+    if os(linux)
+        build-depends:unix ^>=2.8.5.1
 
     hs-source-dirs:   app
     default-language: Haskell2010

@@ -226,6 +226,14 @@ firstM f (a, b) = (, b) <$> f a
 secondM :: Functor m => (b -> m b') -> (a, b) -> m (a, b')
 secondM f (a, b) = (a, ) <$> f b
 
+firstME :: Applicative m => (a -> m a') -> Either a b -> m (Either a' b)
+firstME f (Left a) = Left <$> f a
+firstME _ (Right b) = pure $ Right b
+
+secondME :: Applicative m => (b -> m b') -> Either a b -> m (Either a b')
+secondME _ (Left a) = pure $ Left a
+secondME f (Right b) = Right <$> f b
+
 fromRight' :: HasCallStack => Show a => Either a b -> b
 fromRight' (Left e) = error $ "fromRight': Left " ++ show e
 fromRight' (Right x) = x

@@ -331,12 +331,32 @@ instance Show ScalarValue where
   show (ConjunctionWrap conj) = [G.wrap, fst G.parens] ++ show conj ++ [snd G.parens]
   show (Struct _) = [fst G.struct] ++ "..." ++ [snd G.struct]
 
+instance ShowSt ScalarValue where
+  showSt (Struct ctx) = do
+    scope <- readRef $ contextScope ctx
+    dShow <- scopeLookupNoun False (G.delta : "show") scope
+    case dShow of
+      Just dShow' -> asString (DomainError "Show must be a string") dShow'
+      Nothing -> pure $ [fst G.struct] ++ "..." ++ [snd G.struct]
+  showSt (Box xs) = (G.enclose :) <$> showSt xs
+  showSt (Wrap fn) = (\x -> [G.wrap, fst G.parens] ++ x ++ [snd G.parens]) <$> showSt fn
+  showSt (AdverbWrap adv) = (\x -> [G.wrap, fst G.parens] ++ x ++ [snd G.parens]) <$> showSt adv
+  showSt (ConjunctionWrap conj) = (\x -> [G.wrap, fst G.parens] ++ x ++ [snd G.parens]) <$> showSt conj
+  showSt other = pure $ show other
+
 showElement :: ScalarValue -> String
 showElement (Box xs) = show xs
 showElement (Wrap fn) = show fn
 showElement (AdverbWrap adv) = show adv
 showElement (ConjunctionWrap conj) = show conj
 showElement x = show x
+
+showElementSt :: ScalarValue -> St String
+showElementSt (Box xs) = showSt xs
+showElementSt (Wrap fn) = showSt fn
+showElementSt (AdverbWrap adv) = showSt adv
+showElementSt (ConjunctionWrap conj) = showSt conj
+showElementSt x = showSt x
 
 instance Show Noun where
   show (Dictionary [] _)                  = [fst G.vector, G.guard, snd G.vector]
@@ -346,6 +366,15 @@ instance Show Noun where
     | not (null xs) && all isCharacter xs = xs >>= show
     | otherwise                           = [fst G.vector] ++ intercalate [' ', G.separator, ' '] (showElement <$> xs) ++ [snd G.vector]
   show arr                                = [fst G.highRank] ++ intercalate [' ', G.separator, ' '] (show <$> majorCells arr) ++ [snd G.highRank]
+
+instance ShowSt Noun where
+  showSt (Dictionary [] _)                  = pure [fst G.vector, G.guard, snd G.vector]
+  showSt (Dictionary ks vs)                 = (\ss -> [fst G.vector] ++ intercalate [' ', G.separator, ' '] ss ++ [snd G.vector]) <$> (zipWithM (\k v -> liftA2 (\k' v' -> k' ++ [G.guard, ' '] ++ v') (showElementSt k) (showElementSt v)) ks vs)
+  showSt (Array [] [s])                     = showSt s
+  showSt (Array [_] xs)
+    | not (null xs) && all isCharacter xs   = pure $ xs >>= show
+    | otherwise                             = (\ss -> [fst G.vector] ++ intercalate [' ', G.separator, ' '] ss ++ [snd G.vector]) <$> mapM showElementSt xs
+  showSt arr                                = (\ss -> [fst G.highRank] ++ intercalate [' ', G.separator, ' '] ss ++ [snd G.highRank]) <$> mapM showSt (majorCells arr)
 
 charRepr :: Char -> (String, Bool)
 charRepr c = case lookup c (swap <$> G.escapes) of
@@ -849,6 +878,9 @@ instance Show Function where
   show (TrainFunction { trainFunctionTines = tines }) = [fst G.train] ++ intercalate [' ', G.separator, ' '] (showTine <$> tines) ++ [snd G.train]
   show (ExtraArgsFunction { extraArgsFunctionExtraArgs = args, extraArgsFunctionFunction = fn }) = [fst G.parens] ++ show fn ++ [snd G.parens, fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> show k ++ [' ', G.guard, ' '] ++ show v) <$> args) ++ [snd G.extraArgs]
 
+instance ShowSt Function where
+  showSt = pure . show
+
 noMonad :: String -> Error
 noMonad str = DomainError $ "Function " ++ str ++ " cannot be called monadically"
 
@@ -908,6 +940,9 @@ instance Show Adverb where
   show PartialAdverb { partialAdverbConjunction = conj, partialAdverbRight = n } = show conj ++ [fst G.parens] ++ show n ++ [snd G.parens]
   show TrainAdverb { trainAdverbTines = tines } = [G.underscore, fst G.train] ++ intercalate [' ', G.separator, ' '] (showTine <$> tines) ++ [snd G.train]
   show ExtraArgsAdverb { extraArgsAdverbExtraArgs = args, extraArgsAdverbAdverb = adv } = [fst G.parens] ++ show adv ++ [snd G.parens, fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> show k ++ [' ', G.guard, ' '] ++ show v) <$> args) ++ [snd G.extraArgs]
+
+instance ShowSt Adverb where
+  showSt = pure . show
 
 instance Eq Adverb where
   DefinedAdverb { definedAdverbId = a } == DefinedAdverb { definedAdverbId = b } = a == b
@@ -990,6 +1025,9 @@ instance Show Conjunction where
   show PrimitiveConjunction { conjRepr = repr } = repr
   show TrainConjunction { trainConjunctionTines = tines } = [G.underscore, fst G.train] ++ intercalate [' ', G.separator, ' '] (showTine <$> tines) ++ [snd G.train, G.underscore]
   show ExtraArgsConjunction { extraArgsConjunctionExtraArgs = args, extraArgsConjunctionConjunction = conj } = [fst G.parens] ++ show conj ++ [snd G.parens, fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> show k ++ [' ', G.guard, ' '] ++ show v) <$> args) ++ [snd G.extraArgs]
+
+instance ShowSt Conjunction where
+  showSt = pure . show
 
 instance Eq Conjunction where
   DefinedConjunction { definedConjunctionId = a } == DefinedConjunction { definedConjunctionId = b } = a == b
@@ -1266,6 +1304,9 @@ instance NFData Context where
 
 type St = StateT Context (ExceptT Error IO)
 
+class ShowSt a where
+  showSt :: a -> St String
+
 runSt :: St a -> Context -> ResultIO (a, Context)
 runSt = runStateT
 
@@ -1319,6 +1360,12 @@ instance Show Value where
   show (VFunction fn)      = show fn
   show (VAdverb adv)       = show adv
   show (VConjunction conj) = show conj
+
+instance ShowSt Value where
+  showSt (VNoun n)           = showSt n
+  showSt (VFunction fn)      = showSt fn
+  showSt (VAdverb adv)       = showSt adv
+  showSt (VConjunction conj) = showSt conj
 
 unwrapNoun :: Error -> Value -> St Noun
 unwrapNoun _ (VNoun val) = return val

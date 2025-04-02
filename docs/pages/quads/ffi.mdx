@@ -1,0 +1,33 @@
+---
+glyph: '⎕FFI'
+pattern: 'r←[x] ⎕FFI y'
+name: FFI
+category: FFI
+---
+
+`r` is a wrap containing the function described by `y` in the dynamic library at path `x`, which defaults to the C standard library if not provided. `y` is a vector of at least two strings. The first element of `y` is the return type of the function; the second element is the name of the symbol; the elements after the second are the arguments of the function. The resulting wrapped function must be called monadically with a vector of arguments.
+
+## Types
+
+* `void`: C `void`
+* `u8`: C `uint8_t`
+* `u16`: C `uint16_t`
+* `u32`: C `uint32_t`
+* `i8`: C `int8_t`
+* `i16`: C `int16_t`
+* `i32`: C `int32_t`
+* `uint`: C `unsigned int`
+* `int`: C `int`
+* `ulong`: C `unsigned long`
+* `long`: C `long`
+* `f32`: C `float`
+* `f64`: C `double`
+* `c8`: C `char8_t`
+* `c16`: C `char16_t`
+* `c32`: C `char32_t`
+* `uchar`: C `unsigned char`
+* `char`: C `char`
+* `wchar`: C `wchar_t`
+* `str`: C `char*`
+* `[]x`: C `x[]`
+* `*x`: C `x*`
