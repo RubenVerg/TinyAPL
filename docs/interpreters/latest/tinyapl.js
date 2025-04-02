@@ -1,6 +1,6 @@
 // @ts-self-types="./tinyapl.d.ts"
 // @ts-ignore Import from web not supported
-import { WASI, OpenFile, File, ConsoleStdout } from 'https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@0.4.1/+esm';
+import { WASI, OpenFile, File, ConsoleStdout } from 'https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/index.js';
 import ghc_wasm_jsffi from './ghc_wasm_jsffi.js';
 const files = [
     new OpenFile(new File([], {})), // stdin

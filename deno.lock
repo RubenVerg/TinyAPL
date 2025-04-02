@@ -1503,11 +1503,7 @@
       "integrity": "sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A=="
     }
   },
-  "redirects": {
-    "https://esm.run/@bjorn3/browser_wasi_shim@0.3.0": "https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@0.3.0/+esm"
-  },
   "remote": {
-    "https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@0.3.0/+esm": "5dd4d98bf3aa522f180742ee1c8b9ceb1e6476d3fa9b9d4081adb68e6dffe98e",
     "https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@0.4.1/+esm": "8745f30f08a48b0625c525266411c7738c8d4e178a8a7bff3b53e38f8c078b61",
     "https://deno.land/std@0.224.0/assert/assert.ts": "09d30564c09de846855b7b071e62b5974b001bb72a4b797958fe0660e7849834",
     "https://deno.land/std@0.224.0/assert/assertion_error.ts": "ba8752bd27ebc51f723702fac2f54d3e94447598f54264a6653d6413738a8917",
@@ -1600,6 +1596,14 @@
     "https://deno.land/std@0.224.0/version.ts": "f6a28c9704d82d1c095988777e30e6172eb674a6570974a0d27a653be769bbbe",
     "https://deno.land/x/htm@0.2.3/html.tsx": "774d0010a04dacf56a0b79bcbb9752eb53cf9aa26d73939468ca2e32cab704ec",
     "https://deno.land/x/htm@0.2.3/jsx.ts": "a29e02857ab5a7e2b91fc9883c196388d2f7715afd1b047c9b0eaffe5a99493a",
-    "https://deno.land/x/htm@0.2.3/mod.ts": "d930056a7c8c645bea5f9c116d65bc309d12cfebafa8db98f7c406e1984caaec"
+    "https://deno.land/x/htm@0.2.3/mod.ts": "d930056a7c8c645bea5f9c116d65bc309d12cfebafa8db98f7c406e1984caaec",
+    "https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/debug.js": "a91848ee180529e2a60c05dfb9584cad19cd4e1c6f391fdb76a938bcae4c0328",
+    "https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/fd.js": "9e82e1fc1bfd3e3573f64349dc42b4b624ed61d24e5c553f2bb4d041444f166c",
+    "https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/fs_mem.js": "85dbc9e0ee784d9ff8b55452644e00bf7058e32355aab974f8b71d7d85772324",
+    "https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/fs_opfs.js": "4b96aaeb5ac5986cf802cbf22b975c656682d22a38248160c96fc2ded5644869",
+    "https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/index.js": "7e2fd52ee3f728bb0b1d6e449724e0f13e3d586bb25bde6e02a66366175b5605",
+    "https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/strace.js": "ece435d3784d928d02bff4d015b7cb686f8c06de8536ff9f8ebc38a8f403a3be",
+    "https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/wasi.js": "2c41e9fa629bbd0209205ccd6a1bf70f60fbae5a8049096449375c061f8a58c0",
+    "https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/wasi_defs.js": "bd50121275994d2e247d0df20493bcbffd2604e773ff6f33da9ebc405476cd7b"
   }
 }
