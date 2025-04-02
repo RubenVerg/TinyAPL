@@ -1,0 +1,32 @@
+name: Build
+on:
+  push:
+    branches: beta
+  pull_request:
+    branches: beta
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+      
+      - name: Setup GHC
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.10.1'
+
+      - name: Build
+        run: 'cabal build exe:tinyapl'
+
+      - name: Prepare artifact
+        run: 'cp $(cabal list-bin tinyapl) ./tinyapl'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'tinyapl'
+          path: './tinyapl'
