@@ -105,6 +105,8 @@ executable tinyapl
         build-depends:libffi ^>=0.2.1
     if os(linux)
         build-depends:unix ^>=2.8.5.1
+    if os(windows)
+        build-depends:Win32 ^>=2.14.0.0
 
     hs-source-dirs:   app
     default-language: Haskell2010
