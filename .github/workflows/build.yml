@@ -16,9 +16,23 @@ jobs:
       
       - name: Setup GHC
         uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: '9.10.1'
 
+      - name: Freeze for cache key
+        run: 'cabal freeze'
+      
+      - name: Cache
+        uses: actions/cache@v4
+        env:
+          platform: ubuntu
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.platform }}-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: |
+            ${{ env.platform }}-
+            
       - name: Build
         run: 'cabal build exe:tinyapl'
 
@@ -43,6 +57,16 @@ jobs:
         uses: haskell-actions/setup@v2
         with:
           ghc-version: '9.10.1'
+
+      - name: Cache
+        uses: actions/cache@v4
+        env:
+          platform: windows
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.platform }}-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: |
+            ${{ env.platform }}-
 
       - name: Hack part 1
         run: 'powershell -Command "rm -Re -Fo ./dist-newstyle/src"'
