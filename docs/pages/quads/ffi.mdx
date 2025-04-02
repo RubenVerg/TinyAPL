@@ -13,13 +13,16 @@ category: FFI
 * `u8`: C `uint8_t`
 * `u16`: C `uint16_t`
 * `u32`: C `uint32_t`
+* `u64`: C `uint64_t` **see note**
 * `i8`: C `int8_t`
 * `i16`: C `int16_t`
 * `i32`: C `int32_t`
+* `i64`: C `int64_t` **see note**
 * `uint`: C `unsigned int`
 * `int`: C `int`
 * `ulong`: C `unsigned long`
 * `long`: C `long`
+* `usize`: C `size_t` **see note**
 * `f32`: C `float`
 * `f64`: C `double`
 * `c8`: C `char8_t`
@@ -31,6 +34,8 @@ category: FFI
 * `str`: C `char*`
 * `[]x`: C `x[]`
 * `*x`: C `x*`
+
+> **Note**: 64-bit integers don't necessarily fit in the 64-bit floating point type that TinyAPL uses. You won't be able to accurately pass nor be returned values with absolute value greater than `9007199254740991`.
 
 ## Pointers
 
