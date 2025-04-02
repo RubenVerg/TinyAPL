@@ -1508,6 +1508,7 @@
   },
   "remote": {
     "https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@0.3.0/+esm": "5dd4d98bf3aa522f180742ee1c8b9ceb1e6476d3fa9b9d4081adb68e6dffe98e",
+    "https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@0.4.1/+esm": "8745f30f08a48b0625c525266411c7738c8d4e178a8a7bff3b53e38f8c078b61",
     "https://deno.land/std@0.224.0/assert/assert.ts": "09d30564c09de846855b7b071e62b5974b001bb72a4b797958fe0660e7849834",
     "https://deno.land/std@0.224.0/assert/assertion_error.ts": "ba8752bd27ebc51f723702fac2f54d3e94447598f54264a6653d6413738a8917",
     "https://deno.land/std@0.224.0/async/delay.ts": "f90dd685b97c2f142b8069082993e437b1602b8e2561134827eeb7c12b95c499",
