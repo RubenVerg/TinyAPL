@@ -15,7 +15,7 @@ import qualified TinyAPL.Primitives as P
 import TinyAPL.Interpreter
 import TinyAPL.Quads.File (file)
 #ifndef wasm32_HOST_ARCH
-import TinyAPL.Quads.FFI (ffi)
+import TinyAPL.Quads.FFI (ffi, nullPointer)
 #endif
 
 import System.Environment
@@ -50,7 +50,7 @@ ffiQuads :: Quads
 #ifdef wasm32_HOST_ARCH
 ffiQuads = mempty
 #else
-ffiQuads = quadsFromReprs [] [ ffi ] [] []
+ffiQuads = quadsFromReprs [ nullPointer ] [ ffi ] [] []
 #endif
 
 cli :: IO ()
@@ -323,10 +323,10 @@ repl context = let
     putStrLn $ "  " ++ unwords (singleton . fst <$> P.adverbs)
     putStrLn $ "  " ++ unwords (singleton . fst <$> P.conjunctions)
     putStrLn "Supported quad names:"
-    putStrLn $ "  " ++ unwords (fst <$> quadArrays core)
-    putStrLn $ "  " ++ unwords (fst <$> quadFunctions core)
-    putStrLn $ "  " ++ unwords (fst <$> quadAdverbs core)
-    putStrLn $ "  " ++ unwords (fst <$> quadConjunctions core)
+    putStrLn $ "  " ++ unwords (fst <$> quadArrays (contextQuads context))
+    putStrLn $ "  " ++ unwords (fst <$> quadFunctions (contextQuads context))
+    putStrLn $ "  " ++ unwords (fst <$> quadAdverbs (contextQuads context))
+    putStrLn $ "  " ++ unwords (fst <$> quadConjunctions (contextQuads context))
     putStrLn "Supported features:"
     putStrLn $ "* dfns " ++ [fst G.braces] ++ "code" ++ [snd G.braces] ++ ", d-monadic-ops " ++ [G.underscore, fst G.braces] ++ "code" ++ [snd G.braces] ++ ", d-dyadic-ops " ++ [G.underscore, fst G.braces] ++ "code" ++ [snd G.braces, G.underscore]
     putStrLn $ "  " ++ [G.alpha] ++ " left argument, " ++ [G.omega] ++ " right argument,"

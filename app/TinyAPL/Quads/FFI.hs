@@ -473,4 +473,7 @@ pointerGet (Struct ctx) = do
     Just (Array [] [Number (addr :+ 0)]) -> pure $ wordPtrToPtr $ fromInteger $ floor addr
     _ -> throwError $ DomainError "address of non-pointer"
 pointerGet _ = throwError $ DomainError "address of non-pointer"
+
+nullPointer :: Nilad
+nullPointer = Nilad (Just $ scalar <$> pointer FFIUInt8 nullPtr) Nothing (G.quad : "nullPtr") Nothing
 #endif
