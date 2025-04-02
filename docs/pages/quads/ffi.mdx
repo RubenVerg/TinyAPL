@@ -31,3 +31,17 @@ category: FFI
 * `str`: C `char*`
 * `[]x`: C `x[]`
 * `*x`: C `x*`
+
+## Pointers
+
+Functions that take and return pointers use a special pointer struct with the following members:
+
+* `address`: a number containing the address pointed to
+* `size`: the size in bytes of the datatype pointed to
+* `Peek`: value at offset `⍵` in bytes
+* `Poke`: write value `⍵` to offset `⍺`, which defaults to `0`
+* `Cast`: return a pointer to the same address but with a different datatype `⍵`
+* `+`: offset a pointer by an integer
+* `-`: offset a pointer by an integer, or find the distance between two pointers
+* `⧺`: increment a pointer by one byte
+* `ⵧ`: decrement a pointer by one byte
