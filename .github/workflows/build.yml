@@ -6,8 +6,8 @@ on:
     branches: beta
 
 jobs:
-  build:
-    name: Build
+  ubuntu:
+    name: Ubuntu 20.04
     runs-on: ubuntu-20.04
 
     steps:
@@ -23,10 +23,41 @@ jobs:
         run: 'cabal build exe:tinyapl'
 
       - name: Prepare artifact
-        run: 'cp $(cabal list-bin tinyapl) ./tinyapl'
+        run: 'cp $(cabal list-bin tinyapl | tail -n 1) ./tinyapl'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: 'tinyapl'
           path: './tinyapl'
+
+  windows:
+    name: Windows
+    runs-on: windows-2022
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+      
+      - name: Setup GHC
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.10.1'
+
+      - name: Hack part 1
+        run: 'powershell -Command "rm -Re -Fo ./dist-newstyle/src"'
+
+      - name: Build
+        run: 'cabal build exe:tinyapl'
+
+      - name: Hack part 2
+        run: 'powershell -Command "rm -Re -Fo ./dist-newstyle/src"'
+
+      - name: Prepare artifact
+        run: 'powershell -Command "cp $($(cabal list-bin tinyapl) -split "`n" | Select-Object -Last 1) ./tinyapl.exe"'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'tinyapl.exe'
+          path: './tinyapl.exe'
