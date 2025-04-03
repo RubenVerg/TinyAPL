@@ -59,6 +59,9 @@ jobs:
         with:
           ghc-version: '9.10.1'
 
+      - name: Hack part 0
+        run: 'powershell -Command "rm -Re -Fo ./dist-newstyle/src"'
+
       - name: Freeze for cache key
         run: 'cabal freeze'
         shell: bash
