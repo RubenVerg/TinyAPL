@@ -22,6 +22,9 @@ jobs:
 
       - name: Freeze for cache key
         run: 'cabal freeze'
+
+      - name: ooooh wait what if uhh
+        run: cat cabal.project.freeze
       
       - name: Cache
         uses: actions/cache@v4
@@ -75,6 +78,10 @@ jobs:
         run: 'cabal freeze'
         shell: bash
 
+      - name: ooooh wait what if uhh
+        run: cat cabal.project.freeze
+        shell: bash
+        
       - name: Cache
         uses: actions/cache@v4
         env:
