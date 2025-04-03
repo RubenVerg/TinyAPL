@@ -52,6 +52,14 @@ jobs:
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
+
+      - name: Cache Haskell tooling
+        uses: actions/cache@v4
+        with:
+          path: C:/ghcup/bin
+          key: win-tooling-cache-${{ hashFiles('.github/workflows/build.yml') }} # no idea what to use for a better key LMAO
+          restore-keys: |
+            win-tooling-cache-
       
       - name: Setup GHC
         uses: haskell-actions/setup@v2
