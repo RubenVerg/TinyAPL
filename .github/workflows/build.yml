@@ -55,8 +55,13 @@ jobs:
       
       - name: Setup GHC
         uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: '9.10.1'
+
+      - name: Freeze for cache key
+        run: 'cabal freeze'
+        shell: bash
 
       - name: Cache
         uses: actions/cache@v4
