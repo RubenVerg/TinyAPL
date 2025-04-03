@@ -46,7 +46,7 @@ jobs:
         uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: $GHC-VERSION
+          ghc-version: ${{ env.GHC-VERSION }}
 
       - name: Retrieve freeze for cache key
         uses: actions/download-artifact@v4
@@ -96,7 +96,7 @@ jobs:
         uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: $GHC-VERSION
+          ghc-version: ${{ env.GHC-VERSION }}
 
       - name: Hack part 0
         run: 'rm -rf ./dist-newstyle/src'
