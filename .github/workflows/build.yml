@@ -60,7 +60,7 @@ jobs:
           ghc-version: '9.10.1'
 
       - name: Hack part 0
-        run: 'rm -Re -Fo ./dist-newstyle/src'
+        run: 'rm -rf ./dist-newstyle/src'
         shell: bash
 
       - name: Freeze for cache key
@@ -78,7 +78,7 @@ jobs:
             ${{ env.platform }}-
 
       - name: Hack part 1
-        run: 'rm -Re -Fo ./dist-newstyle/src'
+        run: 'rm -rf ./dist-newstyle/src'
         shell: bash
 
       - name: Build
@@ -86,7 +86,7 @@ jobs:
         shell: bash
 
       - name: Hack part 2
-        run: 'rm -Re -Fo ./dist-newstyle/src'
+        run: 'rm -rf ./dist-newstyle/src'
         shell: bash
 
       - name: Prepare artifact
