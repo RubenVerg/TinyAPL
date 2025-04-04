@@ -20,16 +20,18 @@ jobs:
         with:
           ghc-version: '9.10.1'
 
-      - name: Freeze for cache key
-        run: 'cabal freeze'
+      - name: Dry run for cache key
+        run: 'cabal build exe:tinyapl --dry-run'
       
       - name: Cache
         uses: actions/cache@v4
         env:
           platform: ubuntu
         with:
-          path: ${{ steps.setup-haskell.outputs.cabal-store }}
-          key: ${{ env.platform }}-${{ hashFiles('cabal.project.freeze') }}
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: ${{ env.platform }}-${{ hashFiles('dist-newstyle/cache/plan.json') }}
           restore-keys: |
             ${{ env.platform }}-
             
@@ -63,23 +65,25 @@ jobs:
         run: 'rm -rf ./dist-newstyle/src'
         shell: bash
 
-      - name: Freeze for cache key
-        run: 'cabal freeze'
+      - name: Dry run for cache key
+        run: 'cabal build exe:tinyapl --dry-run'
         shell: bash
 
+      - name: Hack part 1
+        run: 'rm -rf ./dist-newstyle/src'
+        shell: bash
+      
       - name: Cache
         uses: actions/cache@v4
         env:
           platform: windows
         with:
-          path: ${{ steps.setup-haskell.outputs.cabal-store }}
-          key: ${{ env.platform }}-${{ hashFiles('cabal.project.freeze') }}
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: ${{ env.platform }}-${{ hashFiles('dist-newstyle/cache/plan.json') }}
           restore-keys: |
             ${{ env.platform }}-
-
-      - name: Hack part 1
-        run: 'rm -rf ./dist-newstyle/src'
-        shell: bash
 
       - name: Build
         run: 'cabal build exe:tinyapl'
@@ -98,3 +102,43 @@ jobs:
         with:
           name: 'tinyapl.exe'
           path: './tinyapl.exe'
+
+  wasm:
+    name: WASM
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+      
+      - name: Setup GHC
+        id: setup-haskell
+        env:
+          FLAVOUR: '9.10'
+        run: |
+          curl https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta/-/raw/master/bootstrap.sh | sh
+          ~/.ghc-wasm/add_to_github_path.sh
+
+      - name: Dry run for cache key
+        run: 'wasm32-wasi-cabal build exe:tinyapl --dry-run'
+      
+      - name: Cache
+        uses: actions/cache@v4
+        env:
+          platform: wasm
+        with:
+          path: |
+            ~/.ghc-wasm/.cabal/store
+            dist-newstyle
+          key: ${{ env.platform }}-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: |
+            ${{ env.platform }}-
+            
+      - name: Build
+        run: './app/build.sh'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'tinyapl.wasm'
+          path: './app/dist/tinyapl.wasm'

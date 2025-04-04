@@ -1,0 +1,39 @@
+name: Test
+on:
+  push:
+    branches: beta
+  pull_request:
+    branches: beta
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+      
+      - name: Setup GHC
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: '9.10.1'
+
+      - name: Dry run for cache key
+        run: 'cabal build exe:tinyapl --dry-run'
+        
+      - name: Cache
+        uses: actions/cache@v4
+        env:
+          platform: test
+        with:
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: ${{ env.platform }}-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: |
+            ${{ env.platform }}-
+            
+      - name: Test
+        run: 'cabal test'
