@@ -1,21 +1,10 @@
-{-# LANGUAGE CPP #-}
-
-#ifndef wasm32_HOST_ARCH
 {-# LANGUAGE TemplateHaskell #-}
-#endif
 
 module TinyAPL.StandardLibrary where
 
 import TinyAPL.StandardLibrary.Internal
 
-#ifdef wasm32_HOST_ARCH
-import System.IO.Unsafe
-import Control.Exception (evaluate)
-import Control.DeepSeq (NFData(rnf))
-import Control.Monad
-#else
 import Language.Haskell.TH
-#endif
 
 {-
 The following license covers this documentation, and the source code, except
@@ -45,16 +34,5 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
-#ifdef wasm32_HOST_ARCH
-standardLibrary :: [([String], String)]
-standardLibrary = unsafePerformIO $ listToStd <$> fileList "/std"
-{-# NOINLINE standardLibrary #-}
-
-foreign export ccall loadStandardLibrary :: IO ()
-
-loadStandardLibrary :: IO ()
-loadStandardLibrary = void $ evaluate $ rnf standardLibrary
-#else
 standardLibrary :: [([String], String)]
 standardLibrary = listToStd $ $(ListE <$> ((runIO $ fileList "std") >>= mapM (pairToExp "std")))
-#endif

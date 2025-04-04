@@ -14,9 +14,4 @@ echo "Compiling executable"
 
 wasm32-wasi-cabal build exe:tinyapl
 
-# out_path=$(find dist-newstyle -name "tinyapl.wasm")
-out_path=$(wasm32-wasi-cabal list-bin tinyapl | tail -n1)
-
-echo "Compiled, embedding standard library"
-
-wizer --allow-wasi --wasm-bulk-memory true $out_path -o app/dist/tinyapl.wasm --mapdir /std::./std
+cp $(wasm32-wasi-cabal list-bin tinyapl | tail -n1) app/dist/tinyapl.wasm
