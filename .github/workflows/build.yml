@@ -16,9 +16,23 @@ jobs:
       
       - name: Setup GHC
         uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: '9.10.1'
 
+      - name: Freeze for cache key
+        run: 'cabal freeze'
+      
+      - name: Cache
+        uses: actions/cache@v4
+        env:
+          platform: ubuntu
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.platform }}-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: |
+            ${{ env.platform }}-
+            
       - name: Build
         run: 'cabal build exe:tinyapl'
 
@@ -41,20 +55,43 @@ jobs:
       
       - name: Setup GHC
         uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: '9.10.1'
 
+      - name: Hack part 0
+        run: 'rm -rf ./dist-newstyle/src'
+        shell: bash
+
+      - name: Freeze for cache key
+        run: 'cabal freeze'
+        shell: bash
+
+      - name: Cache
+        uses: actions/cache@v4
+        env:
+          platform: windows
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.platform }}-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: |
+            ${{ env.platform }}-
+
       - name: Hack part 1
-        run: 'powershell -Command "rm -Re -Fo ./dist-newstyle/src"'
+        run: 'rm -rf ./dist-newstyle/src'
+        shell: bash
 
       - name: Build
         run: 'cabal build exe:tinyapl'
+        shell: bash
 
       - name: Hack part 2
-        run: 'powershell -Command "rm -Re -Fo ./dist-newstyle/src"'
+        run: 'rm -rf ./dist-newstyle/src'
+        shell: bash
 
       - name: Prepare artifact
-        run: 'powershell -Command "cp $($(cabal list-bin tinyapl) -split "`n" | Select-Object -Last 1) ./tinyapl.exe"'
+        run: 'cp $(cabal list-bin tinyapl | tail -n 1) ./tinyapl.exe'
+        shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
