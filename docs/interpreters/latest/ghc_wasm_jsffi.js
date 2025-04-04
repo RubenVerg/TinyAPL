@@ -2,26 +2,12 @@
 // modules that use JSFFI. It is not an ESM module, but the template
 // of one; the post-linker script will copy all contents into a new
 // ESM module.
-// Manage a mapping from unique 32-bit ids to actual JavaScript
-// values.
+// Manage a mapping from 32-bit ids to actual JavaScript values.
 class JSValManager {
     #lastk = 0;
     #kv = new Map();
-    constructor() { }
-    // Maybe just bump this.#lastk? For 64-bit ids that's sufficient,
-    // but better safe than sorry in the 32-bit case.
-    #allocKey() {
-        let k = this.#lastk;
-        while (true) {
-            if (!this.#kv.has(k)) {
-                this.#lastk = k;
-                return k;
-            }
-            k = (k + 1) | 0;
-        }
-    }
     newJSVal(v) {
-        const k = this.#allocKey();
+        const k = ++this.#lastk;
         this.#kv.set(k, v);
         return k;
     }
@@ -42,55 +28,66 @@ class JSValManager {
         }
     }
 }
-// A simple & fast setImmediate() implementation for browsers. It's
-// not a drop-in replacement for node.js setImmediate() because:
-// 1. There's no clearImmediate(), and setImmediate() doesn't return
-//    anything
-// 2. There's no guarantee that callbacks scheduled by setImmediate()
-//    are executed in the same order (in fact it's the opposite lol),
-//    but you are never supposed to rely on this assumption anyway
-class SetImmediate {
-    #fs = [];
-    #mc = new MessageChannel();
-    constructor() {
-        this.#mc.port1.addEventListener("message", () => {
-            this.#fs.pop()();
-        });
-        this.#mc.port1.start();
-    }
-    setImmediate(cb, ...args) {
-        this.#fs.push(() => cb(...args));
-        this.#mc.port2.postMessage(undefined);
-    }
-}
 // The actual setImmediate() to be used. This is a ESM module top
 // level binding and doesn't pollute the globalThis namespace.
-let setImmediate;
-if (globalThis.setImmediate) {
-    // node.js, bun
-    setImmediate = globalThis.setImmediate;
-}
-else {
-    try {
-        // deno
-        setImmediate = (await import("node:timers")).setImmediate;
+//
+// To benchmark different setImmediate() implementations in the
+// browser, use https://github.com/jphpsf/setImmediate-shim-demo as a
+// starting point.
+const setImmediate = await (async () => {
+    // node, bun, or other scripts might have set this up in the browser
+    if (globalThis.setImmediate) {
+        return globalThis.setImmediate;
     }
-    catch {
-        // browsers
+    // deno
+    if (globalThis.Deno) {
+        try {
+            return (await import("node:timers")).setImmediate;
+        }
+        catch { }
+    }
+    // https://developer.mozilla.org/en-US/docs/Web/API/Scheduler/postTask
+    if (globalThis.scheduler) {
+        return (cb, ...args) => scheduler.postTask(() => cb(...args));
+    }
+    // Cloudflare workers doesn't support MessageChannel
+    if (globalThis.MessageChannel) {
+        // A simple & fast setImmediate() implementation for browsers. It's
+        // not a drop-in replacement for node.js setImmediate() because:
+        // 1. There's no clearImmediate(), and setImmediate() doesn't return
+        //    anything
+        // 2. There's no guarantee that callbacks scheduled by setImmediate()
+        //    are executed in the same order (in fact it's the opposite lol),
+        //    but you are never supposed to rely on this assumption anyway
+        class SetImmediate {
+            #fs = [];
+            #mc = new MessageChannel();
+            constructor() {
+                this.#mc.port1.addEventListener("message", () => {
+                    this.#fs.pop()();
+                });
+                this.#mc.port1.start();
+            }
+            setImmediate(cb, ...args) {
+                this.#fs.push(() => cb(...args));
+                this.#mc.port2.postMessage(undefined);
+            }
+        }
         const sm = new SetImmediate();
-        setImmediate = (cb, ...args) => sm.setImmediate(cb, ...args);
+        return (cb, ...args) => sm.setImmediate(cb, ...args);
     }
-}
+    return (cb, ...args) => setTimeout(cb, 0, ...args);
+})();
 export default (__exports) => {
     const __ghc_wasm_jsffi_jsval_manager = new JSValManager();
-    const __ghc_wasm_jsffi_finalization_registry = new FinalizationRegistry(sp => __exports.rts_freeStablePtr(sp));
+    const __ghc_wasm_jsffi_finalization_registry = globalThis.FinalizationRegistry ? new FinalizationRegistry(sp => __exports.rts_freeStablePtr(sp)) : { register: () => { }, unregister: () => true };
     return {
         newJSVal: (v) => __ghc_wasm_jsffi_jsval_manager.newJSVal(v),
         getJSVal: (k) => __ghc_wasm_jsffi_jsval_manager.getJSVal(k),
         freeJSVal: (k) => __ghc_wasm_jsffi_jsval_manager.freeJSVal(k),
         scheduleWork: () => setImmediate(__exports.rts_schedulerLoop),
-        ZC1ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1) => ((a1, a2, a3) => __exports.ghczuwasmzujsffiZC0ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC($1, a1, a2, a3)),
-        ZC3ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1) => ((a1, a2) => __exports.ghczuwasmzujsffiZC2ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC($1, a1, a2)),
+        ZC1ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1) => ((...args) => __exports.ghczuwasmzujsffiZC0ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC($1, ...args)),
+        ZC3ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1) => ((...args) => __exports.ghczuwasmzujsffiZC2ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC($1, ...args)),
         ZC8ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: async ($1, $2, $3, $4) => { return await $1($2, $3, $4); },
         ZC9ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: async ($1, $2, $3) => { return await $1($2, $3); },
         ZC10ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: async ($1, $2) => { return await $1($2); },
@@ -123,17 +120,20 @@ export default (__exports) => {
         ZC16ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1, $2) => ($1.resolve($2)),
         ZC18ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1, $2) => ($1.resolve($2)),
         ZC19ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1) => ($1.resolve()),
-        ZC20ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: () => { let res, rej; const p = new Promise((resolve, reject) => { res = resolve; rej = reject; }); p.resolve = res; p.reject = rej; return p; },
-        ZC21ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1, $2) => (__ghc_wasm_jsffi_finalization_registry.register($1, $2, $1)),
+        ZC20ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1) => { $1.throwTo = () => { }; },
+        ZC21ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1, $2) => { $1.throwTo = (err) => __exports.rts_promiseThrowTo($2, err); },
+        ZC22ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: () => { let res, rej; const p = new Promise((resolve, reject) => { res = resolve; rej = reject; }); p.resolve = res; p.reject = rej; return p; },
+        ZC23ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1, $2) => (__ghc_wasm_jsffi_finalization_registry.register($1, $2, $1)),
         ZC17ZCghczminternalZCGHCziInternalziWasmziPrimziImportsZC: ($1, $2) => ($1.then(res => __exports.rts_promiseResolveJSVal($2, res), err => __exports.rts_promiseReject($2, err))),
         ZC18ZCghczminternalZCGHCziInternalziWasmziPrimziImportsZC: ($1, $2) => ($1.then(() => __exports.rts_promiseResolveUnit($2), err => __exports.rts_promiseReject($2, err))),
         ZC0ZCghczminternalZCGHCziInternalziWasmziPrimziTypesZC: ($1) => (`${$1.stack ? $1.stack : $1}`),
         ZC1ZCghczminternalZCGHCziInternalziWasmziPrimziTypesZC: ($1, $2) => ((new TextDecoder('utf-8', { fatal: true })).decode(new Uint8Array(__exports.memory.buffer, $1, $2))),
         ZC2ZCghczminternalZCGHCziInternalziWasmziPrimziTypesZC: ($1, $2, $3) => ((new TextEncoder()).encodeInto($1, new Uint8Array(__exports.memory.buffer, $2, $3)).written),
         ZC3ZCghczminternalZCGHCziInternalziWasmziPrimziTypesZC: ($1) => ($1.length),
-        ZC4ZCghczminternalZCGHCziInternalziWasmziPrimziTypesZC: ($1) => { if (!__ghc_wasm_jsffi_finalization_registry.unregister($1)) {
-            throw new WebAssembly.RuntimeError('js_callback_unregister');
-        } },
+        ZC4ZCghczminternalZCGHCziInternalziWasmziPrimziTypesZC: ($1) => { try {
+            __ghc_wasm_jsffi_finalization_registry.unregister($1);
+        }
+        catch { } },
         ZC0ZCghczminternalZCGHCziInternalziWasmziPrimziConcziInternalZC: async ($1) => (new Promise(res => setTimeout(res, $1 / 1000))),
     };
 };

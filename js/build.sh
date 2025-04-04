@@ -16,16 +16,13 @@ wasm32-wasi-cabal build tinyapl-js
 
 # out_path=$(find dist-newstyle -name "tinyapl-js.wasm")
 out_path=$(wasm32-wasi-cabal list-bin tinyapl-js | tail -n1)
+cp $out_path js/dist/tinyapl-js.wasm
 
 echo "Compiled, found $out_path, post-linking"
 
 "$(wasm32-wasi-ghc --print-libdir)"/post-link.mjs --input "$out_path" --output js/ghc_wasm_jsffi.js
 
-echo "Post-linked, embedding standard library"
-
-wizer --allow-wasi --wasm-bulk-memory true $out_path -o js/dist/tinyapl-js.wasm --mapdir /std::./std
-
-echo "Embedded, compiling TypeScript"
+echo "Post-linked, compiling TypeScript"
 
 cd js
 tsc

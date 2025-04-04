@@ -1,8 +1,4 @@
-{-# LANGUAGE CPP #-}
-
-#ifndef wasm32_HOST_ARCH
 {-# LANGUAGE TemplateHaskell #-}
-#endif
 
 module TinyAPL.StandardLibrary.Internal where
 
@@ -12,10 +8,8 @@ import Control.Monad
 import TinyAPL.Util
 import Data.List
 import Data.Bifunctor
-#ifndef wasm32_HOST_ARCH
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
-#endif
 
 {-
 The following license covers this documentation, and the source code, except
@@ -61,7 +55,6 @@ fileList top = go top "" where
 listToStd :: [(FilePath, String)] -> [([String], String)]
 listToStd = map (first $ fmap dropTrailingPathSeparator . splitPath . dropExtension)
 
-#ifndef wasm32_HOST_ARCH
 strToExp :: String -> Q Exp
 strToExp s = pure $ LitE $ StringL s
 
@@ -70,4 +63,3 @@ pairToExp _root (path, bs) = do
   qAddDependentFile $ _root ++ '/' : path
   exp' <- strToExp bs
   return $! TupE $ map Just [LitE $ StringL path, exp']
-#endif

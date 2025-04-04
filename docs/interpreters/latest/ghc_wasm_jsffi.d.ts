@@ -3,8 +3,8 @@ declare function _default(__exports: any): {
     getJSVal: (k: any) => any;
     freeJSVal: (k: any) => void;
     scheduleWork: () => any;
-    ZC1ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1: any) => (a1: any, a2: any, a3: any) => any;
-    ZC3ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1: any) => (a1: any, a2: any) => any;
+    ZC1ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1: any) => (...args: any[]) => any;
+    ZC3ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1: any) => (...args: any[]) => any;
     ZC8ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1: any, $2: any, $3: any, $4: any) => Promise<any>;
     ZC9ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1: any, $2: any, $3: any) => Promise<any>;
     ZC10ZCtinyaplzm0zi12zi0zi0zminplacezmtinyaplzmjsZCJSBridgeZC: ($1: any, $2: any) => Promise<any>;
@@ -39,8 +39,10 @@ declare function _default(__exports: any): {
     ZC16ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1: any, $2: any) => any;
     ZC18ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1: any, $2: any) => any;
     ZC19ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1: any) => any;
-    ZC20ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: () => Promise<any>;
+    ZC20ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1: any) => void;
     ZC21ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1: any, $2: any) => void;
+    ZC22ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: () => Promise<any>;
+    ZC23ZCghczminternalZCGHCziInternalziWasmziPrimziExportsZC: ($1: any, $2: any) => void;
     ZC17ZCghczminternalZCGHCziInternalziWasmziPrimziImportsZC: ($1: any, $2: any) => any;
     ZC18ZCghczminternalZCGHCziInternalziWasmziPrimziImportsZC: ($1: any, $2: any) => any;
     ZC0ZCghczminternalZCGHCziInternalziWasmziPrimziTypesZC: ($1: any) => string;
