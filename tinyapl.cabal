@@ -114,7 +114,7 @@ executable tinyapl-js
     other-modules:    JSBridge
 
     build-depends:    base ^>=4.20.0.0
-                    , ghc-experimental ^>=9.1001.0
+                    , ghc-experimental ==0.1.0.0 || ^>=9.1001.0
                     , deepseq
                     , tinyapl
     
