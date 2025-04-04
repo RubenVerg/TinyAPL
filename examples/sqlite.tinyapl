@@ -1,7 +1,5 @@
 _While_←_{~⍹⍹ ⍵:■⍵ ⋄ ∇ ⍶⍶ ⍵}_
 
-Malloc←'u8'⍛{(⊐(⎕FFI"*u8"‿"malloc"‿"u32") ⟨⍵⟩)→Cast ⍺}
-
 _SQLite←_{⊐("libsqlite3.so"⎕FFI ⍺⍺)⍵}
 
 sqlite←⦃
@@ -11,7 +9,7 @@ sqlite←⦃
 ⋄ blob←4
 ⋄ null←5
 
-  done←101
+  row←100
 
   Open←'int'‿'sqlite3_open'‿'str'‿'**u8'_SQLite
 ⋄ Close←'int'‿'sqlite3_close'‿'*u8'_SQLite
@@ -24,12 +22,12 @@ sqlite←⦃
 ⋄ ColumnText←'str'‿'sqlite3_column_text'‿'*u8'‿'int'_SQLite
 ⦄
 
-db←'*u8' Malloc 8 ⋄
-stmt←'*u8' Malloc 8
+db←⎕ffi→Alloc '*u8' ⋄
+stmt←⎕ffi→Alloc '*u8'
 
 sqlite→Open ⟨"db.sqlite" ⋄ db⟩
 
-sqlite→PrepareV2 ⟨db→Peek 0 ⋄ "select * from 'Album' limit 25;" ⋄ ¯1 ⋄ stmt ⋄ ⎕nullPtr⟩
+sqlite→PrepareV2 ⟨db→Peek 0 ⋄ "select * from 'Album' limit 25;" ⋄ ¯1 ⋄ stmt ⋄ ⎕ffi→null⟩
 
 {
   ⎕ ← {
@@ -37,8 +35,11 @@ sqlite→PrepareV2 ⟨db→Peek 0 ⋄ "select * from 'Album' limit 25;" ⋄ ¯1 
   ⋄ type=sqlite→text: ■sqlite→ColumnText ⟨stmt→Peek 0 ⋄ ⍵⟩
   ⋄ type=sqlite→integer: ■⍕sqlite→ColumnInt ⟨stmt→Peek 0 ⋄ ⍵⟩
   }¨⍳sqlite→ColumnCount ⟨stmt→Peek 0⟩
-} _While_ {sqlite→done≠sqlite→Step ⟨stmt→Peek 0⟩} ⍬
+} _While_ {sqlite→row=sqlite→Step ⟨stmt→Peek 0⟩} ⍬
 
 sqlite→Finalize ⟨stmt→Peek 0⟩
 
 sqlite→Close ⟨db→Peek 0⟩
+
+⎕ffi→Free db ⋄
+⎕ffi→Free stmt

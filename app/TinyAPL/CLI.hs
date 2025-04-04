@@ -15,7 +15,7 @@ import qualified TinyAPL.Primitives as P
 import TinyAPL.Interpreter
 import TinyAPL.Quads.File (file)
 #ifndef wasm32_HOST_ARCH
-import TinyAPL.Quads.FFI (ffi, nullPointer)
+import TinyAPL.Quads.FFI (ffi, ffiStruct)
 #endif
 
 import System.Environment
@@ -50,7 +50,7 @@ ffiQuads :: Quads
 #ifdef wasm32_HOST_ARCH
 ffiQuads = mempty
 #else
-ffiQuads = quadsFromReprs [ nullPointer ] [ ffi ] [] []
+ffiQuads = quadsFromReprs [ ffiStruct ] [ ffi ] [] []
 #endif
 
 cli :: IO ()

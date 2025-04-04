@@ -1,0 +1,36 @@
+---
+glyph: '⎕ffi'
+pattern: 'r←⎕ffi'
+name: FFI Helpers
+category: FFI
+---
+
+`r` contains the following entries:
+
+## `null`: Null Pointer
+
+A null pointer of type `u8`.
+
+## `New`: New Object
+
+Left argument is a type (as per [`⎕FFI`](/docs/quads/ffi)), right argument is a value compatible with that type. Allocates memory and stores that value. Returns the pointer as a pointer object.
+
+## `NewA`: New Array of Objects
+
+Left argument is a type, right argument is a vector of values compatible with that type. Allocates memory and stores those values contiguously. Returns a pointer to the beginning of the values as a pointer object.
+
+## `NewZ`: New Zero-terminated Array of Objects
+
+Left argument is a type, right argument is a vector of values compatible with that type. Allocates memory and stores those values contiguously, followed by a zero. Returns a pointer ot the beginning of the values as a pointer object.
+
+## `Alloc`: Allocate
+
+Left argument is a natural, which defaults to `1`. Right argument is a type. Allocates memory enough to fit left argument values of right argument type, and fills the memory with zeros. Returns a pointer to the beginning of the allocated memory.
+
+## `Free`: Free
+
+Argument is a pointer returned by any pointer-creating function both from here and from `⎕FFI`. Frees the pointer.
+
+## `SizeOf`: Size Of
+
+Argument is an array of strings. Each string is replaced with the size of the type it describes, in bytes.
