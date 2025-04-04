@@ -43,10 +43,19 @@ Functions that take and return pointers use a special pointer struct with the fo
 
 * `address`: a number containing the address pointed to
 * `size`: the size in bytes of the datatype pointed to
-* `Peek`: value at offset `⍵` in bytes
-* `Poke`: write value `⍵` to offset `⍺`, which defaults to `0`
+* `Peek`: value at offset `⍵`
+* `PeekB`: value at offset `⍵` (in bytes)
+* `PeekL`: `⍵` values, at offset `⍺`, which defaults to `0`
+* `PeekE`: monadically read until zero value is found, starting at offset `⍵`; dyadically read until value `⍵` is found, starting at offset `⍺`
+* `Poke`: write value `⍵` at offset `⍺`, which defaults to `0`
+* `PokeB`: write value `⍵` at offset `⍺` (in bytes)
+* `PokeA`: write values from vector `⍵` starting at offset `⍺`, which defaults to `0`
+* `PokeE`: write values from vector `⍵` terminated by zero if monadic and `⍺` if dyadic
 * `Cast`: return a pointer to the same address but with a different datatype `⍵`
 * `+`: offset a pointer by an integer
+* `AddB`: offset a pointer by an integer (in bytes)
 * `-`: offset a pointer by an integer, or find the distance between two pointers
+* `SubB`: offset a pointer by an integer (in bytes), or find the distance (in bytes) between two pointers
 * `⧺`: increment a pointer by one byte
 * `ⵧ`: decrement a pointer by one byte
+* `×`: is the pointer not null?

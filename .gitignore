@@ -4,3 +4,4 @@ cabal-dev
 .vscode
 tsconfig.tsbuildinfo
 *.prof
+*.sqlite
