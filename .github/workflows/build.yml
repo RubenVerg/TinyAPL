@@ -5,38 +5,10 @@ on:
   pull_request:
     branches: beta
 
-env:
-  GHC-VERSION: '9.10.1'
-
 jobs:
-  freeze:
-    name: cabal freeze for cache key
-    runs-on: ubuntu-20.04
-
-    steps:
-      - name: Clone repository
-        uses: actions/checkout@v4
-
-      - name: Setup GHC
-        uses: haskell-actions/setup@v2
-        id: setup-haskell
-        with:
-          ghc-version: ${{ env.GHC-VERSION }}
-
-      - name: Create freeze file
-        run: cabal freeze
-
-      - name: Save freeze file
-        uses: actions/upload-artifact@v4.6.1
-        with:
-          name: cabal-project-freeze-${{ github.run_id }}
-          path: cabal.project.freeze
-          retention-days: 1
-
   ubuntu:
     name: Ubuntu 20.04
     runs-on: ubuntu-20.04
-    needs: [freeze]
 
     steps:
       - name: Clone repository
@@ -46,12 +18,10 @@ jobs:
         uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: ${{ env.GHC-VERSION }}
+          ghc-version: '9.10.1'
 
-      - name: Retrieve freeze for cache key
-        uses: actions/download-artifact@v4
-        with:
-          name: cabal-project-freeze-${{ github.run_id }}
+      - name: Freeze for cache key
+        run: 'cabal freeze'
       
       - name: Cache
         uses: actions/cache@v4
@@ -78,35 +48,25 @@ jobs:
   windows:
     name: Windows
     runs-on: windows-2022
-    needs: [freeze]
 
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
-
-      - name: Cache Haskell tooling
-        uses: actions/cache@v4
-        with:
-          path: C:/ghcup/bin
-          key: win-tooling-cache-${{ hashFiles('.github/workflows/build.yml') }} # no idea what to use for a better key LMAO
-          restore-keys: |
-            win-tooling-cache-
       
       - name: Setup GHC
         uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: ${{ env.GHC-VERSION }}
+          ghc-version: '9.10.1'
 
       - name: Hack part 0
         run: 'rm -rf ./dist-newstyle/src'
         shell: bash
 
-      - name: Retrieve freeze for cache key
-        uses: actions/download-artifact@v4
-        with:
-          name: cabal-project-freeze-${{ github.run_id }}
-          
+      - name: Freeze for cache key
+        run: 'cabal freeze'
+        shell: bash
+
       - name: Cache
         uses: actions/cache@v4
         env:
@@ -138,15 +98,3 @@ jobs:
         with:
           name: 'tinyapl.exe'
           path: './tinyapl.exe'
-
-  thaw:
-    name: Clean up freeze artifact
-    runs-on: ubuntu-latest
-    if: ${{ always() }}
-    needs:
-      - ubuntu
-      - windows
-    steps:
-      - uses: geekyeggo/delete-artifact@v5
-        with:
-          name: cabal-project-freeze-${{ github.run_id }}
