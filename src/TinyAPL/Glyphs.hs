@@ -303,6 +303,7 @@ backward = '⤺'
 bitwise = '∵'
 cellsLeft = 'ᓗ'
 cellsRight = 'ᓚ'
+inverse = '˝'
 
 adverbs =
   [ TinyAPL.Glyphs.selfie
@@ -325,7 +326,8 @@ adverbs =
   , TinyAPL.Glyphs.backward
   , TinyAPL.Glyphs.bitwise
   , TinyAPL.Glyphs.cellsLeft
-  , TinyAPL.Glyphs.cellsRight ]
+  , TinyAPL.Glyphs.cellsRight
+  , TinyAPL.Glyphs.inverse ]
 
 -- * Conjunctions
 

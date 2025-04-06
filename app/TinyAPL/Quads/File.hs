@@ -22,7 +22,7 @@ write' s d = do
 file :: Nilad
 file = Nilad (Just $ do
   scope <- createRef $ Scope [] ((\n -> (functionRepr n, (VariableConstant, n))) <$>
-    [ PrimitiveFunction (Just $ const read') Nothing "Read" Nothing
-    , PrimitiveFunction Nothing (Just $ const write') "Write" Nothing]) [] [] Nothing
+    [ PrimitiveFunction (Just $ const read') Nothing Nothing Nothing Nothing Nothing "Read" Nothing
+    , PrimitiveFunction Nothing (Just $ const write') Nothing Nothing Nothing Nothing "Write" Nothing]) [] [] Nothing
   ctx <- getContext
   pure $ scalar $ Struct $ ctx{ contextScope = scope }) Nothing (G.quad : "file") Nothing

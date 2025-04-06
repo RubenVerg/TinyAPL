@@ -51,8 +51,8 @@ exists = PrimitiveFunction (Just $ \_ y -> do
   ns <- asScalar err x >>= asStruct err >>= readRef . contextScope
   case scopeShallowLookup False var ns of
     Just _ -> pure $ scalar $ Number 1
-    Nothing -> pure $ scalar $ Number 0) (G.quad : "Exists") Nothing
-repr = PrimitiveFunction (Just $ \_ y -> return $ vector $ Character <$> arrayRepr y) Nothing (G.quad : "Repr") Nothing
+    Nothing -> pure $ scalar $ Number 0) Nothing Nothing Nothing Nothing (G.quad : "Exists") Nothing
+repr = PrimitiveFunction (Just $ \_ y -> return $ vector $ Character <$> arrayRepr y) Nothing Nothing Nothing Nothing Nothing (G.quad : "Repr") Nothing
 delay = PrimitiveFunction (Just $ \_ y -> do
   let err = DomainError "Delay argument must be a nonnegative scalar number"
   n <- asScalar err y >>= asNumber err >>= asReal err
@@ -61,7 +61,7 @@ delay = PrimitiveFunction (Just $ \_ y -> do
     liftToSt $ threadDelay $ floor $ n * 1000 * 1000
     end <- realToFrac <$> liftToSt getPOSIXTime
     pure $ scalar $ Number $ (end - start) :+ 0
-  ) Nothing (G.quad : "Delay") Nothing
+  ) Nothing Nothing Nothing Nothing Nothing (G.quad : "Delay") Nothing
 type_ = PrimitiveFunction (Just $ \_ (Array sh cs) -> return $ Array sh $ (\case
   Number _ -> Number 0
   Character _ -> Number 1
@@ -69,21 +69,21 @@ type_ = PrimitiveFunction (Just $ \_ (Array sh cs) -> return $ Array sh $ (\case
   Wrap _ -> Number 3
   AdverbWrap _ -> Number 4
   ConjunctionWrap _ -> Number 5
-  Struct _ -> Number 6) <$> cs) Nothing (G.quad : "Type") Nothing
+  Struct _ -> Number 6) <$> cs) Nothing Nothing Nothing Nothing Nothing (G.quad : "Type") Nothing
 print_ = PrimitiveFunction (Just $ \_ y -> do
   let err = DomainError "Print argument must be a string or vector of strings"
   ss <- asStrings err y
   out <- getsContext contextOut
   out $ intercalate "\n" ss ++ "\n"
   pure $ vector []
-  ) Nothing (G.quad : "P") Nothing
+  ) Nothing Nothing Nothing Nothing Nothing (G.quad : "P") Nothing
 errorPrint = PrimitiveFunction (Just $ \_ y -> do
   let err = DomainError "Print argument must be a string or vector of strings"
   ss <- asStrings err y
   err <- getsContext contextErr
   err $ intercalate "\n" ss ++ "\n"
   pure $ vector []
-  ) Nothing (G.quad : "E") Nothing
+  ) Nothing Nothing Nothing Nothing Nothing (G.quad : "E") Nothing
 measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea y -> do
   start <- realToFrac <$> liftToSt getPOSIXTime
   _ <- callMonad f ea y
@@ -92,7 +92,7 @@ measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction
   start <- realToFrac <$> liftToSt getPOSIXTime
   _ <- callDyad f ea x y
   end <- realToFrac <$> liftToSt getPOSIXTime
-  pure $ scalar $ Number $ (end - start) :+ 0) Nothing measure f) (G.quad : "_Measure") Nothing
+  pure $ scalar $ Number $ (end - start) :+ 0) Nothing Nothing Nothing Nothing Nothing measure f) (G.quad : "_Measure") Nothing
 
 core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, math, regex, inspectNamespace ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF ] [ measure ] []
 
@@ -112,7 +112,7 @@ makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
         Nothing -> throwError $ DomainError $ "Standard library module " ++ path ++ " not found"
     else read path
   runWithContext ctx' $ run' path source
-  pure $ scalar $ Struct ctx') Nothing (G.quad : "Import") Nothing
+  pure $ scalar $ Struct ctx') Nothing Nothing Nothing Nothing Nothing (G.quad : "Import") Nothing
 
 makeSystemInfo :: String -> String -> Bool -> Nilad
 makeSystemInfo os arch js = Nilad (Just $ do

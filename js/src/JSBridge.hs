@@ -295,6 +295,10 @@ instance IsJSSt Function where
       let repr = fromJSString $ fromJSVal $ jsLookup v $ toJSString "repr"
       let monad = jsLookup v $ toJSString "monad"
       let dyad = jsLookup v $ toJSString "dyad"
+      let un = jsLookup v $ toJSString "un"
+      let anti = jsLookup v $ toJSString "anti"
+      let contra = jsLookup v $ toJSString "contra"
+      let dis = jsLookup v $ toJSString "dis"
       id <- assignId
       pure $ DefinedFunction {
         functionRepr = repr,
@@ -309,6 +313,28 @@ instance IsJSSt Function where
           x' <- toJSValSt x
           y' <- toJSValSt y
           res <- liftToSt (jsCall3 dyad ea' x' y') >>= fromJSValSt
+          liftEither res),
+        functionUn = if jsIsUndefined un then Nothing else Just $ (\ea x -> do
+          ea' <- toJSValSt ea
+          x' <- toJSValSt x
+          res <- liftToSt (jsCall2 un ea' x') >>= fromJSValSt
+          liftEither res),
+        functionAnti = if jsIsUndefined anti then Nothing else Just $ (\ea x y -> do
+          ea' <- toJSValSt ea
+          x' <- toJSValSt x
+          y' <- toJSValSt y
+          res <- liftToSt (jsCall3 anti ea' x' y') >>= fromJSValSt
+          liftEither res),
+        functionContra = if jsIsUndefined contra then Nothing else Just $ (\ea x y -> do
+          ea' <- toJSValSt ea
+          x' <- toJSValSt x
+          y' <- toJSValSt y
+          res <- liftToSt (jsCall3 contra ea' x' y') >>= fromJSValSt
+          liftEither res),
+        functionDis = if jsIsUndefined dis then Nothing else Just $ (\ea x -> do
+          ea' <- toJSValSt ea
+          x' <- toJSValSt x
+          res <- liftToSt (jsCall2 dis ea' x') >>= fromJSValSt
           liftEither res),
         definedFunctionId = id }
     | otherwise = throwError $ DomainError "fromJSValSt Function: not a function"
@@ -325,7 +351,29 @@ instance IsJSSt Function where
       y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
       r <- second fst <$> (runResult $ runSt (callDyad f ea' x' y') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    pure $ objectToVal [("type", toJSVal $ toJSString "function"), ("repr", toJSVal $ toJSString $ show f), ("monad", monad), ("dyad", dyad)]
+    un <- liftToSt $ jsWrap2 $ \ea x -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
+      x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
+      r <- second fst <$> (runResult $ runSt (callUn f ea' x') ctx)
+      fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
+    anti <- liftToSt $ jsWrap3 $ \ea x y -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
+      x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
+      y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
+      r <- second fst <$> (runResult $ runSt (callAnti f ea' x' y') ctx)
+      fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
+    contra <- liftToSt $ jsWrap3 $ \ea x y -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
+      x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
+      y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
+      r <- second fst <$> (runResult $ runSt (callContra f ea' x' y') ctx)
+      fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
+    dis <- liftToSt $ jsWrap2 $ \ea x -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
+      x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
+      r <- second fst <$> (runResult $ runSt (callDis f ea' x') ctx)
+      fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
+    pure $ objectToVal [("type", toJSVal $ toJSString "function"), ("repr", toJSVal $ toJSString $ show f), ("monad", monad), ("dyad", dyad), ("un", un), ("anti", anti), ("contra", contra), ("dis", dis)]
 
 instance IsJSSt Adverb where
   fromJSValSt v
