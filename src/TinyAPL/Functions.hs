@@ -155,6 +155,15 @@ timesS = orStruct2 "Times" times
 times' :: Noun -> Noun -> St Noun
 times' = scalarDyad timesS
 
+signAndAbs :: MonadError Error m => ScalarValue -> m (ScalarValue, ScalarValue)
+signAndAbs y = liftA2 (,) (sign y) (TinyAPL.Functions.abs y)
+
+signAndAbsS :: ScalarValue -> St (ScalarValue, ScalarValue)
+signAndAbsS y = liftA2 (,) (signS y) (absS y)
+
+signAndAbs' :: Noun -> St (Noun, Noun)
+signAndAbs' y = liftA2 (,) (sign' y) (abs' y)
+
 reciprocal :: MonadError Error m => ScalarValue -> m ScalarValue
 reciprocal (Number 0) = throwError $ DomainError "Divide by zero"
 reciprocal (Number y) = pure $ Number $ recip y
@@ -457,6 +466,15 @@ phaseS = orStruct1 "Phase" phase
 phase' :: Noun -> St Noun
 phase' = scalarMonad phaseS
 
+absAndPhase :: MonadError Error m => ScalarValue -> m (ScalarValue, ScalarValue)
+absAndPhase y = liftA2 (,) (TinyAPL.Functions.abs y) (phase y)
+
+absAndPhaseS :: ScalarValue -> St (ScalarValue, ScalarValue)
+absAndPhaseS y = liftA2 (,) (absS y) (phaseS y)
+
+absAndPhase' :: Noun -> St (Noun, Noun)
+absAndPhase' y = liftA2 (,) (abs' y) (phase' y)
+
 real :: MonadError Error m => ScalarValue -> m ScalarValue
 real (Number y) = pure $ Number $ Cx.realPart y :+ 0
 real _ = throwError expectedNumber
@@ -476,6 +494,15 @@ imagS = orStruct1 "ImaginaryPart" imag
 
 imag' :: Noun -> St Noun
 imag' = scalarMonad imagS
+
+realAndImag :: MonadError Error m => ScalarValue -> m (ScalarValue, ScalarValue)
+realAndImag y = liftA2 (,) (real y) (imag y)
+
+realAndImagS :: ScalarValue -> St (ScalarValue, ScalarValue)
+realAndImagS y = liftA2 (,) (realS y) (imagS y)
+
+realAndImag' :: Noun -> St (Noun, Noun)
+realAndImag' y = liftA2 (,) (real' y) (imag' y)
 
 arctan :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
 arctan (Number x) (Number y) = pure $ Number $ Cx.phase (y + x * i) :+ 0
@@ -1511,11 +1538,15 @@ boxed1 = compose enclose'
 boxed2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 boxed2 = atop enclose'
 
-onContents1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Noun -> m Noun
-onContents1 cea = (`compose` first cea)
+discloseIfScalar :: MonadError Error m => Noun -> m Noun
+discloseIfScalar (Array [] [Box xs]) = pure xs
+discloseIfScalar x = pure x
 
-onContents2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
-onContents2 cea = (`over` first cea)
+onContents1 :: MonadError Error m => (Noun -> m Noun) -> Noun -> m Noun
+onContents1 = (`compose` discloseIfScalar)
+
+onContents2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+onContents2 = (`over` discloseIfScalar)
 
 eachLeft :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 eachLeft f x y = each2 f x (scalar $ box y)
@@ -1671,7 +1702,7 @@ under f g arr@(Array _ _) = do
   pairs <- each2 pair arr nums
   rs <- g pairs
   (nums'Sh, nums') <- liftA2 (,) arrayShape (fmap (\case { Number (x :+ 0) -> x; _ -> error "???" }) . arrayContents) <$> each1 (TinyAPL.Functions.last defaultCoreExtraArgs) rs
-  res <- onScalars1 defaultCoreExtraArgs (onContents1 defaultCoreExtraArgs $ first defaultCoreExtraArgs) rs >>= f
+  res <- onScalars1 defaultCoreExtraArgs (first defaultCoreExtraArgs `compose` first defaultCoreExtraArgs) rs >>= f
   unless (distinct nums') $ throwError $ DomainError "Under right argument must return each element at most once"
   if isScalar res then do
     pure $ Array (arrayShape arr) $ zipWith (\num el -> if num `elem` nums' then headPromise $ arrayContents res else el) numsL (arrayContents arr)

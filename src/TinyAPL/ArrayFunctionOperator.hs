@@ -678,35 +678,59 @@ data Function
   = DefinedFunction
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionRepr  :: String
     , functionContext :: Maybe Context
     , definedFunctionId :: Integer }
   | PrimitiveFunction
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionRepr  :: String
     , functionContext :: Maybe Context }
   | PartialFunction
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , partialFunctionFunction :: Function
     , partialFunctionLeft :: Noun }
   | DerivedFunctionNoun
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , derivedFunctionAdverb :: Adverb
     , derivedFunctionNounLeft :: Noun }
   | DerivedFunctionFunction
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , derivedFunctionAdverb :: Adverb
     , derivedFunctionFunctionLeft :: Function }
   | DerivedFunctionNounNoun
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionNounLeft :: Noun
@@ -714,6 +738,10 @@ data Function
   | DerivedFunctionNounFunction
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionNounLeft :: Noun
@@ -721,6 +749,10 @@ data Function
   | DerivedFunctionFunctionNoun
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionFunctionLeft :: Function
@@ -728,6 +760,10 @@ data Function
   | DerivedFunctionFunctionFunction
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionFunctionLeft :: Function
@@ -735,16 +771,28 @@ data Function
   | UnwrapArrayFunction
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , unwrapFunctionArray :: Noun }
   | TrainFunction
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , trainFunctionTines :: [Maybe Value] }
   | ExtraArgsFunction
     { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
     , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
     , functionContext :: Maybe Context
     , extraArgsFunctionExtraArgs :: ExtraArgs
     , extraArgsFunctionFunction :: Function }
@@ -900,6 +948,46 @@ callDyad f ea a b = case functionDyad f of
     Just ctx -> runWithContext ctx $ d ea a b
     Nothing -> d ea a b
   Nothing -> throwError $ noDyad $ show f
+
+noUn :: String -> Error
+noUn str = DomainError $ "Function " ++ str ++ " has no un-inverse"
+
+callUn :: Function -> ExtraArgs -> Noun -> St Noun
+callUn f ea x = case functionUn f of
+  Just u -> case functionContext f of
+    Just ctx -> runWithContext ctx $ u ea x
+    Nothing -> u ea x
+  Nothing -> throwError $ noUn $ show f
+
+noAnti :: String -> Error
+noAnti str = DomainError $ "Function " ++ str ++ " has no anti-inverse"
+
+callAnti :: Function -> ExtraArgs -> Noun -> Noun -> St Noun
+callAnti f ea a b = case functionAnti f of
+  Just t -> case functionContext f of
+    Just ctx -> runWithContext ctx $ t ea a b
+    Nothing -> t ea a b
+  Nothing -> throwError $ noAnti $ show f
+
+noContra :: String -> Error
+noContra str = DomainError $ "Function " ++ str ++ " has no contra-inverse"
+
+callContra :: Function -> ExtraArgs -> Noun -> Noun -> St Noun
+callContra f ea a b = case functionContra f of
+  Just c -> case functionContext f of
+    Just ctx -> runWithContext ctx $ c ea a b
+    Nothing -> c ea a b
+  Nothing -> throwError $ noContra $ show f
+
+noDis :: String -> Error
+noDis str = DomainError $ "Function " ++ str ++ " has no dis-inverse"
+
+callDis :: Function -> ExtraArgs -> Noun -> St (Noun, Noun)
+callDis f ea x = case functionDis f of
+  Just d -> case functionContext f of
+    Just ctx -> runWithContext ctx $ d ea x
+    Nothing -> d ea x
+  Nothing -> throwError $ noDis $ show f
 
 -- * Operators
 
