@@ -85,11 +85,15 @@ jobs:
           restore-keys: |
             ${{ env.platform }}-
 
+      - name: Hack part 2
+        run: 'rm -rf ./dist-newstyle/src'
+        shell: bash
+
       - name: Build
         run: 'cabal build exe:tinyapl'
         shell: bash
 
-      - name: Hack part 2
+      - name: Hack part 3
         run: 'rm -rf ./dist-newstyle/src'
         shell: bash
 
