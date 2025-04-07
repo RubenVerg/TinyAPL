@@ -12,10 +12,27 @@ const button = document.querySelector('#button');
 const infobutton = document.querySelector('#infobutton');
 const info = document.querySelector('#info');
 const fancyarrays = document.querySelector('#fancyarrays');
+const prefixcode = document.querySelector('#prefixcode');
+const prefixsym = document.querySelector('#prefixsym');
 function zip(as, bs) {
     return [...as, ...bs].slice(0, Math.min(as.length, bs.length)).map((_, idx) => [as[idx], bs[idx]]);
 }
 const prefix = { code: 'Backquote', sym: '`' };
+if (window.localStorage.getItem('prefixCode')) {
+    prefix.code = window.localStorage.getItem('prefixCode');
+    prefix.sym = window.localStorage.getItem('prefixSym');
+}
+prefixcode.value = prefix.code;
+prefixsym.value = prefix.sym;
+[prefixcode, prefixsym].forEach(inp => inp.addEventListener('input', () => {
+    prefix.code = prefixcode.value.trim();
+    prefix.sym = prefixsym.value;
+    savePrefix();
+}));
+function savePrefix() {
+    window.localStorage.setItem('prefixCode', prefix.code);
+    window.localStorage.setItem('prefixSym', prefix.sym);
+}
 const keyboard = [
     ['Backquote', '`', '~', undefined, '⍨', '⋄', '⌺'],
     ['Digit1', '1', '!', '¨', '⨳', undefined, '⑴'],
@@ -64,7 +81,7 @@ const keyboard = [
     ['Comma', ',', '<', '⍪', 'ᑈ', '⊲', undefined],
     ['Period', '.', '>', '∙', 'ᐵ', '⊳', '■'],
     ['Slash', '/', '?', '⌿', undefined, undefined, '⍰'],
-    ['Space', 'Space', 'Space', '`', '‿', undefined, undefined],
+    ['Space', 'Space', 'Space', '‿', 'Prefix', undefined],
 ].map(([code, sym, symS, symP, symPS, symPP, symPPS]) => ({ code, sym, symS, symP, symPS, symPP, symPPS }));
 const colors = {
     other: 'unset',
@@ -467,7 +484,7 @@ input.addEventListener('keydown', evt => {
         const v = keyboard.find(k => k.code == evt.code);
         if (v) {
             const t = keyboardState === 2 ? (evt.shiftKey ? v.symPPS : v.symPP) : (evt.shiftKey ? v.symPS : v.symP);
-            insertText(t ?? evt.key);
+            insertText(t === 'Prefix' ? prefix.sym : t ?? evt.key);
             keyboardState = 0;
             evt.preventDefault();
         }

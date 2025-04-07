@@ -307,6 +307,15 @@ floorS = orStruct1EA "Floor" TinyAPL.Functions.floor
 floor' :: CoreExtraArgs -> Noun -> St Noun
 floor' = scalarMonad . floorS
 
+floorAndFrac :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m (ScalarValue, ScalarValue)
+floorAndFrac cea y = liftA2 (,) (TinyAPL.Functions.floor cea y) (remainder cea (Number 1) y)
+
+floorAndFracS :: CoreExtraArgs -> ScalarValue -> St (ScalarValue, ScalarValue)
+floorAndFracS cea y = liftA2 (,) (floorS cea y) (remainderS cea (Number 1) y)
+
+floorAndFrac' :: CoreExtraArgs -> Noun -> St (Noun, Noun)
+floorAndFrac' cea y = liftA2 (,) (floor' cea y) (remainder' cea (scalar $ Number 1) y)
+
 ceil :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m ScalarValue
 ceil CoreExtraArgs{ coreExtraArgsTolerance = t } (Number y) = pure $ Number $ complexCeiling' t y
 ceil _ (Character y) = pure $ Character $ toUpper y

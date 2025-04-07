@@ -16,6 +16,10 @@
 			padding: 1px;
 		}
 
+		input {
+			font-family: var(--font-mono);
+		}
+
 		label {
 			font-family: var(--font-mono);
 		}
@@ -216,6 +220,12 @@
 	<h1 id="loading">Loading...</h1>
 	<input id="fancyarrays" type="checkbox" checked>
 	<label for="fancyarrays">Show some arrays as tables</label>
+	<div style="float: right;">
+		<input id="prefixcode" type="text">
+		<label for="prefixcode">Prefix key code</label>
+		<input id="prefixsym" type="text">
+		<label for="prefixsym">Prefix key symbol (on space)</label>
+	</div>
 	<br />
 	<button id="infobutton" type="button" disabled>Info</button>
 	<div id="info">
