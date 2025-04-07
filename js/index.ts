@@ -18,12 +18,33 @@ const button = document.querySelector<HTMLButtonElement>('#button')!;
 const infobutton = document.querySelector<HTMLButtonElement>('#infobutton')!;
 const info = document.querySelector<HTMLDivElement>('#info')!;
 const fancyarrays = document.querySelector<HTMLInputElement>('#fancyarrays')!;
+const prefixcode = document.querySelector<HTMLInputElement>('#prefixcode')!;
+const prefixsym = document.querySelector<HTMLInputElement>('#prefixsym')!;
 
 function zip<A, B>(as: A[], bs: B[]): [A, B][] {
 	return [...as, ...bs].slice(0, Math.min(as.length, bs.length)).map((_, idx) => [as[idx], bs[idx]]);
 }
 
 const prefix = { code: 'Backquote', sym: '`' };
+
+if (window.localStorage.getItem('prefixCode')) {
+	prefix.code = window.localStorage.getItem('prefixCode')!;
+	prefix.sym = window.localStorage.getItem('prefixSym')!;
+}
+
+prefixcode.value = prefix.code;
+prefixsym.value = prefix.sym;
+
+[prefixcode, prefixsym].forEach(inp => inp.addEventListener('input', () => {
+	prefix.code = prefixcode.value.trim();
+	prefix.sym = prefixsym.value;
+	savePrefix();
+}));
+
+function savePrefix() {
+	window.localStorage.setItem('prefixCode', prefix.code);
+	window.localStorage.setItem('prefixSym', prefix.sym);
+}
 
 const keyboard = [
 	['Backquote', '`', '~', undefined, '⍨', '⋄', '⌺'],
@@ -73,7 +94,7 @@ const keyboard = [
 	['Comma', ',', '<', '⍪', 'ᑈ', '⊲', undefined],
 	['Period', '.', '>', '∙', 'ᐵ', '⊳', '■'],
 	['Slash', '/', '?', '⌿', undefined, undefined, '⍰'],
-	['Space', 'Space', 'Space', '`', '‿', undefined, undefined],
+	['Space', 'Space', 'Space', 'Prefix', '‿', undefined, undefined],
 ].map(([code, sym, symS, symP, symPS, symPP, symPPS]) => ({ code, sym, symS, symP, symPS, symPP, symPPS }));
 
 const colors = {
@@ -466,7 +487,7 @@ input.addEventListener('keydown', evt => {
 		const v = keyboard.find(k => k.code == evt.code);
 		if (v) {
 			const t = keyboardState === 2 ? (evt.shiftKey ? v.symPPS : v.symPP) : (evt.shiftKey ? v.symPS : v.symP);
-			insertText(t ?? evt.key);
+			insertText(t === 'Prefix' ? prefix.sym : t ?? evt.key);
 			keyboardState = 0;
 			evt.preventDefault();
 		}
