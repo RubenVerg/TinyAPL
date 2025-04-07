@@ -1101,7 +1101,7 @@ reorderAxesInner x@(Array _ _) y@(Array _ _) = do
   shy <- shape' y
   sx <- sortUp' defaultCoreExtraArgs x
   is <- sortByUp' defaultCoreExtraArgs shy x
-  is' <- key' ((reduce' min') `atop` (pure .: flip const)) sx is
+  is' <- key' ((reduce' defaultCoreExtraArgs min') `atop` (pure .: flip const)) sx is
   iota <- indexGenerator' defaultCoreExtraArgs is'
   indices <- eachRight (from defaultCoreExtraArgs) x iota
   from defaultCoreExtraArgs indices y
@@ -1388,7 +1388,7 @@ mask' cea n hs = do
   zipWithM (\(Array sh cs) ind -> Array sh <$> mapM (times (Number $ fromIntegral ind :+ 0)) cs) nonOverlapping [1..] >>= fold (scalarDyad add) (arrayReshapedNE (arrayShape hs) $ Number <$> 0 NE.:| Prelude.repeat 0)
 
 histogram :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
-histogram cea@CoreExtraArgs{ coreExtraArgsOrigin = o } = (((indexGenerator' cea `compose` first defaultCoreExtraArgs) `compose` reduce' max') `compose` ((flip (scalarDyad sub) $ scalar $ Number $ fromIntegral o) `compose` (scalarMonad increment))) `leftHook` TinyAPL.Functions.count defaultCoreExtraArgs
+histogram cea@CoreExtraArgs{ coreExtraArgsOrigin = o } = (((indexGenerator' cea `compose` first defaultCoreExtraArgs) `compose` reduce' defaultCoreExtraArgs max') `compose` ((flip (scalarDyad sub) $ scalar $ Number $ fromIntegral o) `compose` (scalarMonad increment))) `leftHook` TinyAPL.Functions.count defaultCoreExtraArgs
 
 -- * Modifiers
 
@@ -1477,31 +1477,23 @@ reduce :: MonadError Error m => (a -> a -> m a) -> [a] -> m a
 reduce _ [] = throwError $ DomainError "Reduce empty axis"
 reduce f (x:xs) = foldlM f x xs
 
-reduce' :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> m Noun
-reduce' f a@(Array _ _) = reduce f (majorCells a)
-reduce' f (Dictionary _ vs) = reduce f (scalar <$> vs)
-
-fold :: MonadError Error m => (a -> a -> m a) -> a -> [a] -> m a
-fold = foldlM
-
-fold' :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
-fold' f s a@(Array _ _) = fold f s $ majorCells a
-fold' f s (Dictionary _ vs) = fold f s $ scalar <$> vs
-
 reduceBack :: MonadError Error m => (a -> a -> m a) -> [a] -> m a
 reduceBack _ [] = throwError $ DomainError "Reduce empty axis"
 reduceBack f (xs:>x) = foldrM f x xs
 
-reduceBack' :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> m Noun
-reduceBack' f a@(Array _ _) = reduceBack f (majorCells a)
-reduceBack' f (Dictionary _ vs) = reduceBack f (scalar <$> vs)
+reduce' :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
+reduce' CoreExtraArgs{ coreExtraArgsBackward = b } f a@(Array _ _) = (if b then reduceBack else reduce) f (majorCells a)
+reduce' CoreExtraArgs{ coreExtraArgsBackward = b } f (Dictionary _ vs) = (if b then reduceBack else reduce) f (scalar <$> vs)
+
+fold :: MonadError Error m => (a -> a -> m a) -> a -> [a] -> m a
+fold = foldlM
 
 foldBack :: MonadError Error m => (a -> a -> m a) -> a -> [a] -> m a
 foldBack = foldrM
 
-foldBack' :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
-foldBack' f s a@(Array _ _) = foldBack f s $ majorCells a
-foldBack' f s (Dictionary _ vs) = foldBack f s $ scalar <$> vs
+fold' :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+fold' CoreExtraArgs{ coreExtraArgsBackward = b } f s a@(Array _ _) = (if b then foldBack else fold) f s $ majorCells a
+fold' CoreExtraArgs{ coreExtraArgsBackward = b } f s (Dictionary _ vs) = (if b then foldBack else fold) f s $ scalar <$> vs
 
 onPrefixes :: MonadError Error m => ([a] -> m b) -> [a] -> m [b]
 onPrefixes f = mapM f . prefixes

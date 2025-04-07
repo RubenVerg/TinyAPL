@@ -197,14 +197,9 @@ reduce = PrimitiveAdverb
   { adverbRepr = [G.reduce]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.reduce' $ callDyad f []) (Just $ const $ F.fold' $ callDyad f []) (Just $ const $ \y -> case f of
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.reduce' $ callDyad f []) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.fold' $ callDyad f []) (ea' ++ ea)) (Just $ const $ \y -> case f of
     DerivedFunctionFunction{ derivedFunctionFunctionLeft = f', derivedFunctionAdverb = adv } | adv == onContents -> callDis f' [] y >>= uncurry F.pair
     _ -> callDis f [] y >>= uncurry (F.laminate defaultCoreExtraArgs)) Nothing Nothing Nothing Nothing reduce f }
-reduceBack = PrimitiveAdverb
-  { adverbRepr = [G.reduceBack]
-  , adverbContext = Nothing
-  , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.reduceBack' $ callDyad f []) (Just $ const $ F.foldBack' $ callDyad f []) Nothing Nothing Nothing Nothing Nothing reduceBack f }
 onPrefixes = PrimitiveAdverb
   { adverbRepr = [G.onPrefixes]
   , adverbContext = Nothing
@@ -304,7 +299,6 @@ inverse = PrimitiveAdverb
 adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   [ TinyAPL.Primitives.selfie
   , TinyAPL.Primitives.reduce
-  , TinyAPL.Primitives.reduceBack
   , TinyAPL.Primitives.onPrefixes
   , TinyAPL.Primitives.onSuffixes
   , TinyAPL.Primitives.each
