@@ -25,6 +25,7 @@ import qualified Data.Matrix as M
 import qualified TinyAPL.Gamma.Gamma as Gamma
 import Data.Foldable (foldlM, foldrM)
 import qualified Data.Map.Strict as Map
+import Math.NumberTheory.Primes (unPrime, UniqueFactorisation(factorise))
 
 -- * Functions
 
@@ -160,6 +161,12 @@ timesS = orStruct2 "Times" times
 
 times' :: Noun -> Noun -> St Noun
 times' = scalarDyad timesS
+
+timesAna' :: Noun -> Noun -> St [Noun]
+timesAna' x y = do
+  let err = DomainError "Times ana must receive a natural after division"
+  n <- divide' y x >>= asScalar err >>= asNumber err >>= asNat err
+  pure $ factorise n >>= (\(pr, ct) -> genericTake ct $ Prelude.repeat $ scalar $ Number $ (:+ 0) $ fromIntegral $ unPrime pr)
 
 signAndAbs :: MonadError Error m => ScalarValue -> m (ScalarValue, ScalarValue)
 signAndAbs y = liftA2 (,) (sign y) (TinyAPL.Functions.abs y)

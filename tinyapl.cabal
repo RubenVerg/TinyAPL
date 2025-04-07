@@ -73,6 +73,7 @@ library
                     , regex-pcre-builtin ^>=0.95.2.3.8.44
                     , array ^>=0.5.7.0
                     , containers ^>=0.7
+                    , arithmoi ^>=0.13.0.1
                     , template-haskell ^>=2.22.0.0
     hs-source-dirs:   src
                     , gamma
