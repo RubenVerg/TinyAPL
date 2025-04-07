@@ -1031,7 +1031,7 @@ callAna f ea a b = case functionAna f of
   Just n -> case functionContext f of
     Just ctx -> runWithContext ctx $ n ea a b
     Nothing -> n ea a b
-  Nothing -> throwError $ noContra $ show f
+  Nothing -> throwError $ noAna $ show f
 
 -- * Operators
 

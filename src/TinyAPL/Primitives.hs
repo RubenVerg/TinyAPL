@@ -29,7 +29,7 @@ arrays =
 
 plus = PrimitiveFunction (Just $ const F.conjugate') (Just $ const F.add') (Just $ const F.conjugate') (Just $ const $ F.commute F.sub') (Just $ const F.sub') (Just $ withCoreExtraArgs1 F.floorAndFrac') (Just $ const F.halve') (Just $ const F.addAna') [G.plus] Nothing
 minus = PrimitiveFunction (Just $ const F.neg') (Just $ const F.sub') Nothing Nothing Nothing Nothing Nothing Nothing [G.minus] Nothing
-times = PrimitiveFunction (Just $ const F.sign') (Just $ const F.times') Nothing (Just $ const $ F.commute F.divide') (Just $ const F.divide') (Just $ const F.signAndAbs') Nothing Nothing [G.times] Nothing
+times = PrimitiveFunction (Just $ const F.sign') (Just $ const F.times') Nothing (Just $ const $ F.commute F.divide') (Just $ const F.divide') (Just $ const F.signAndAbs') (Just $ const F.squareRoot') (Just $ const F.timesAna') [G.times] Nothing
 divide = PrimitiveFunction (Just $ const F.reciprocal') (Just $ const F.divide') Nothing Nothing Nothing Nothing Nothing Nothing [G.divide] Nothing
 power = PrimitiveFunction (Just $ const F.ePow') (Just $ const F.pow') Nothing Nothing Nothing Nothing Nothing Nothing [G.power] Nothing
 logarithm = PrimitiveFunction (Just $ const F.ln') (Just $ const F.log') Nothing Nothing Nothing Nothing Nothing Nothing [G.logarithm] Nothing
