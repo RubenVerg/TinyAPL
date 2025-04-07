@@ -912,14 +912,14 @@ doFFI libName args' = do
     Nothing -> throwError $ DomainError "Invalid parameter type"
   pure $ scalar $ Wrap $ PrimitiveFunction (Just $ const $ \y -> do
     args <- fmap fromScalar <$> asVector (DomainError "FFI arguments must be a vector") y
-    ffiFunc sym params' ret' args) Nothing Nothing Nothing Nothing Nothing (case libName of
+    ffiFunc sym params' ret' args) Nothing Nothing Nothing Nothing Nothing Nothing Nothing (case libName of
     Just path -> "<" ++ ret ++ " " ++ path ++ ":" ++ name ++ "(" ++ intercalate ", " params ++ ")>"
     Nothing -> "<" ++ ret ++ " " ++ name ++ "(" ++ intercalate ", " params ++ ")>") Nothing
 
 ffi :: Function
 ffi = PrimitiveFunction (Just $ const $ doFFI Nothing) (Just $ const $ \x y -> do
   name <- asString (DomainError "FFI left argument must be a string") x
-  doFFI (Just name) y) Nothing Nothing Nothing Nothing (G.quad : "FFI") Nothing
+  doFFI (Just name) y) Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "FFI") Nothing
 
 pointer :: FFIType -> Ptr a -> St ScalarValue
 pointer typ ptr = do
@@ -933,11 +933,11 @@ pointer typ ptr = do
     [ ("Peek", (VariableConstant, PrimitiveFunction (Just $ const $ scalarMonad $ \y -> do
       let err = DomainError "Pointer peek offset must be an integer"
       offset <- asNumber err y >>= asInt err
-      fmap toScalar $ peek $ plusPtr ptr $ offset * size) Nothing Nothing Nothing Nothing Nothing "Peek" Nothing))
+      fmap toScalar $ peek $ plusPtr ptr $ offset * size) Nothing Nothing Nothing Nothing Nothing Nothing Nothing "Peek" Nothing))
     , ("PeekB", (VariableConstant, PrimitiveFunction (Just $ const $ scalarMonad $ \y -> do
       let err = DomainError "Pointer peek offset must be an integer"
       offset <- asNumber err y >>= asInt err
-      fmap toScalar $ peek $ plusPtr ptr offset) Nothing Nothing Nothing Nothing  Nothing "PeekB" Nothing))
+      fmap toScalar $ peek $ plusPtr ptr offset) Nothing Nothing Nothing Nothing Nothing Nothing  Nothing "PeekB" Nothing))
     , ("PeekL", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> do
       let err = DomainError "Pointer peek with length length must be a natural"
       len <- asScalar err y >>= asNumber err >>= asNat err
@@ -946,28 +946,28 @@ pointer typ ptr = do
       let offsetErr = DomainError "Pointer peek with length offset must be an integer"
       offset <- asScalar offsetErr x >>= asNumber offsetErr >>= asInt offsetErr
       len <- asScalar lenErr y >>= asNumber lenErr >>= asNat lenErr
-      ffiPeekArrayLen typ (plusPtr ptr $ offset * size) $ fromIntegral len) Nothing Nothing Nothing Nothing  "PeekL" Nothing))
+      ffiPeekArrayLen typ (plusPtr ptr $ offset * size) $ fromIntegral len) Nothing Nothing Nothing Nothing Nothing Nothing  "PeekL" Nothing))
     , ("PeekE", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> do
       let err = DomainError "Pointer peek to zero offset must be an integer"
       offset <- asScalar err y >>= asNumber err >>= asInt err
       ffiPeekArray0 typ $ plusPtr ptr $ offset * size) (Just $ const $ \x y -> do
       let err = DomainError "Pointer peek to end offset must be an integer"
       offset <- asScalar err x >>= asNumber err >>= asInt err
-      ffiPeekArrayEnd typ (plusPtr ptr $ offset * size) y) Nothing Nothing Nothing Nothing  "PeekE" Nothing))
+      ffiPeekArrayEnd typ (plusPtr ptr $ offset * size) y) Nothing Nothing Nothing Nothing Nothing Nothing  "PeekE" Nothing))
     , ("Poke", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> poke ptr y $> vector []) (Just $ const $ \x y -> do
       let err = DomainError "Pointer poke offset must be an integer"
       offset <- asScalar err x >>= asNumber err >>= asInt err
-      poke (plusPtr ptr $ offset * size) y $> vector []) Nothing Nothing Nothing Nothing  "Poke" Nothing))
+      poke (plusPtr ptr $ offset * size) y $> vector []) Nothing Nothing Nothing Nothing Nothing Nothing  "Poke" Nothing))
     , ("PokeB", (VariableConstant, PrimitiveFunction Nothing (Just $ const $ \x y -> do
       let err = DomainError "Pointer poke offset must be an integer"
       offset <- asScalar err x >>= asNumber err >>= asInt err
-      poke (plusPtr ptr offset) y $> vector []) Nothing Nothing Nothing Nothing "PokeB" Nothing))
-    , ("PokeA", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> ffiPokeArray typ ptr y $> vector []) Nothing Nothing Nothing Nothing Nothing "PokeA" Nothing))
-    , ("PokeE", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> ffiPokeArray0 typ ptr y $> vector []) (Just $ const $ \x y -> ffiPokeArrayEnd typ ptr x y $> vector []) Nothing Nothing Nothing Nothing "PokeE" Nothing))
+      poke (plusPtr ptr offset) y $> vector []) Nothing Nothing Nothing Nothing Nothing Nothing "PokeB" Nothing))
+    , ("PokeA", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> ffiPokeArray typ ptr y $> vector []) Nothing Nothing Nothing Nothing Nothing Nothing Nothing "PokeA" Nothing))
+    , ("PokeE", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> ffiPokeArray0 typ ptr y $> vector []) (Just $ const $ \x y -> ffiPokeArrayEnd typ ptr x y $> vector []) Nothing Nothing Nothing Nothing Nothing Nothing "PokeE" Nothing))
     , ("AddB", (VariableConstant, PrimitiveFunction (Just $ const $ scalarMonad $ \y -> do
       let err = DomainError "Pointer add byte offset must be an integer"
       offset <- asNumber err y >>= asInt err
-      pointer typ $ plusPtr ptr offset) Nothing Nothing Nothing Nothing Nothing  "AddB" Nothing))
+      pointer typ $ plusPtr ptr offset) Nothing Nothing Nothing Nothing Nothing Nothing Nothing  "AddB" Nothing))
     , ("SubB", (VariableConstant, PrimitiveFunction (Just $ const $ scalarMonad $ \case
       (Number off) -> do
         offset <- asInt (DomainError "Pointer subtract byte offset must be an integer") off
@@ -975,12 +975,12 @@ pointer typ ptr = do
       pointerObj@(Struct _) -> do
         right <- pointerGet pointerObj
         pure $ Number $ (:+ 0) $ fromIntegral $ ptr `minusPtr` right
-      _ -> throwError $ DomainError "Invalid arguments to pointer subtract byte") Nothing Nothing Nothing Nothing Nothing "SubB" Nothing))
+      _ -> throwError $ DomainError "Invalid arguments to pointer subtract byte") Nothing Nothing Nothing Nothing Nothing Nothing Nothing "SubB" Nothing))
     , ("Cast", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> do
       typ <- asString (DomainError "Pointer cast argument must be a string") y
       case parseFFI typ of
         Nothing -> throwError $ DomainError "Invalid cast target type"
-        Just ffiTyp -> scalar <$> pointer ffiTyp ptr) Nothing Nothing Nothing Nothing Nothing "Cast" Nothing))
+        Just ffiTyp -> scalar <$> pointer ffiTyp ptr) Nothing Nothing Nothing Nothing Nothing Nothing Nothing "Cast" Nothing))
     , (G.deltaBar : "Add", (VariableConstant, PrimitiveFunction Nothing (Just $ const $ \cases
       (Array [] [pointerObj@(Struct _)]) (Array [] [Number off]) -> do
         offset <- asInt (DomainError "Pointer add offset must be an integer") off
@@ -990,7 +990,7 @@ pointer typ ptr = do
         offset <- asInt (DomainError "Pointer add offset must be an integer") off
         p <- pointerGet pointerObj
         scalar <$> pointer typ (plusPtr p $ offset * size)
-      _ _ -> throwError $ DomainError "Invalid arguments to pointer add") Nothing Nothing Nothing Nothing (G.deltaBar : "Add") Nothing)) 
+      _ _ -> throwError $ DomainError "Invalid arguments to pointer add") Nothing Nothing Nothing Nothing Nothing Nothing (G.deltaBar : "Add") Nothing)) 
     , (G.deltaBar : "Subtract", (VariableConstant, PrimitiveFunction Nothing (Just $ const $ \cases
       (Array [] [pointerObj@(Struct _)]) (Array [] [Number off]) -> do
         offset <- asInt (DomainError "Pointer subtract offset must be an integer") off
@@ -1000,19 +1000,19 @@ pointer typ ptr = do
         left <- pointerGet leftObj
         right <- pointerGet rightObj
         pure $ scalar $ Number $ (:+ 0) $ fromIntegral $ (`div` size) $ left `minusPtr` right
-      _ _ -> throwError $ DomainError "Invalid arguments to pointer subtract") Nothing Nothing Nothing Nothing (G.deltaBar : "Subtract") Nothing))
+      _ _ -> throwError $ DomainError "Invalid arguments to pointer subtract") Nothing Nothing Nothing Nothing Nothing Nothing (G.deltaBar : "Subtract") Nothing))
     , (G.deltaBar : "Increment", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> do
       sc <- asScalar undefined y
       p <- pointerGet sc
-      scalar <$> pointer typ (plusPtr p 1)) Nothing Nothing Nothing Nothing Nothing (G.deltaBar : "Increment") Nothing))
+      scalar <$> pointer typ (plusPtr p 1)) Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.deltaBar : "Increment") Nothing))
     , (G.deltaBar : "Decrement", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> do
       sc <- asScalar undefined y
       p <- pointerGet sc
-      scalar <$> pointer typ (plusPtr p $ -1)) Nothing Nothing Nothing Nothing Nothing (G.deltaBar : "Decrement") Nothing))
+      scalar <$> pointer typ (plusPtr p $ -1)) Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.deltaBar : "Decrement") Nothing))
     , (G.deltaBar : "Sign", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> do
       sc <- asScalar undefined y
       p <- pointerGet sc
-      pure $ scalar $ boolToScalar $ castPtr p == nullPtr) Nothing Nothing Nothing Nothing Nothing (G.deltaBar : "Sign") Nothing)) ]
+      pure $ scalar $ boolToScalar $ castPtr p == nullPtr) Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.deltaBar : "Sign") Nothing)) ]
     [] [] Nothing
   ctx <- getContext
   pure $ Struct $ ctx{ contextScope = scope }
@@ -1045,30 +1045,30 @@ ffiStruct = Nilad (Just $ do
       typ <- asString (DomainError "FFI New left argument must be a string") x
       case parseFFI typ of
         Nothing -> throwError $ DomainError "Invalid New type"
-        Just typ' -> ffiNew typ' y >>= fmap scalar . pointer typ' . fst) Nothing Nothing Nothing Nothing "New" Nothing))
+        Just typ' -> ffiNew typ' y >>= fmap scalar . pointer typ' . fst) Nothing Nothing Nothing Nothing Nothing Nothing "New" Nothing))
     , ("NewA", (VariableConstant, PrimitiveFunction Nothing (Just $ const $ \x y -> do
       typ <- asString (DomainError "FFI NewA left argument must be a string") x
       case parseFFI typ of
         Nothing -> throwError $ DomainError "Invalid NewA type"
-        Just typ' -> ffiNewArray typ' y >>= fmap scalar . pointer typ' . fst) Nothing Nothing Nothing Nothing "NewA" Nothing))
+        Just typ' -> ffiNewArray typ' y >>= fmap scalar . pointer typ' . fst) Nothing Nothing Nothing Nothing Nothing Nothing "NewA" Nothing))
     , ("NewZ", (VariableConstant, PrimitiveFunction Nothing (Just $ const $ \x y -> do
       typ <- asString (DomainError "FFI NewZ left argument must be a string") x
       case parseFFI typ of
         Nothing -> throwError $ DomainError "Invalid NewZ type"
-        Just typ' -> ffiNewArray0 typ' y >>= fmap scalar . pointer typ' . fst) Nothing Nothing Nothing Nothing "NewZ" Nothing))
+        Just typ' -> ffiNewArray0 typ' y >>= fmap scalar . pointer typ' . fst) Nothing Nothing Nothing Nothing Nothing Nothing "NewZ" Nothing))
     , ("Alloc", (VariableConstant, PrimitiveFunction (Just $ const $ doAlloc 1) (Just $ const $ \x y -> do
       let err = DomainError "FFI Alloc left argument must be a natural"
       count <- asScalar err x >>= asNumber err >>= asNat err
-      doAlloc (fromIntegral count) y) Nothing Nothing Nothing Nothing "Alloc" Nothing))
+      doAlloc (fromIntegral count) y) Nothing Nothing Nothing Nothing Nothing Nothing "Alloc" Nothing))
     , ("Free", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> do
       ptr <- asScalar (DomainError "FFI Free argument must be a pointer object") y >>= pointerGet
       liftIO $ free ptr
-      pure $ vector []) Nothing Nothing Nothing Nothing Nothing "Free" Nothing))
+      pure $ vector []) Nothing Nothing Nothing Nothing Nothing Nothing Nothing "Free" Nothing))
     , ("SizeOf", (VariableConstant, PrimitiveFunction (Just $ const $ \y -> do
       (sh, typs) <- asArrayOfStrings (DomainError "FFI SizeOf argument must be a string or array of strings") y
       case mapM parseFFI typs of
         Nothing -> throwError$ DomainError "Invalid SizeOf type"
-        Just typs' -> pure $ Array sh $ Number . (:+ 0) . fromIntegral . ffiSize <$> typs') Nothing Nothing Nothing Nothing Nothing "SizeOf" Nothing)) ]
+        Just typs' -> pure $ Array sh $ Number . (:+ 0) . fromIntegral . ffiSize <$> typs') Nothing Nothing Nothing Nothing Nothing Nothing Nothing "SizeOf" Nothing)) ]
     [] [] Nothing
   ctx <- getContext
   pure $ scalar $ Struct $ ctx{ contextScope = scope }) Nothing (G.quad : "ffi") Nothing

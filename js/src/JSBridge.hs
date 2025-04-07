@@ -299,6 +299,8 @@ instance IsJSSt Function where
       let anti = jsLookup v $ toJSString "anti"
       let contra = jsLookup v $ toJSString "contra"
       let dis = jsLookup v $ toJSString "dis"
+      let bi = jsLookup v $ toJSString "bi"
+      let ana = jsLookup v $ toJSString "ana"
       id <- assignId
       pure $ DefinedFunction {
         functionRepr = repr,
@@ -335,6 +337,17 @@ instance IsJSSt Function where
           ea' <- toJSValSt ea
           x' <- toJSValSt x
           res <- liftToSt (jsCall2 dis ea' x') >>= fromJSValSt
+          liftEither res),
+        functionBi = if jsIsUndefined bi then Nothing else Just $ (\ea x -> do
+          ea' <- toJSValSt ea
+          x' <- toJSValSt x
+          res <- liftToSt (jsCall2 bi ea' x') >>= fromJSValSt
+          liftEither res),
+        functionAna = if jsIsUndefined ana then Nothing else Just $ (\ea x y -> do
+          ea' <- toJSValSt ea
+          x' <- toJSValSt x
+          y' <- toJSValSt y
+          res <- liftToSt (jsCall3 ana ea' x' y') >>= fromJSValSt
           liftEither res),
         definedFunctionId = id }
     | otherwise = throwError $ DomainError "fromJSValSt Function: not a function"
@@ -373,7 +386,18 @@ instance IsJSSt Function where
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
       r <- second fst <$> (runResult $ runSt (callDis f ea' x') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    pure $ objectToVal [("type", toJSVal $ toJSString "function"), ("repr", toJSVal $ toJSString $ show f), ("monad", monad), ("dyad", dyad), ("un", un), ("anti", anti), ("contra", contra), ("dis", dis)]
+    bi <- liftToSt $ jsWrap2 $ \ea x -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
+      x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
+      r <- second fst <$> (runResult $ runSt (callBi f ea' x') ctx)
+      fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
+    ana <- liftToSt $ jsWrap3 $ \ea x y -> do
+      ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
+      x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
+      y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
+      r <- second fst <$> (runResult $ runSt (callAna f ea' x' y') ctx)
+      fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
+    pure $ objectToVal [("type", toJSVal $ toJSString "function"), ("repr", toJSVal $ toJSString $ show f), ("monad", monad), ("dyad", dyad), ("un", un), ("anti", anti), ("contra", contra), ("dis", dis), ("bi", bi), ("ana", ana)]
 
 instance IsJSSt Adverb where
   fromJSValSt v

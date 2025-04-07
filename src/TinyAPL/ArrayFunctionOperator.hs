@@ -682,6 +682,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionRepr  :: String
     , functionContext :: Maybe Context
     , definedFunctionId :: Integer }
@@ -692,6 +694,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionRepr  :: String
     , functionContext :: Maybe Context }
   | PartialFunction
@@ -701,6 +705,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , partialFunctionFunction :: Function
     , partialFunctionLeft :: Noun }
@@ -711,6 +717,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , derivedFunctionAdverb :: Adverb
     , derivedFunctionNounLeft :: Noun }
@@ -721,6 +729,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , derivedFunctionAdverb :: Adverb
     , derivedFunctionFunctionLeft :: Function }
@@ -731,6 +741,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionNounLeft :: Noun
@@ -742,6 +754,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionNounLeft :: Noun
@@ -753,6 +767,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionFunctionLeft :: Function
@@ -764,6 +780,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionFunctionLeft :: Function
@@ -775,6 +793,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , unwrapFunctionArray :: Noun }
   | TrainFunction
@@ -784,6 +804,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , trainFunctionTines :: [Maybe Value] }
   | ExtraArgsFunction
@@ -793,6 +815,8 @@ data Function
     , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
     , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
     , functionContext :: Maybe Context
     , extraArgsFunctionExtraArgs :: ExtraArgs
     , extraArgsFunctionFunction :: Function }
@@ -988,6 +1012,26 @@ callDis f ea x = case functionDis f of
     Just ctx -> runWithContext ctx $ d ea x
     Nothing -> d ea x
   Nothing -> throwError $ noDis $ show f
+
+noBi :: String -> Error
+noBi str = DomainError $ "Function " ++ str ++ " has no bi-inverse"
+
+callBi :: Function -> ExtraArgs -> Noun -> St Noun
+callBi f ea x = case functionBi f of
+  Just i -> case functionContext f of
+    Just ctx -> runWithContext ctx $ i ea x
+    Nothing -> i ea x
+  Nothing -> throwError $ noBi $ show f
+
+noAna :: String -> Error
+noAna str = DomainError $ "Function " ++ str ++ " has no ana-inverse"
+
+callAna :: Function -> ExtraArgs -> Noun -> Noun -> St [Noun]
+callAna f ea a b = case functionAna f of
+  Just n -> case functionContext f of
+    Just ctx -> runWithContext ctx $ n ea a b
+    Nothing -> n ea a b
+  Nothing -> throwError $ noContra $ show f
 
 -- * Operators
 
