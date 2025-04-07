@@ -27,7 +27,7 @@ arrays =
 
 -- * Primitive functions
 
-plus = PrimitiveFunction (Just $ const F.conjugate') (Just $ const F.add') (Just $ const F.conjugate') (Just $ const $ F.commute F.sub') (Just $ const F.sub') Nothing [G.plus] Nothing
+plus = PrimitiveFunction (Just $ const F.conjugate') (Just $ const F.add') (Just $ const F.conjugate') (Just $ const $ F.commute F.sub') (Just $ const F.sub') (Just $ withCoreExtraArgs1 F.floorAndFrac') [G.plus] Nothing
 minus = PrimitiveFunction (Just $ const F.neg') (Just $ const F.sub') Nothing Nothing Nothing Nothing [G.minus] Nothing
 times = PrimitiveFunction (Just $ const F.sign') (Just $ const F.times') Nothing (Just $ const $ F.commute F.divide') (Just $ const F.divide') (Just $ const F.signAndAbs') [G.times] Nothing
 divide = PrimitiveFunction (Just $ const F.reciprocal') (Just $ const F.divide') Nothing Nothing Nothing Nothing [G.divide] Nothing
