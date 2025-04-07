@@ -81,7 +81,7 @@ const keyboard = [
     ['Comma', ',', '<', '⍪', 'ᑈ', '⊲', undefined],
     ['Period', '.', '>', '∙', 'ᐵ', '⊳', '■'],
     ['Slash', '/', '?', '⌿', undefined, undefined, '⍰'],
-    ['Space', 'Space', 'Space', 'Prefix', '‿', undefined, undefined],
+    ['Space', 'Space', 'Space', '‿', 'Prefix', undefined],
 ].map(([code, sym, symS, symP, symPS, symPP, symPPS]) => ({ code, sym, symS, symP, symPS, symPP, symPPS }));
 const colors = {
     other: 'unset',
