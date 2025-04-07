@@ -10,3 +10,6 @@ source-repository-package
   type: git
   location: https://github.com/RubenVerg/edited-hs
   tag: 0d84f7fd2f43529aa802ca704a00ba7a8479fe82
+
+package *
+  split-sections: True
