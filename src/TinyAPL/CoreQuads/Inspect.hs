@@ -118,4 +118,4 @@ inspectMonad :: MonadError Error m => Noun -> m Noun
 inspectMonad = inspect' $ scalar $ boolToScalar True
 
 inspectF :: Function
-inspectF = PrimitiveFunction (Just $ const inspectMonad) (Just $ const inspect') Nothing Nothing Nothing Nothing (G.quad : "Inspect") Nothing
+inspectF = PrimitiveFunction (Just $ const inspectMonad) (Just $ const inspect') Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "Inspect") Nothing

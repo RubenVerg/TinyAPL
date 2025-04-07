@@ -31,6 +31,8 @@ asWraps err arr = do
     , functionAnti = Just $ \ea x y -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callAnti f ea x y)) arr
     , functionContra = Just $ \ea x y -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callContra f ea x y)) arr
     , functionDis = Nothing
+    , functionBi = Just $ \ea x -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callBi f ea x)) arr
+    , functionAna = Nothing
     , functionContext = Nothing
     , unwrapFunctionArray = arr }
 
@@ -268,7 +270,7 @@ evalMonadCall _ _                        = throwError $ DomainError "Invalid arg
 
 evalDyadCall :: Value -> Value -> St Value
 evalDyadCall (VNoun arr) (VFunction f) =
-  return $ VFunction $ PartialFunction { functionMonad = Just $ \ea -> callDyad f ea arr, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionContext = functionContext f, partialFunctionFunction = f, partialFunctionLeft = arr }
+  return $ VFunction $ PartialFunction { functionMonad = Just $ \ea -> callDyad f ea arr, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionContext = functionContext f, partialFunctionFunction = f, partialFunctionLeft = arr }
 evalDyadCall _ _                       = throwError $ DomainError "Invalid arguments to dyad call evaluation"
 
 evalAdverbCall :: Value -> Value -> St Value
@@ -406,6 +408,8 @@ evalDefined statements cat = let
           , functionAnti = Nothing
           , functionContra = Nothing
           , functionDis = Nothing
+          , functionBi = Nothing
+          , functionAna = Nothing
           , definedFunctionId = id }
         pure $ VFunction dfn
       CatAdverb -> do
@@ -435,6 +439,8 @@ evalDefined statements cat = let
               , functionAnti = Nothing
               , functionContra = Nothing
               , functionDis = Nothing
+              , functionBi = Nothing
+              , functionAna = Nothing
               , definedFunctionId = id }
             pure dfn
           , adverbOnFunction = Just $ \ea' a -> do
@@ -459,6 +465,8 @@ evalDefined statements cat = let
               , functionAnti = Nothing
               , functionContra = Nothing
               , functionDis = Nothing
+              , functionBi = Nothing
+              , functionAna = Nothing
               , definedFunctionId = id }
             pure dfn
           , definedAdverbId = id }
@@ -492,6 +500,8 @@ evalDefined statements cat = let
               , functionAnti = Nothing
               , functionContra = Nothing
               , functionDis = Nothing
+              , functionBi = Nothing
+              , functionAna = Nothing
               , definedFunctionId = id }
             pure dfn
           , conjOnNounFunction = Just $ \ea' a b -> do
@@ -518,6 +528,8 @@ evalDefined statements cat = let
               , functionAnti = Nothing
               , functionContra = Nothing
               , functionDis = Nothing
+              , functionBi = Nothing
+              , functionAna = Nothing
               , definedFunctionId = id }
             pure dfn
           , conjOnFunctionNoun = Just $ \ea' a b -> do
@@ -544,6 +556,8 @@ evalDefined statements cat = let
               , functionAnti = Nothing
               , functionContra = Nothing
               , functionDis = Nothing
+              , functionBi = Nothing
+              , functionAna = Nothing
               , definedFunctionId = id }
             pure dfn
           , conjOnFunctionFunction = Just $ \ea' a b -> do
@@ -570,6 +584,8 @@ evalDefined statements cat = let
               , functionAnti = Nothing
               , functionContra = Nothing
               , functionDis = Nothing
+              , functionBi = Nothing
+              , functionAna = Nothing
               , definedFunctionId = id }
             pure dfn
           , definedConjunctionId = id }
@@ -596,6 +612,12 @@ bindExtraArgsFunction ea f = ExtraArgsFunction
   , functionDis = case functionDis f of
     Nothing -> Nothing
     Just _ -> Just $ \ea' y -> callDis f (nubBy ((==) `on` fst) $ ea' ++ ea) y
+  , functionBi = case functionBi f of
+    Nothing -> Nothing
+    Just _ -> Just $ \ea' y -> callBi f (nubBy ((==) `on` fst) $ ea' ++ ea) y
+  , functionAna = case functionAna f of
+    Nothing -> Nothing
+    Just _ -> Just $ \ea' x y -> callAna f (nubBy ((==) `on` fst) $ ea' ++ ea) x y
   , functionContext = functionContext f
   , extraArgsFunctionExtraArgs = ea
   , extraArgsFunctionFunction = f }

@@ -108,6 +108,12 @@ addS = orStruct2 "Add" add
 add' :: Noun -> Noun -> St Noun
 add' = scalarDyad addS
 
+addAna' :: Noun -> Noun -> St [Noun]
+addAna' x y = do
+  let err = DomainError "Add ana must receive a natural"
+  n <- sub' y x >>= asScalar err >>= asNumber err >>= asNat err
+  pure $ genericTake n $ Prelude.repeat $ scalar $ Number 1
+
 neg :: MonadError Error m => ScalarValue -> m ScalarValue
 neg (Number y) = pure $ Number $ negate y
 neg _ = throwError expectedNumber
@@ -186,6 +192,15 @@ divideS = orStruct2 "Divide" divide
 
 divide' :: Noun -> Noun -> St Noun
 divide' = scalarDyad divideS
+
+halve :: MonadError Error m => ScalarValue -> m ScalarValue
+halve y = divide y $ Number 2
+
+halveS :: ScalarValue -> St ScalarValue
+halveS y = divideS y $ Number 2
+
+halve' :: Noun -> St Noun
+halve' = scalarMonad halveS
 
 ePow :: MonadError Error m => ScalarValue -> m ScalarValue
 ePow (Number y) = pure $ Number $ exp y
