@@ -22,7 +22,6 @@ import Numeric (showHex)
 import Data.Functor hiding (unzip)
 import System.IO.Unsafe
 #if defined(MIN_VERSION_Win32)
-import Foreign.Ptr (castPtrToFunPtr)
 import System.Win32.DLL
 import System.Win32.Types (HMODULE)
 #else
