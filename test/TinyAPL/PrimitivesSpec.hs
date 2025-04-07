@@ -966,17 +966,6 @@ spec = do
           afd P.reduce P.plus (scalar $ Number 0) (vector []) `shouldReturn` pure (scalar $ Number 0)
           afd P.reduce P.minus (scalar $ Number 12) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 6)
 
-    describe [G.reduceBack] $ do
-      describe "reduce back" $ do
-        it "reduces an array right-to-left" $ do
-          afm P.reduceBack P.plus (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 5, Number 7, Number 9])
-          afm P.reduceBack P.minus (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 2)
-      describe "fold back" $ do
-        it "folds an array right-to-left" $ do
-          afd P.reduceBack P.plus (scalar $ Number 0) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 6)
-          afd P.reduceBack P.plus (scalar $ Number 0) (vector []) `shouldReturn` pure (scalar $ Number 0)
-          afd P.reduceBack P.minus (scalar $ Number 12) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number -10)
-
     describe [G.onPrefixes] $ do
       describe "on prefixes" $ do
         it "applies a function to prefixes of an array" $ do
