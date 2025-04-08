@@ -7,8 +7,8 @@ on:
 
 jobs:
   ubuntu:
-    name: Ubuntu 20.04
-    runs-on: ubuntu-20.04
+    name: Ubuntu 22.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Clone repository
@@ -144,7 +144,7 @@ jobs:
 
   wasm:
     name: WASM
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Clone repository
