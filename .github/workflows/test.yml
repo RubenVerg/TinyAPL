@@ -31,7 +31,7 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-newstyle
-          key: ${{ env.platform }}-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          key: ${{ env.platform }}-${{ hashFiles('dist-newstyle/cache/plan.json', 'src/**/*', 'app/**/*') }}
           restore-keys: |
             ${{ env.platform }}-
             

@@ -79,8 +79,14 @@ jobs:
       - name: Build
         run: 'cabal build exe:tinyapl'
 
-      - name: What's the artifact?
-        run: 'echo $(cabal list-bin tinyapl | tail -n 1)'
+      - name: Prepare artifact
+        run: 'cp $(cabal list-bin tinyapl | tail -n 1) ./tinyapl'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'tinyapl-macos-arm'
+          path: './tinyapl'
 
   windows:
     name: Windows
