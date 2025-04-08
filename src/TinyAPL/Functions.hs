@@ -545,6 +545,26 @@ arctanS = orStruct2 "Arctan" arctan
 arctan' :: Noun -> Noun -> St Noun
 arctan' = scalarDyad arctanS
 
+sine :: MonadError Error m => ScalarValue -> m ScalarValue
+sine (Number y) = pure $ Number $ sin y
+sine _ = throwError expectedNumber
+
+sine' :: Noun -> St Noun
+sine' = scalarMonad sine
+
+cosine :: MonadError Error m => ScalarValue -> m ScalarValue
+cosine (Number y) = pure $ Number $ cos y
+cosine _ = throwError expectedNumber
+
+cosine' :: Noun -> St Noun
+cosine' = scalarMonad cosine
+
+sineAndCosine :: MonadError Error m => ScalarValue -> m (ScalarValue, ScalarValue)
+sineAndCosine y = liftA2 (,) (sine y) (cosine y)
+
+sineAndCosine' :: Noun -> St (Noun, Noun)
+sineAndCosine' y = liftA2 (,) (sine' y) (cosine' y)
+
 not :: MonadError Error m => ScalarValue -> m ScalarValue
 not (Number y) = pure $ Number $ 1 - y
 not _ = throwError expectedNumber
@@ -672,6 +692,17 @@ tally y = pure $ genericLength $ majorCells y
 tally' :: MonadError Error m => Noun -> m Noun
 tally' y = scalar . Number . fromInteger . toInteger <$> tally y
 
+unTally :: MonadError Error m => ScalarValue -> m Noun
+unTally y = do
+  let err = DomainError "Un tally must receive a natural"
+  n <- asNumber err y >>= asNat err
+  pure $ vector $ genericTake n $ Prelude.repeat $ Number 0
+
+unTally' :: Noun -> St Noun
+unTally' y = do
+  let err = DomainError "Un tally argument must be scalar"
+  asScalar err y >>= unTally
+
 nubSieve :: (Ord a, MonadError Error m) => [a] -> m [Bool]
 nubSieve ys = pure $ zipWith (\c idx -> fromJust (c `elemIndex` ys) == idx) ys [0..]
 
@@ -711,11 +742,29 @@ reshape' sh arr = do
   shape <- asVector err sh >>= mapM (asNumber err >=> asInt err)
   reshape shape arr
 
+unShape :: MonadError Error m => CoreExtraArgs -> [Natural] -> m Noun
+unShape cea sh = indexGenerator cea (product sh) >>= reshape (fromIntegral <$> sh)
+
+unShape' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+unShape' cea arr = do
+  let err = DomainError "Un Shape shape must be a natural vector"
+  shape <- asVector err arr >>= mapM (asNumber err >=> asNat err)
+  unShape cea shape
+
 rank :: MonadError Error m => Noun -> m Natural
 rank = pure . arrayRank
 
 rank' :: MonadError Error m => Noun -> m Noun
 rank' arr = scalar . Number . fromInteger . toInteger <$> rank arr
+
+unRank :: MonadError Error m => CoreExtraArgs -> Natural -> m Noun
+unRank CoreExtraArgs{ coreExtraArgsOrigin = o } rk = reshape (genericTake rk $ Prelude.repeat 0) (scalar $ Number $ (:+ 0) $ fromIntegral o)
+
+unRank' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+unRank' cea y = do
+  let err = DomainError "Un Rank rank must be a natural"
+  rk <- asScalar err y >>= asNumber err >>= asNat err
+  unRank cea rk
 
 promote :: MonadError Error m => Noun -> m Noun
 promote arr = reshape (1 : map toInteger (arrayShape arr)) arr
@@ -877,6 +926,9 @@ last CoreExtraArgs{ coreExtraArgsFill = Just fill } (Array _ []) = pure $ fromSc
 last _ (Array _ xs) = pure $ fromScalar $ Prelude.last xs
 last _ (Dictionary _ vs) = pure $ vector vs
 
+firstAndLast :: MonadError Error m => CoreExtraArgs -> Noun -> m (Noun, Noun)
+firstAndLast cea y = liftA2 (,) (first cea y) (TinyAPL.Functions.last cea y)
+
 firstCell :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 firstCell CoreExtraArgs{ coreExtraArgsFill = Nothing } (Array _ []) = throwError $ DomainError "First cell on empty array"
 firstCell CoreExtraArgs{ coreExtraArgsFill = Just fill } (Array _ []) = pure $ fromScalar fill
@@ -888,6 +940,9 @@ lastCell CoreExtraArgs{ coreExtraArgsFill = Nothing } (Array _ []) = throwError 
 lastCell CoreExtraArgs{ coreExtraArgsFill = Just fill } (Array _ []) = pure $ fromScalar fill
 lastCell _ arr@Array{} = pure $ Prelude.last $ majorCells arr
 lastCell _ _ = throwError $ DomainError "Last cell on dictionary"
+
+firstAndLastCells :: MonadError Error m => CoreExtraArgs -> Noun -> m (Noun, Noun)
+firstAndLastCells cea y = liftA2 (,) (firstCell cea y) (lastCell cea y)
 
 indexGenerator :: MonadError Error m => CoreExtraArgs -> Natural -> m Noun
 indexGenerator _ 0 = pure $ vector []
