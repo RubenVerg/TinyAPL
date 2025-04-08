@@ -47,6 +47,41 @@ jobs:
           name: 'tinyapl'
           path: './tinyapl'
 
+  macos:
+    name: MacOS 10.15
+    runs-on: macos-10.15
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+      
+      - name: Setup GHC
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: '9.10.1'
+
+      - name: Dry run for cache key
+        run: 'cabal build exe:tinyapl --dry-run'
+      
+      - name: Cache
+        uses: actions/cache@v4
+        env:
+          platform: macos
+        with:
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: ${{ env.platform }}-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: |
+            ${{ env.platform }}-
+            
+      - name: Build
+        run: 'cabal build exe:tinyapl'
+
+      - name: What's the artifact?
+        run: 'echo $(cabal list-bin tinyapl | tail -n 1)'
+
   windows:
     name: Windows
     runs-on: windows-2022
