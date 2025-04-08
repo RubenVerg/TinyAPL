@@ -1751,17 +1751,19 @@ until f p x = let
     if t then pure r else go f p x r
   in f x >>= go f p x
 
-repeat1 :: MonadError Error m => (Noun -> m Noun) -> Noun -> Noun -> m Noun
-repeat1 f t y = do
-  let err = DomainError "Repeat right operand must be a natural scalar"
-  n <- asScalar err t >>= asNumber err >>= asNat err
-  TinyAPL.Functions.repeat f n y
+repeat1 :: MonadError Error m => (Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> Noun -> m Noun
+repeat1 f fI t y = do
+  let err = DomainError "Repeat right operand must be an integer scalar"
+  n <- asScalar err t >>= asNumber err >>= asInt err
+  if n < 0 then TinyAPL.Functions.repeat fI (fromInteger $ negate n) y
+  else TinyAPL.Functions.repeat f (fromInteger n) y
 
-repeat2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> Noun -> m Noun
-repeat2 f t x y = do
-  let err = DomainError "Repeat right operand must be a natural scalar"
-  n <- asScalar err t >>= asNumber err >>= asNat err
-  TinyAPL.Functions.repeat (f x) n y
+repeat2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> Noun -> m Noun
+repeat2 f fI t x y = do
+  let err = DomainError "Repeat right operand must be an integer scalar"
+  n <- asScalar err t >>= asNumber err >>= asInt err
+  if n < 0 then TinyAPL.Functions.repeat (fI x) (fromInteger $ negate n) y
+  else TinyAPL.Functions.repeat (f x) (fromInteger n) y
 
 until1 :: MonadError Error m => (Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
 until1 f p y = let
