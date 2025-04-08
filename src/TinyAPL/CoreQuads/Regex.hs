@@ -14,8 +14,8 @@ import Data.Array (elems)
 import Data.List
 
 search :: MonadError Error m => String -> String -> m [[(Int, Int, String)]]
-search pattern str = do
-  let matArr = str RE.=~ pattern :: [RE.MatchText String]
+search pat str = do
+  let matArr = str RE.=~ pat :: [RE.MatchText String]
   let mats = elems <$> matArr
   pure $ fmap (\(str, (o, l)) -> (o, l, str)) <$> mats
 
