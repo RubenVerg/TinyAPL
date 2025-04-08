@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, CPP #-}
 module TinyAPL.CoreQuads where
 
 import TinyAPL.ArrayFunctionOperator
@@ -114,10 +114,18 @@ makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
   runWithContext ctx' $ run' path source
   pure $ scalar $ Struct ctx') Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "Import") Nothing
 
-makeSystemInfo :: String -> String -> Bool -> Nilad
-makeSystemInfo os arch js = Nilad (Just $ do
+bigEndian :: Bool
+#ifdef ARCH_IS_BIG_ENDIAN
+bigEndian = True
+#else
+bigEndian = False
+#endif
+
+makeSystemInfo :: String -> String -> Bool -> Bool -> Nilad
+makeSystemInfo os arch js bigEndian = Nilad (Just $ do
   scope <- createRef $ Scope [ ("os", (VariableConstant, vector $ Character <$> os))
                              , ("arch", (VariableConstant, vector $ Character <$> arch))
-                             , ("js", (VariableConstant, scalar $ boolToScalar js))] [] [] [] Nothing
+                             , ("js", (VariableConstant, scalar $ boolToScalar js))
+                             , ("bigEndian", (VariableConstant, scalar $ boolToScalar bigEndian)) ] [] [] [] Nothing
   ctx <- get
   pure $ scalar $ Struct $ ctx{ contextScope = scope } ) Nothing (G.quad : "systemInfo") Nothing
