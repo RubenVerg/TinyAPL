@@ -63,7 +63,7 @@ cli = do
   id <- newIORef 0
   let context = Context {
       contextScope = scope
-    , contextQuads = core <> ffiQuads <> quadsFromReprs [ makeSystemInfo os arch False, file, TinyAPL.CLI.stdin ] [ makeImport readImportFile Nothing ] [] []
+    , contextQuads = core <> ffiQuads <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, file, TinyAPL.CLI.stdin ] [ makeImport readImportFile Nothing ] [] []
     , contextIn = liftToSt getLine
     , contextOut = \str -> do
       liftToSt $ putStr str
