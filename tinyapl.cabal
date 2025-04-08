@@ -100,7 +100,7 @@ executable tinyapl
         build-depends:edited
     if !os(wasi)
         build-depends:libffi ^>=0.2.1
-    if os(linux)
+    if os(linux) || os(darwin)
         build-depends:unix ^>=2.8.5.1
     if os(windows)
         build-depends:Win32 ^>=2.14.0.0
