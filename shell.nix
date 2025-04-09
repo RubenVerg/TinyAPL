@@ -19,6 +19,7 @@ let
     wasmtime
     ghc-wasm-meta
     typescript
+    deno
   ];
 in
 pkgs.mkShell {
