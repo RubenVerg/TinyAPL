@@ -76,17 +76,23 @@ jobs:
           restore-keys: |
             ${{ env.platform }}-
             
-      - name: Build
+      - name: Build ARM
         run: 'cabal build exe:tinyapl'
 
-      - name: Prepare artifact
-        run: 'cp $(cabal list-bin tinyapl | tail -n 1) ./tinyapl'
+      - name: Build x86_64
+        run: 'arch -x86_64 cabal build exe:tinyapl'
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: 'tinyapl-macos-arm'
-          path: './tinyapl'
+      - name: Show artifacts
+        run: 'echo $(cabal list-bin tinyapl | tail -n 1) $(arch -x86_64 cabal list-bin tinyapl | tail -n 1)'
+
+      # - name: Prepare artifact
+      #   run: 'cp $(cabal list-bin tinyapl | tail -n 1) ./tinyapl'
+
+      # - name: Upload artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: 'tinyapl-macos-arm'
+      #     path: './tinyapl'
 
   windows:
     name: Windows
