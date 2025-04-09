@@ -142,6 +142,10 @@ jobs:
     name: MacOS Make Universal
     runs-on: macos-latest
 
+    needs:
+      - macos
+      - macos_intel
+
     steps:
       - name: Download ARM
         uses: actions/download-artifact@v4
