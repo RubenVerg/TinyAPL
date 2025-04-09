@@ -96,7 +96,7 @@ executable tinyapl
                     , exceptions
                     , mtl
                     , tinyapl
-    if os(linux)
+    if os(linux) || os(darwin)
         build-depends:edited
     if !os(wasi)
         build-depends:libffi ^>=0.2.1
