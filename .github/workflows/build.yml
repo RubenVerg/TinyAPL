@@ -94,9 +94,12 @@ jobs:
 
     defaults:
       run:
-        shell: arch -x86_64 bash
+        shell: arch -x86_64 bash --noprofile --norc -eo pipefail {0}
 
     steps:
+      - name: Hi!
+        run: echo hi arch x86_64
+
       - name: Clone repository
         uses: actions/checkout@v4
       
