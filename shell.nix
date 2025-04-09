@@ -1,6 +1,7 @@
 {
   pkgs ? import <nixpkgs> { },
   lib,
+  ghc-wasm-meta
 }:
 let
   packages = with pkgs; [
@@ -15,8 +16,9 @@ let
     ncurses
 
     # JS/wasm part
-    haskellPackages.jsaddle-wasm
     wasmtime
+    ghc-wasm-meta
+    typescript
   ];
 in
 pkgs.mkShell {
