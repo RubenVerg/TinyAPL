@@ -9,7 +9,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/RubenVerg/edited-hs
-  tag: feb40283e174a493e7cc56b63e045f483d6ac7dd
+  tag: 3293518237ce7021a541f22f81823756bc3ce055
 
 package *
   split-sections: True
