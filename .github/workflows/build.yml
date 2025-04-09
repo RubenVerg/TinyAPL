@@ -94,22 +94,18 @@ jobs:
 
     defaults:
       run:
-        shell: 'arch -x86_64 bash {0}'
+        shell: arch -x86_64 bash
 
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
-
-      - name: Set GHCup config
-        run: |
-          mkdir -p ~/.ghcup
-          printf 'platform-override:\n  arch: A_64\n' > ~/.ghcup/config.yaml
       
       - name: Setup GHC
-        uses: haskell-actions/setup@v2
+        uses: RubenVerg/haskell-actions-setup@42b5d480dd95619c4b7d327287f3557cabc6320b
         id: setup-haskell
         with:
           ghc-version: '9.10.1'
+          override-arch: 'x64'
 
       - name: Dry run for cache key
         run: 'cabal build exe:tinyapl --dry-run'
@@ -141,7 +137,6 @@ jobs:
   macos_universal:
     name: MacOS Make Universal
     runs-on: macos-latest
-
     needs:
       - macos
       - macos_intel
