@@ -1,5 +1,5 @@
 {
-  description = "a tiny APL dialect and interpreter in Haskell";
+  description = "A tiny APL dialect and interpreter in Haskell";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
   };
