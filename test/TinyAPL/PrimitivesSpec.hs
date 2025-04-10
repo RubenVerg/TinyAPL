@@ -1106,6 +1106,14 @@ spec = do
           cffm P.over P.times P.minus (scalar $ Number 3) `shouldReturn` pure (scalar $ Number -1)
         it "dyadically composes functions with (Gx)F(Gy)" $ do
           cffd P.over P.plus P.minus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number -3)
+
+      describe "default bind" $ do
+        it "binds the argument to a function when called monadically" $ do
+          cafm P.over (scalar $ Number 1) P.minus (scalar $ Number 2) `shouldReturn` pure (scalar $ Number -1)
+          cfam P.over P.minus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 1)
+        it "ignores the operand when called dyadically" $ do
+          cafd P.over (scalar $ Number 1) P.plus (scalar $ Number 2) (scalar $ Number 3) `shouldReturn` pure (scalar $ Number 5)
+          cfad P.over P.minus (scalar $ Number 1) (scalar $ Number 5) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 3)
     
     describe [G.reverseAtop] $ do
       describe "reverse atop" $ do
@@ -1113,13 +1121,6 @@ spec = do
           cffm P.reverseAtop P.minus P.times (scalar $ Number 3) `shouldReturn` pure (scalar $ Number -1)  
         it "dyadically composes functions with G(xFy)" $ do
           cffd P.reverseAtop P.minus P.times (scalar $ Number 3) (scalar $ Number 5) `shouldReturn` pure (scalar $ Number -1)
-      describe "default bind" $ do
-        it "binds the argument to a function when called monadically" $ do
-          cafm P.reverseAtop (scalar $ Number 1) P.minus (scalar $ Number 2) `shouldReturn` pure (scalar $ Number -1)
-          cfam P.reverseAtop P.minus (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 1)
-        it "ignores the operand when called dyadically" $ do
-          cafd P.reverseAtop (scalar $ Number 1) P.plus (scalar $ Number 2) (scalar $ Number 3) `shouldReturn` pure (scalar $ Number 5)
-          cfad P.reverseAtop P.minus (scalar $ Number 1) (scalar $ Number 5) (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 3)
 
     describe [G.reverseOver] $ do
       describe "reverse over" $ do
