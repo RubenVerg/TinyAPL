@@ -278,13 +278,15 @@ Marked features are supported, unmarked features are planned
 		* [x] `⍨` commute
 		* [x] `⍨` duplicate
 		* [x] `∘` bind argument
-		* [x] `∘` after
-		* [x] `⍛` default argument (uses operand if called monadically, and argument if called dyadically)
-		* [x] `⍛` before (not a hook!)
+		* [x] `○` default argument (uses operand if called monadically, and argument if called dyadically)
+		* [x] `⍛` bind opposite argument (binds to the other side)
+		* [x] `⍜` default opposite argument
+	  * [x] `∘` atop
+		* [x] `⍛` reverse atop (swapped operands)
+		* [x] `⍜` reverse over
+		* [x] `○` over
 		* [x] `⊸` left hook
 		* [x] `⟜` right hook
-		* [x] `⍤` atop
-		* [x] `○` over
 		* [x] `⸚` mirror (`_{(⍵ ⍹⍹ ⍺)⍶⍶(⍺ ⍹⍹ ⍵)}_`)
 		* [x] `«`/`»` fork
 		* [x] `⇾` left fork (`_{(⍺ ⍶⍶ ⍵) ⍹⍹ ⍵}_`)
