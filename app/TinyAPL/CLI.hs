@@ -6,9 +6,12 @@
 
 module TinyAPL.CLI where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Context
+import TinyAPL.Quads
 import TinyAPL.CoreQuads
 import TinyAPL.Error
+import TinyAPL.Util
 import qualified TinyAPL.Files as F
 import qualified TinyAPL.Glyphs as G
 import qualified TinyAPL.Primitives as P
@@ -25,7 +28,6 @@ import Data.List (singleton)
 import Data.IORef
 import System.Info
 import Control.DeepSeq
-import TinyAPL.Util (fromRight')
 import Control.Exception (Exception(displayException))
 #ifdef is_linux
 import TinyAPL.Highlighter
@@ -96,7 +98,7 @@ runCode output file code context = do
     Thrown err -> hPutStrLn stderr $ ansiRed $ show err
     Succeeded res ->
       when output $ void $ runResult $ flip runSt context $ do
-        str <- showSt res
+        str <- showM res
         liftToSt $ putStrLn str
   pure context'
 

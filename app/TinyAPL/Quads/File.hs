@@ -1,6 +1,9 @@
 module TinyAPL.Quads.File where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Function
+import TinyAPL.Context
+import TinyAPL.Quads
 import TinyAPL.Error
 import qualified TinyAPL.Files as F
 import qualified TinyAPL.Glyphs as G

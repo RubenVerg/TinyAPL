@@ -1,7 +1,14 @@
 {-# LANGUAGE TupleSections, LambdaCase, FlexibleContexts #-}
 module TinyAPL.Interpreter where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Function
+import TinyAPL.Adverb
+import TinyAPL.Conjunction
+import TinyAPL.Context
+import TinyAPL.CoreExtraArgs
+import TinyAPL.Quads
+import TinyAPL.Value
 import TinyAPL.Error
 import qualified TinyAPL.Functions as F
 import qualified TinyAPL.Glyphs as G
@@ -290,13 +297,13 @@ evalAssign shallow private name ty val
   | name == [G.quad] = if ty == AssignNormal then do
     arr <- unwrapNoun (DomainError "Cannot print non-array") val
     out <- gets contextOut
-    out $ show arr ++ "\n"
+    showM arr >>= out . (++ "\n")
     return val 
     else throwError $ DomainError "Can only assign normally to quads"
   | name == [G.quadQuote] = if ty == AssignNormal then do
     arr <- unwrapNoun (DomainError "Cannot print non-array") val
     err <- gets contextErr
-    err $ show arr
+    showM arr >>= err
     return val
     else throwError $ DomainError "Can only assign normally to quads"
   | isPrefixOf [G.quad] name = if ty == AssignNormal then do
@@ -419,8 +426,9 @@ evalDefined statements cat = let
           , adverbContext = Just $ sc
           , adverbOnNoun = Just $ \ea' a -> do
             id <- assignId
+            aS <- showM a
             let dfn = DefinedFunction {
-                functionRepr = "(" ++ show a ++ ")_{...}"
+                functionRepr = "(" ++ aS ++ ")_{...}"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
                 [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
@@ -445,8 +453,9 @@ evalDefined statements cat = let
             pure dfn
           , adverbOnFunction = Just $ \ea' a -> do
             id <- assignId
+            aS <- showM a
             let dfn = DefinedFunction {
-                functionRepr = "(" ++ show a ++ ")_{...}"
+                functionRepr = "(" ++ aS ++ ")_{...}"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
                 [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
@@ -478,8 +487,10 @@ evalDefined statements cat = let
           , conjContext = Just $ sc
           , conjOnNounNoun = Just $ \ea' a b -> do
             id <- assignId
+            aS <- showM a
+            bS <- showM b
             let dfn = DefinedFunction {
-                functionRepr = "(" ++ show a ++ ")_{...}_(" ++ show b ++ ")"
+                functionRepr = "(" ++ aS ++ ")_{...}_(" ++ bS ++ ")"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
                 [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
@@ -506,8 +517,10 @@ evalDefined statements cat = let
             pure dfn
           , conjOnNounFunction = Just $ \ea' a b -> do
             id <- assignId
+            aS <- showM a
+            bS <- showM b
             let dfn = DefinedFunction {
-                functionRepr = "(" ++ show a ++ ")_{...}_(" ++ show b ++ ")"
+                functionRepr = "(" ++ aS ++ ")_{...}_(" ++ bS ++ ")"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
                 [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
@@ -534,8 +547,10 @@ evalDefined statements cat = let
             pure dfn
           , conjOnFunctionNoun = Just $ \ea' a b -> do
             id <- assignId
+            aS <- showM a
+            bS <- showM b
             let dfn = DefinedFunction {
-                functionRepr = "(" ++ show a ++ ")_{...}_(" ++ show b ++ ")"
+                functionRepr = "(" ++ aS ++ ")_{...}_(" ++ bS ++ ")"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
                 [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
@@ -562,8 +577,10 @@ evalDefined statements cat = let
             pure dfn
           , conjOnFunctionFunction = Just $ \ea' a b -> do
             id <- assignId
+            aS <- showM a
+            bS <- showM b
             let dfn = DefinedFunction {
-                functionRepr = "(" ++ show a ++ ")_{...}_(" ++ show b ++ ")"
+                functionRepr = "(" ++ aS ++ ")_{...}_(" ++ bS ++ ")"
               , functionContext = Just $ sc
               , functionMonad = Just $ \ea x -> run
                 [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
@@ -705,7 +722,10 @@ evalTrain cat es = let
     a <- callOnValueAndValue d [] u v
     b <- callOnValueAndValue c [] u v
     pure $ atop a b) ""
-  train2 x y = throwError $ DomainError $ "2-train with " ++ show x ++ " and " ++ show y ++ "?"
+  train2 x y = do
+    xS <- showM x
+    yS <- showM y
+    throwError $ DomainError $ "2-train with " ++ xS ++ " and " ++ yS ++ "?"
 
   train3 :: Value -> Value -> Value -> St Value
   train3 (VNoun _) (VNoun y) (VNoun _) = pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ const $ F.constant1 y, functionDyad = Just $ const $ F.constant2 y, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
@@ -790,7 +810,11 @@ evalTrain cat es = let
     r <- callOnValueAndValue e [] u v
     s <- callOnValueAndValue c [] u v
     callOnFunctionAndFunction d [] s r) ""
-  train3 x y z = throwError $ DomainError $ "3-train with " ++ show x ++ ", " ++ show y ++ " and " ++ show z ++ "?"
+  train3 x y z = do
+    xS <- showM x
+    yS <- showM y
+    zS <- showM z
+    throwError $ DomainError $ "3-train with " ++ xS ++ ", " ++ yS ++ " and " ++ zS ++ "?"
 
   train :: [Maybe Value] -> St Value
   train [] = throwError $ DomainError "Empty train"

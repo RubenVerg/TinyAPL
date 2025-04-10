@@ -4,7 +4,10 @@ module TinyAPL.Quads.FFI where
 
 #ifndef wasm32_HOST_ARCH
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Function
+import TinyAPL.Context
+import TinyAPL.Quads
 import TinyAPL.Error
 import qualified TinyAPL.Glyphs as G
 

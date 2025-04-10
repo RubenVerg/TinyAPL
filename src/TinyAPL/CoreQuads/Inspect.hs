@@ -2,8 +2,14 @@
 
 module TinyAPL.CoreQuads.Inspect where  
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Adverb
+import TinyAPL.Conjunction
+import TinyAPL.Context
+import TinyAPL.Noun
 import TinyAPL.Error
+import TinyAPL.Function
+import TinyAPL.Quads
+import TinyAPL.Value
 import qualified TinyAPL.Glyphs as G
 
 import Control.Monad.Error.Class (MonadError)

@@ -1,6 +1,6 @@
 module TinyAPL.Files where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Context
 import TinyAPL.Error
 
 import System.IO

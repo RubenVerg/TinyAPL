@@ -2,8 +2,13 @@
 
 module TinyAPL.Functions where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Function
+import TinyAPL.CoreExtraArgs
+import TinyAPL.Tolerant
+import TinyAPL.Context
 import TinyAPL.Error
+import TinyAPL.Value
 import {-# SOURCE #-} TinyAPL.Interpreter
 import TinyAPL.Random
 import TinyAPL.Util
@@ -1272,12 +1277,14 @@ raise' :: MonadError Error m => Noun -> Noun -> m Noun
 raise' code msg = do
   let err = DomainError "Raise left argument must be an integer scalar"
   code' <- asScalar err code >>= asNumber err >>= asInt err
-  when (code' /= 0) $ raise code' $ show msg
+  msg' <- asString (DomainError "Raise right argument must be string") msg
+  when (code' /= 0) $ raise code' msg'
   pure $ vector []
 
 raise1 :: MonadError Error m => Noun -> m Noun
 raise1 msg = do
-  raise 1 $ show msg
+  msg' <- asString (DomainError "Raise right argument must be string") msg
+  raise 1 msg'
   pure $ vector []
 
 decode :: MonadError Error m => [Complex Double] -> [Complex Double] -> m (Complex Double)
@@ -1436,10 +1443,10 @@ execute' code = do
   res <- mapM execute ss
   pure $ Array sh (toScalar <$> res)
 
-format :: MonadError Error m => Noun -> m String
-format x = pure $ show x
+format :: (MonadError Error m, MonadShow m ScalarValue) => Noun -> m String
+format x = showM x
 
-format' :: MonadError Error m => Noun -> m Noun
+format' :: (MonadError Error m, MonadShow m ScalarValue) => Noun -> m Noun
 format' x = vector . fmap Character <$> format x
 
 find' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
