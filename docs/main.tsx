@@ -34,17 +34,6 @@ const scripts = [
 	'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js',
 ];
 
-const splashScript = `
-const splashes = [
-  '«What if we added everything?»',
-	'Check out the <a href="https://www.arraycast.com/episodes/episode88-tinyapl">Array Cast</a>!',
-	'Tiny might be a misnomer.',
-	'Check out the <a href="https://blog.rubenverg.com">blog</a>!',
-]
-
-document.querySelector('#splash').innerHTML = splashes[Math.floor(Math.random() * splashes.length)];
-`;
-
 const sharedOptions: Partial<HtmlOptions> = {
 	lang: 'en',
 	links: [
@@ -53,11 +42,12 @@ const sharedOptions: Partial<HtmlOptions> = {
 	],
 	scripts: [
 		...scripts.map(src => ({ src })),
-		{ text: splashScript, type: 'module' }
+		{ src: '/script.js', type: 'module' }
 	],
 	meta: {
 		viewport: 'width=device-width, initial-scale=1',
 	},
+	classes: { body: ['apl387'] },
 }
 
 validatePages();

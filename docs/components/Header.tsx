@@ -64,6 +64,10 @@ function Header({ pages }: HeaderProps) {
 				<em id='splash' class='text-body-secondary' />
 				<div class='collapse navbar-collapse'>
 					<ul class='navbar-nav ms-auto'>
+						<select id='font'>
+							<option value='apl387' selected>APL387</option>
+							<option value='tinyapl386'>TinyAPL386</option>
+						</select>
 						<li class='nav-item d-inline-flex align-items-baseline'>
 							<a class='nav-link pe-1' href='/run/latest'>Run</a>
 							<small><a class='nav-link p-0' href='/run'>(choose version)</a></small>
