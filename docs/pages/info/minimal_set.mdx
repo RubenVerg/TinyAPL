@@ -16,7 +16,7 @@ Some of the primitives are pretty much simple applications of other primitives:
 * <primitive key="each_left" />&nbsp;is `F¨∘⊂`
 * <primitive key="each_right" />&nbsp;is `⊂⍛(F¨)`
 * <primitive key="from" />&nbsp;is `⌷⍨∘⊃⍨⍤0‿∞`
-* <primitive key="laminate" />&nbsp;is `⍪⍥∧`
+* <primitive key="laminate" />&nbsp;is `⍪○∧`
 * <primitive key="last" />&nbsp;is `⊃⍤⌽⍤,`
 * <primitive key="major_cells" />&nbsp;is `⊂⍤¯1`
 * <primitive key="mix" />&nbsp;is `⊃⍤0`
@@ -24,7 +24,6 @@ Some of the primitives are pretty much simple applications of other primitives:
 * <primitive key="nor" />&nbsp;is `~⍤∨`
 * <primitive key="not" />&nbsp;is `1∘-`
 * <primitive key="on_cells" />&nbsp;is `F⍤¯1`
-* <primitive key="on_contents" />&nbsp;is `F⍥⊃`
 * <primitive key="on_scalars" />&nbsp;is `F⍤0`
 * <primitive key="on_simple_scalars" />&nbsp;is `F⍥0`
 * <primitive key="polar" />&nbsp;is `×∘(0ᴊ1∘×⍛*)`
@@ -35,7 +34,7 @@ Some of the primitives are pretty much simple applications of other primitives:
 * <primitive key="sort_up" />&nbsp;is `⍋⍨`
 * <primitive key="empty_vector" />&nbsp;is `⟨⟩`
 * <primitive key="empty_dictionary" />&nbsp;is `⟨:⟩`
-* <primitive key="pair" />&nbsp;and&nbsp;<primitive key="singleton" />&nbsp;are both `,⍥⊂`
+* <primitive key="pair" />&nbsp;and&nbsp;<primitive key="singleton" />&nbsp;are both `,○⊂`
 
 ## Default argument
 
@@ -129,13 +128,13 @@ Min/max are also easy:
 { RealFloor←1∘|⊸-
 ⋄ x←1|ℜ⍵
 ⋄ y←1|ℑ⍵
-⋄ p←(ℜ⍵)⊕⍥RealFloorℑ⍵
+⋄ p←(ℜ⍵)⊕○RealFloorℑ⍵
 ⋄ 1>x+y: ■p
 ⋄ x≥y: ■p+1
 ⋄ p+0ᴊ1 }
 ```
 
-<primitive key="round" />&nbsp;is componentwise round: `⦅ℜ⋄⊕⍥(⌊⍤+∘0.5)⋄ℑ⦆`
+<primitive key="round" />&nbsp;is componentwise round: `⦅ℜ⋄⊕○(⌊⍤+∘0.5)⋄ℑ⦆`
 
 ## Reduce
 
