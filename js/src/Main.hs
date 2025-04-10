@@ -43,7 +43,13 @@ module Main
 
 import JSBridge
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Function
+import TinyAPL.Adverb
+import TinyAPL.Conjunction
+import TinyAPL.Context
+import TinyAPL.Value
+import TinyAPL.Quads
 import TinyAPL.CoreQuads
 import TinyAPL.Error
 import TinyAPL.Glyphs (syntax, identifiers, arrays, functions, adverbs, conjunctions, quad, assign, assignConstant, assignPrivate)
@@ -297,7 +303,7 @@ showJS :: JSVal -> IO JSString
 showJS val = do
   scope <- newIORef $ Scope [] [] [] [] Nothing
   id <- newIORef 0
-  r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME showSt) (Context scope mempty undefined undefined undefined id)) :: IO (Either Error String)
+  r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME showM) (Context scope mempty undefined undefined undefined id)) :: IO (Either Error String)
   pure $ toJSString $ case r of
     Left err -> show err
     Right val -> val
@@ -309,9 +315,9 @@ reprJS val = do
   scope <- newIORef $ Scope [] [] [] [] Nothing
   id <- newIORef 0
   r <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt val) (Context scope mempty undefined undefined undefined id))
-  pure $ toJSString $ case r of
-    VNoun arr -> arrayRepr arr
-    o -> show o
+  toJSString <$> case r of
+    VNoun arr -> fromRight' . second fst <$> (runResult $ runSt (showM $ Repr arr) (Context scope mempty undefined undefined undefined id))
+    o -> fromRight' . second fst <$> (runResult $ runSt (showM o) (Context scope mempty undefined undefined undefined id))
 
 varArrow :: VariableType -> Char
 varArrow VariableNormal = assign

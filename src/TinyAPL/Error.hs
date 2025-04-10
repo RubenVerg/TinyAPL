@@ -1,8 +1,11 @@
 {-# LANGUAGE FlexibleContexts, DeriveGeneric #-}
 
-module TinyAPL.Error where
+module TinyAPL.Error
+  ( module TinyAPL.Error
+  , module Control.Monad.Except ) where
 import GHC.Stack (HasCallStack)
-import Control.Monad.Except
+import Control.Monad.Except (liftEither, throwError, tryError)
+import qualified Control.Monad.Except as E
 import Control.DeepSeq
 import GHC.Generics
 import Control.Monad.Catch (MonadCatch(..), try)
@@ -82,7 +85,7 @@ instance Show Error where
       else errorName ++ ": " ++ errorMessage
 
 type Result = Either Error
-type ResultIO = ExceptT Error IO
+type ResultIO = E.ExceptT Error IO
 
 -- sadly we need this.
 unerror :: HasCallStack => Result a -> a
@@ -90,24 +93,18 @@ unerror x = case x of
   Right x -> x
   Left  e -> error $ show e
 
-except :: Monad m => Either e a -> ExceptT e m a
-except m = ExceptT $ return m
-
-liftEither :: MonadError e m => Either e a -> m a
-liftEither = Control.Monad.Except.liftEither
-
-throwError :: MonadError Error m => Error -> m a
-throwError = Control.Monad.Except.throwError
+except :: Monad m => Either e a -> E.ExceptT e m a
+except m = E.ExceptT $ return m
 
 runResult :: ResultIO a -> IO (Result a)
-runResult = runExceptT
+runResult = E.runExceptT
 
 data CatchResult a
   = Thrown !Error
   | Panicked !SomeException
   | Succeeded !a
 
-runAndCatch :: (MonadError Error m, MonadCatch m, MonadIO m, NFData a) => m a -> m (CatchResult a)
+runAndCatch :: (E.MonadError Error m, MonadCatch m, MonadIO m, NFData a) => m a -> m (CatchResult a)
 runAndCatch action = do
   r <- tryError action
   res <- try $ liftIO $ evaluate $ force r

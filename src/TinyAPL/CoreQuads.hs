@@ -1,7 +1,12 @@
 {-# LANGUAGE LambdaCase, CPP #-}
 module TinyAPL.CoreQuads where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Function
+import TinyAPL.Adverb
+import TinyAPL.Context
+import TinyAPL.Tolerant
+import TinyAPL.Quads
 import TinyAPL.Complex
 import TinyAPL.CoreQuads.Inspect
 import TinyAPL.CoreQuads.Math
@@ -52,7 +57,7 @@ exists = PrimitiveFunction (Just $ \_ y -> do
   case scopeShallowLookup False var ns of
     Just _ -> pure $ scalar $ Number 1
     Nothing -> pure $ scalar $ Number 0) Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "Exists") Nothing
-repr = PrimitiveFunction (Just $ \_ y -> return $ vector $ Character <$> arrayRepr y) Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "Repr") Nothing
+repr = PrimitiveFunction (Just $ \_ y -> vector . fmap Character <$> showM (Repr y)) Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "Repr") Nothing
 delay = PrimitiveFunction (Just $ \_ y -> do
   let err = DomainError "Delay argument must be a nonnegative scalar number"
   n <- asScalar err y >>= asNumber err >>= asReal err

@@ -21,12 +21,15 @@ extra-source-files: CHANGELOG.md
                   , std/**/*.tinyapl
 
 common warnings
-    ghc-options: -W
+    ghc-options: -W -fprint-potential-instances
 
 library
     import:           warnings
     exposed-modules:  TinyAPL.Glyphs
-                    , TinyAPL.ArrayFunctionOperator
+                    , TinyAPL.Adverb
+                    , TinyAPL.Conjunction
+                    , TinyAPL.Context
+                    , TinyAPL.CoreExtraArgs
                     , TinyAPL.CoreQuads
                     , TinyAPL.CoreQuads.Inspect
                     , TinyAPL.CoreQuads.Math
@@ -34,14 +37,19 @@ library
                     , TinyAPL.CoreQuads.Unicode
                     , TinyAPL.Complex
                     , TinyAPL.Error
+                    , TinyAPL.Function
                     , TinyAPL.Functions
                     , TinyAPL.Highlighter
                     , TinyAPL.Interpreter
+                    , TinyAPL.Noun
                     , TinyAPL.Parser
                     , TinyAPL.Primitives
+                    , TinyAPL.Quads
                     , TinyAPL.Random
                     , TinyAPL.StandardLibrary
+                    , TinyAPL.Tolerant
                     , TinyAPL.Util
+                    , TinyAPL.Value
                     , TinyAPL.Gamma.Factorial
                     , TinyAPL.Gamma.Gamma
                     , TinyAPL.Gamma.Gamma.Incomplete

@@ -2,9 +2,13 @@
 
 module TinyAPL.CoreQuads.Math (math) where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Context
 import TinyAPL.Error
+import TinyAPL.Function
+import TinyAPL.Noun
+import TinyAPL.Quads
 import qualified TinyAPL.Glyphs as G
+
 import Control.Monad.Error.Class (MonadError)
 
 piA :: Noun

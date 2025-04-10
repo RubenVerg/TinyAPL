@@ -1,8 +1,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module JSBridge(IsJS(..), IsJSSt(..), JSArray(..), jsToString, jsNil, (++#), jsHead, jsTail, jsLength, jsUndefined, valToObject, objectToVal) where
+module JSBridge (IsJS(..), IsJSSt(..), JSArray(..), jsToString, jsNil, (++#), jsHead, jsTail, jsLength, jsUndefined, valToObject, objectToVal) where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Function
+import TinyAPL.Adverb
+import TinyAPL.Conjunction
+import TinyAPL.Context
+import TinyAPL.Value
+import TinyAPL.Quads
 import TinyAPL.Error
 import TinyAPL.Interpreter
 import TinyAPL.Util
@@ -353,6 +359,7 @@ instance IsJSSt Function where
     | otherwise = throwError $ DomainError "fromJSValSt Function: not a function"
   toJSValSt f = do
     ctx <- getContext
+    fS <- showM f
     monad <- liftToSt $ jsWrap2 $ \ea x -> do
       ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
@@ -397,7 +404,7 @@ instance IsJSSt Function where
       y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
       r <- second fst <$> (runResult $ runSt (callAna f ea' x' y') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    pure $ objectToVal [("type", toJSVal $ toJSString "function"), ("repr", toJSVal $ toJSString $ show f), ("monad", monad), ("dyad", dyad), ("un", un), ("anti", anti), ("contra", contra), ("dis", dis), ("bi", bi), ("ana", ana)]
+    pure $ objectToVal [("type", toJSVal $ toJSString "function"), ("repr", toJSVal $ toJSString fS), ("monad", monad), ("dyad", dyad), ("un", un), ("anti", anti), ("contra", contra), ("dis", dis), ("bi", bi), ("ana", ana)]
 
 instance IsJSSt Adverb where
   fromJSValSt v
@@ -423,6 +430,7 @@ instance IsJSSt Adverb where
     | otherwise = throwError $ DomainError "fromJSValSt Adverb: not an adverb"
   toJSValSt a = do
     ctx <- getContext
+    aS <- showM a
     onArray <- liftToSt $ jsWrap2 $ \ea x -> do
       ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
@@ -433,7 +441,7 @@ instance IsJSSt Adverb where
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
       r <- second fst <$> (runResult $ runSt (callOnFunction a ea' x') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    pure $ objectToVal [("type", toJSVal $ toJSString "adverb"), ("repr", toJSVal $ toJSString $ show a), ("array", onArray), ("function", onFunction)]
+    pure $ objectToVal [("type", toJSVal $ toJSString "adverb"), ("repr", toJSVal $ toJSString aS), ("array", onArray), ("function", onFunction)]
 
 instance IsJSSt Conjunction where
   fromJSValSt v
@@ -475,6 +483,7 @@ instance IsJSSt Conjunction where
     | otherwise = throwError $ DomainError "fromJSValSt Conjunction: not a conjunction"
   toJSValSt c = do
     ctx <- getContext
+    cS <- showM c
     onArrayArray <- liftToSt $ jsWrap3 $ \ea x y -> do
       ea' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt ea) ctx)
       x' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) ctx)
@@ -499,7 +508,7 @@ instance IsJSSt Conjunction where
       y' <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt y) ctx)
       r <- second fst <$> (runResult $ runSt (callOnFunctionAndFunction c ea' x' y') ctx)
       fromRight' . second fst <$> (runResult $ runSt (toJSValSt r) ctx)
-    pure $ objectToVal [("type", toJSVal $ toJSString "conjunction"), ("repr", toJSVal $ toJSString $ show c), ("arrayArray", onArrayArray), ("arrayFunction", onArrayFunction), ("functionArray", onFunctionArray), ("functionFunction", onFunctionFunction)]
+    pure $ objectToVal [("type", toJSVal $ toJSString "conjunction"), ("repr", toJSVal $ toJSString cS), ("arrayArray", onArrayArray), ("arrayFunction", onArrayFunction), ("functionArray", onFunctionArray), ("functionFunction", onFunctionFunction)]
 
 instance IsJSSt Value where
   fromJSValSt v

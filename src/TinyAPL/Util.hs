@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, PatternSynonyms, ViewPatterns #-}
+{-# LANGUAGE LambdaCase, TupleSections, PatternSynonyms, ViewPatterns, MultiParamTypeClasses, FlexibleInstances #-}
 
 module TinyAPL.Util where
 import TinyAPL.Complex
@@ -7,13 +7,14 @@ import qualified TinyAPL.Glyphs as G
 import GHC.Float (floatToDigits)
 import GHC.Float.RealFracMethods (truncateDoubleInteger)
 import Data.Char (intToDigit)
-import Data.List (genericLength, genericIndex, unsnoc)
+import Data.List (genericLength, genericIndex, unsnoc, intercalate)
 import Data.Vector.Internal.Check (HasCallStack)
 import qualified Data.List.NonEmpty as NE
 import Data.Fixed
 import Numeric.Natural
 import Control.Monad
 import qualified Data.Set as Set
+import Text.Printf (printf)
 
 infixr 9 .:
 (.:) f g x y = f $ g x y
@@ -270,3 +271,18 @@ dipFlip f x y z = f x z y
 
 rollR :: (a -> b -> c -> d) -> (b -> c -> a -> d)
 rollR f x y z = f z x y
+
+class Monad m => MonadShow m a where
+  showM :: a -> m String
+
+instance {-# OVERLAPPABLE #-} (Monad m, MonadShow m a) => MonadShow m [a] where
+  showM xs = (\xs' -> "[" ++ intercalate ", " xs' ++ "]") <$> mapM showM xs
+
+instance {-# OVERLAPS #-} Monad m => MonadShow m String where
+  showM = pure . show
+
+instance (Monad m, MonadShow m a, MonadShow m b) => MonadShow m (a, b) where
+  showM (a, b) = do
+    a' <- showM a
+    b' <- showM b
+    pure $ printf "(%s, %s)" a' b'

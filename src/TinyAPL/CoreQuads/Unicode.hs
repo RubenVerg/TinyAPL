@@ -1,8 +1,9 @@
 {-# LANGUAGE FlexibleContexts, TypeApplications #-}
 module TinyAPL.CoreQuads.Unicode where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Function
 import TinyAPL.Error
+import TinyAPL.Noun
 import qualified TinyAPL.Glyphs as G
 import TinyAPL.Complex
 
