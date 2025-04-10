@@ -1,12 +1,21 @@
 module TinyAPL.ArraySpec where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Tolerant
 import TinyAPL.Error
+import TinyAPL.Util (MonadShow(showM))
 
 import Test.Hspec
 import Data.List.NonEmpty
 import TinyAPL.Complex
 import Numeric.Natural
+import Data.Functor.Identity (Identity(runIdentity))
+
+instance Show ScalarValue where
+  show = runIdentity . showM
+
+instance Show Noun where
+  show = runIdentity . showM
 
 spec :: Spec
 spec = do

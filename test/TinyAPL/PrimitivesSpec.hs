@@ -2,7 +2,11 @@
 
 module TinyAPL.PrimitivesSpec where
 
-import TinyAPL.ArrayFunctionOperator
+import TinyAPL.Noun
+import TinyAPL.Function
+import TinyAPL.Adverb
+import TinyAPL.Conjunction
+import TinyAPL.Context
 import TinyAPL.CoreQuads
 import TinyAPL.Complex
 import TinyAPL.Error
@@ -14,12 +18,19 @@ import Test.Hspec hiding (context)
 import Data.IORef
 import System.IO.Unsafe
 import Data.List (singleton)
+import Data.Functor.Identity (Identity(runIdentity))
 
 scope = unsafePerformIO $ newIORef $ Scope [] [] [] [] Nothing
 {-# NOINLINE scope #-}
 idRef = unsafePerformIO $ newIORef (0 :: Integer)
 {-# NOINLINE idRef #-}
 context = Context scope core undefined undefined undefined idRef
+
+instance Show ScalarValue where
+  show = runIdentity . showM
+
+instance Show Noun where
+  show = runIdentity . showM
 
 spec :: Spec
 spec = do
