@@ -78,7 +78,7 @@ const infoPage = (info: Info) => render(<FullPage pages={pages}><InfoPage info={
 	}
 });
 
-const primitivePage = (primitive: Primitive) => render(<FullPage pages={pages}><PrimitivePage primitive={primitive} /></FullPage>, {
+const primitivePage = (primitive: Primitive) => render(<FullPage pages={pages}><PrimitivePage primitive={primitive} pages={pages} /></FullPage>, {
 	title: `${primitive.name} - TinyAPL`,
 	meta: {
 		'og:title': `${primitive.name} - TinyAPL`,
