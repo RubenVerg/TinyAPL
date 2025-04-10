@@ -20,6 +20,11 @@ const info = document.querySelector<HTMLDivElement>('#info')!;
 const fancyarrays = document.querySelector<HTMLInputElement>('#fancyarrays')!;
 const prefixcode = document.querySelector<HTMLInputElement>('#prefixcode')!;
 const prefixsym = document.querySelector<HTMLInputElement>('#prefixsym')!;
+const font = document.querySelector<HTMLSelectElement>('#font')!;
+
+font.addEventListener('input', () => {
+	document.body.dataset.font = font.value;
+});
 
 function zip<A, B>(as: A[], bs: B[]): [A, B][] {
 	return [...as, ...bs].slice(0, Math.min(as.length, bs.length)).map((_, idx) => [as[idx], bs[idx]]);
@@ -266,7 +271,7 @@ async function fancyShow(result: tinyapl.Value, depth: number = 0): Promise<Node
 				} else {
 					const el = result.contents[idx];
 					td.appendChild(await fsScalar(el));
-				}	
+				}
 				tr.appendChild(td);
 			}
 		}

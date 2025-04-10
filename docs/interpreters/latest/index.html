@@ -7,8 +7,16 @@
 	<link rel="icon" type="img/svg+xml" href="/logo.svg">
 	<link rel="stylesheet" href="/style.css">
 	<style>
+		[data-font="apl387"] {
+			--font: APL387, var(--font-mono) !important;
+		}
+
+		[data-font="tinyapl386"] {
+			--font: TinyAPL386, var(--font-mono) !important;
+		}
+
 		kbd {
-			font-family: var(--font-mono);
+			font-family: var(--font);
 			font-size: 0.8em;
 			border: 1px solid black;
 			border-radius: 2px;
@@ -16,16 +24,12 @@
 			padding: 1px;
 		}
 
-		input {
-			font-family: var(--font-mono);
-		}
-
-		label {
-			font-family: var(--font-mono);
+		input, select, label {
+			font-family: var(--font);
 		}
 
 		#loading {
-			font-family: var(--font-mono);
+			font-family: var(--font);
 		}
 
 		#buttons {
@@ -37,7 +41,7 @@
 		}
 
 		#buttons button {
-			font-family: var(--font-mono);
+			font-family: var(--font);
 			border: 1px solid black;
 			background-color: unset;
 			width: 2ch;
@@ -53,7 +57,7 @@
 
 		#output {
 			height: 90%;
-			font-family: var(--font-mono);
+			font-family: var(--font);
 		}
 
 		#output * {
@@ -63,7 +67,7 @@
 
 		#input, #highlighted {
 			width: 97.5%;
-			font-family: var(--font-mono);
+			font-family: var(--font);
 			margin: 2.5px;
 			padding: 2.5px;
 			grid-row: 1;
@@ -89,7 +93,7 @@
 
 		#button {
 			width: auto;
-			font-family: var(--font-mono);
+			font-family: var(--font);
 		}
 
 		#input-wrapper {
@@ -98,7 +102,7 @@
 		}
 
 		#info {
-			font-family: var(--font-mono);
+			font-family: var(--font);
 			font-size: 0.9em;
 			display: none;
 		}
@@ -216,10 +220,15 @@
 	</style>
 </head>
 
-<body>
+<body data-font="apl387">
 	<h1 id="loading">Loading...</h1>
 	<input id="fancyarrays" type="checkbox" checked>
 	<label for="fancyarrays">Show some arrays as tables</label>
+	<select id="font">
+		<option value="apl387" selected>APL387</option>
+		<option value="tinyapl386">TinyAPL386</option>
+	</select>
+	<label for="font">Font</label>
 	<div style="float: right;">
 		<input id="prefixcode" type="text">
 		<label for="prefixcode">Prefix key code</label>

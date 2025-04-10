@@ -7,6 +7,11 @@
 	src: url('/TinyAPL386.ttf');
 }
 
+@font-face {
+	font-family: APL387;
+	src: url('/APL387.ttf');
+}
+
 code, pre {
 	font-family: var(--font-mono);
 }
