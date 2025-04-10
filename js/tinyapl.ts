@@ -1,6 +1,6 @@
 // @ts-self-types="./tinyapl.d.ts"
 // @ts-ignore Import from web not supported
-import { WASI, OpenFile, File, ConsoleStdout } from 'https://esm.run/@bjorn3/browser_wasi_shim@0.3.0';
+import { WASI, OpenFile, File, ConsoleStdout } from 'https://unpkg.com/@bjorn3/browser_wasi_shim@0.4.1/dist/index.js';
 import ghc_wasm_jsffi from './ghc_wasm_jsffi.js';
 
 declare global {
