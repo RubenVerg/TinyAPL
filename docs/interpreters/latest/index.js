@@ -14,6 +14,10 @@ const info = document.querySelector('#info');
 const fancyarrays = document.querySelector('#fancyarrays');
 const prefixcode = document.querySelector('#prefixcode');
 const prefixsym = document.querySelector('#prefixsym');
+const font = document.querySelector('#font');
+font.addEventListener('input', () => {
+    document.body.dataset.font = font.value;
+});
 function zip(as, bs) {
     return [...as, ...bs].slice(0, Math.min(as.length, bs.length)).map((_, idx) => [as[idx], bs[idx]]);
 }
