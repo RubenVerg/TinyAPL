@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, LambdaCase #-}
+{-# LANGUAGE CPP, LambdaCase, OverloadedStrings #-}
 
 #if defined(unix_HOST_OS) || defined(__unix___HOST_OS) || defined(__unix_HOST_OS) || defined(linux_HOST_OS) || defined(__linux___HOST_OS) || defined(__linux_HOST_OS) || defined(darwin_HOST_OS)
 #define is_linux 1
@@ -19,13 +19,14 @@ import TinyAPL.Quads.FFI (ffi, ffiStruct)
 #endif
 
 import System.Environment
-import Control.Monad (void)
+import Control.Monad (void, when)
 import System.IO
-import Data.Functor (($>))
 import Data.List (singleton)
 import Data.IORef
 import System.Info
 import Control.DeepSeq
+import TinyAPL.Util (fromRight')
+import Control.Exception (Exception(displayException))
 #ifdef is_linux
 import TinyAPL.Highlighter
 import qualified System.Console.Edited as E
@@ -52,6 +53,9 @@ ffiQuads = mempty
 #else
 ffiQuads = quadsFromReprs [ ffiStruct ] [ ffi ] [] []
 #endif
+
+ansiRed :: String -> String
+ansiRed str = "\x1b[31m" ++ str ++ "\x1b[0m"
 
 cli :: IO ()
 cli = do
@@ -86,16 +90,15 @@ cli = do
 
 runCode :: Bool -> String -> String -> Context -> IO Context
 runCode output file code context = do
-  result <- runResult $ run file code context
+  (result, context') <- fmap fromRight' $ runResult $ flip runSt context $ runAndCatch $ run' file code
   case result of
-    Left err -> hPrint stderr err $> context
-    Right (res, context') ->
-      if output then do
-        runResult $ flip runSt context $ do
-          str <- showSt res
-          liftToSt $ putStrLn str
-        pure context
-      else pure context'
+    Panicked ex -> hPutStrLn stderr $ ansiRed $ show $ HaskellError $ displayException ex
+    Thrown err -> hPutStrLn stderr $ ansiRed $ show err
+    Succeeded res ->
+      when output $ void $ runResult $ flip runSt context $ do
+        str <- showSt res
+        liftToSt $ putStrLn str
+  pure context'
 
 singleCharacters :: [(Char, Char)]
 singleCharacters =
@@ -130,7 +133,7 @@ singleCharacters =
   , ('g', '∇')
   , ('h', '∆')
   , ('j', '∘')
---, ('k', ' ')
+  , ('k', '⎊')
   , ('l', '⎕')
   , (';', '⍎')
   , ('\'', '⍕')

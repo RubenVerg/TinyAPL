@@ -5,6 +5,9 @@ import GHC.Stack (HasCallStack)
 import Control.Monad.Except
 import Control.DeepSeq
 import GHC.Generics
+import Control.Monad.Catch (MonadCatch(..), try)
+import Control.Exception (SomeException(..), evaluate)
+import Control.Monad.IO.Class (MonadIO(..))
 
 data Error
   = UserError String
@@ -16,6 +19,7 @@ data Error
   | AssertionError String
   | IndexError String
   | IOError String
+  | HaskellError String
   deriving (Eq, Ord, Generic)
 
 instance NFData Error
@@ -32,6 +36,7 @@ errorCode (SyntaxError _) = 6
 errorCode (AssertionError _) = 7
 errorCode (IndexError _) = 8
 errorCode (IOError _) = 9
+errorCode (HaskellError _) = 10
 
 errorMessage :: Error -> String
 errorMessage (UserError e) = e
@@ -43,6 +48,7 @@ errorMessage (SyntaxError e) = e
 errorMessage (AssertionError e) = e
 errorMessage (IndexError e) = e
 errorMessage (IOError e) = e
+errorMessage (HaskellError e) = e
 
 fromErrorCode :: Int -> String -> Error
 fromErrorCode 1 = UserError
@@ -54,6 +60,7 @@ fromErrorCode 6 = SyntaxError
 fromErrorCode 7 = AssertionError
 fromErrorCode 8 = IndexError
 fromErrorCode 9 = IOError
+fromErrorCode 10 = HaskellError
 fromErrorCode _ = error "fromErrorCode: unknown error type"
 
 instance Show Error where
@@ -68,6 +75,7 @@ instance Show Error where
       AssertionError msg -> ("Assertion failed", msg)
       IndexError msg -> ("Index error", msg)
       IOError msg -> ("IO error", msg)
+      HaskellError msg -> ("Haskell error", msg)
     hasNewline = '\n' `elem` errorMessage
     in if hasNewline
       then errorName ++ '\n' : errorMessage
@@ -93,3 +101,17 @@ throwError = Control.Monad.Except.throwError
 
 runResult :: ResultIO a -> IO (Result a)
 runResult = runExceptT
+
+data CatchResult a
+  = Thrown !Error
+  | Panicked !SomeException
+  | Succeeded !a
+
+runAndCatch :: (MonadError Error m, MonadCatch m, MonadIO m, NFData a) => m a -> m (CatchResult a)
+runAndCatch action = do
+  r <- tryError action
+  res <- try $ liftIO $ evaluate $ force r
+  case res of
+    Left ex -> pure $ Panicked ex
+    Right (Left err) -> pure $ Thrown err
+    Right (Right res) -> pure $ Succeeded res

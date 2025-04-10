@@ -57,7 +57,6 @@ import GHC.Wasm.Prim
 import System.IO.Unsafe
 import Data.Bifunctor
 import Control.Exception
-import Control.DeepSeq
 import System.Info
 
 foreign export javascript "hs_start" main :: IO ()
@@ -167,13 +166,12 @@ runCode :: Int -> String -> IO (Either Error Value)
 runCode contextId code = do
   context <- (!! contextId) <$> readIORef contexts
   let file = "<tinyapl js>"
-  result <- runResult $ run file code context
-  r <- try $ evaluate $ force result
-  case r of
-    Left (ErrorCall err) -> return $ Left $ UserError err
-    Right (Left err) -> return $ Left err
-    Right (Right (res, context')) -> do
-      modifyIORef contexts (setAt contextId context')
+  (result, context') <- fmap fromRight' $ runResult $ flip runSt context $ runAndCatch $ run' file code
+  modifyIORef contexts (setAt contextId context')
+  case result of
+    (Panicked ex) -> return $ Left $ HaskellError $ displayException ex
+    (Thrown err) -> return $ Left err
+    (Succeeded res) -> do
       modifyIORef lasts (setAt contextId $ Just res)
       return $ Right res
 

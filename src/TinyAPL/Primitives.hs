@@ -522,6 +522,13 @@ fill = PrimitiveConjunction
       callBi f ((box $ vector $ Character <$> coreExtraArgsFillKey, fl) : ea') y) (Just $ \ea' x y -> do
       fl <- toScalar <$> callDyad g [] x y
       callAna f ((box $ vector $ Character <$> coreExtraArgsFillKey, fl) : ea') x y) Nothing fill f g }
+catch = PrimitiveConjunction
+  { conjRepr = [G.catch]
+  , conjContext = Nothing
+  , conjOnNounNoun = Nothing
+  , conjOnNounFunction = Nothing
+  , conjOnFunctionNoun = Just $ \_ f v -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.catch1 (callMonad f []) (F.constant1 v)) (Just $ const $ F.catch2 (callDyad f []) (F.constant2 v)) Nothing Nothing Nothing Nothing Nothing Nothing Nothing catch f v
+  , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.catch1 (callMonad f []) (callMonad g [])) (Just $ const $ F.catch2 (callDyad f []) (callDyad g [])) Nothing Nothing Nothing Nothing Nothing Nothing Nothing catch f g }
 
 conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
   [ TinyAPL.Primitives.atop
@@ -544,4 +551,5 @@ conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
   , TinyAPL.Primitives.forkA
   , TinyAPL.Primitives.forkB
   , TinyAPL.Primitives.approximate
-  , TinyAPL.Primitives.fill ]
+  , TinyAPL.Primitives.fill
+  , TinyAPL.Primitives.catch ]

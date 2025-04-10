@@ -350,6 +350,7 @@ forkA = '«'
 forkB = '»'
 approximate = '≈'
 fill = '⬚'
+catch = '⎊'
 
 conjunctions =
   [ TinyAPL.Glyphs.atop
@@ -372,4 +373,5 @@ conjunctions =
   , TinyAPL.Glyphs.forkA
   , TinyAPL.Glyphs.forkB
   , TinyAPL.Glyphs.approximate
-  , TinyAPL.Glyphs.fill ]
+  , TinyAPL.Glyphs.fill
+  , TinyAPL.Glyphs.catch ]

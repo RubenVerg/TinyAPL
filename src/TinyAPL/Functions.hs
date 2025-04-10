@@ -19,7 +19,7 @@ import qualified Data.List.NonEmpty as NE
 import Numeric.Natural (Natural)
 import qualified Data.Bifunctor as Bi
 import Control.Monad
-import Control.Monad.State (MonadIO)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Ord (Down(..))
 import qualified Data.Matrix as M
 import qualified TinyAPL.Gamma.Gamma as Gamma
@@ -1950,3 +1950,17 @@ bitwise2 _ _ _ _ = throwError expectedNumber
 
 bitwise2' :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 bitwise2' cea f = scalarDyad (bitwise2 cea f)
+
+catch1 :: (Noun -> St Noun) -> (Noun -> St Noun) -> Noun -> St Noun
+catch1 f g x = do
+  res <- runAndCatch $ f x
+  case res of
+    Succeeded r -> pure r
+    _ -> g x
+
+catch2 :: (Noun -> Noun -> St Noun) -> (Noun -> Noun -> St Noun) -> Noun -> Noun -> St Noun
+catch2 f g x y = do
+  res <- runAndCatch $ f x y
+  case res of
+    Succeeded r -> pure r
+    _ -> g x y
