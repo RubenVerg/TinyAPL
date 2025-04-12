@@ -89,7 +89,7 @@ noLast = DomainError "Last not found or has wrong type"
 foreign import javascript safe "return await $1();" callInput :: JSVal -> IO JSString
 foreign import javascript safe "await $1($2);" callOutput :: JSVal -> JSString -> IO ()
 
-foreign export javascript "tinyapl_newContext" newContext :: JSVal -> JSVal -> JSVal ->  JSVal -> IO Int
+foreign export javascript "tinyapl_newContext" newContext :: JSVal -> JSVal -> JSVal -> JSVal -> JSString -> IO Int
 
 lastQuads :: Int -> Quads
 lastQuads l = let readLast = (!! l) <$> (liftToSt $ readIORef lasts) in
@@ -140,15 +140,16 @@ lastQuads l = let readLast = (!! l) <$> (liftToSt $ readIORef lasts) in
       _ -> throwError noLast
   ) (quad : "_Last_") Nothing]
 
-newContext :: JSVal -> JSVal -> JSVal -> JSVal -> IO Int
-newContext input output error quads = do
+newContext :: JSVal -> JSVal -> JSVal -> JSVal -> JSString -> IO Int
+newContext input output error quads cwd = do
   l <- length <$> readIORef contexts
   emptyScope <- newIORef $ Scope [] [] [] [] Nothing
+  let cwd' = fromJSString cwd
   let input' = liftToSt $ fromJSString <$> callInput input
   let output' = liftToSt . callOutput output . toJSString
   let error' = liftToSt . callOutput error . toJSString
   id <- newIORef 0
-  let qpc = Context emptyScope core input' output' error' id
+  let qpc = Context emptyScope core input' output' error' id cwd'
   qs <- fromRight' . second fst <$> (runResult $ runSt (mapM (secondM fromJSValSt) $ valToObject quads) qpc )
   nilads <- secondM (\x -> fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) qpc)) `mapM` filter (isArrayName . fst) qs
   functions <- secondM (\x -> fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) qpc)) `mapM` filter (isFunctionName . fst) qs
@@ -164,7 +165,8 @@ newContext input output error quads = do
     , contextIn = input'
     , contextOut = output'
     , contextErr = error'
-    , contextIncrementalId = id }])
+    , contextIncrementalId = id
+    , contextDirectory = cwd' }])
   modifyIORef lasts (++ [Nothing])
   return l
 
@@ -303,7 +305,7 @@ showJS :: JSVal -> IO JSString
 showJS val = do
   scope <- newIORef $ Scope [] [] [] [] Nothing
   id <- newIORef 0
-  r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME showM) (Context scope mempty undefined undefined undefined id)) :: IO (Either Error String)
+  r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME showM) (Context scope mempty undefined undefined undefined id "")) :: IO (Either Error String)
   pure $ toJSString $ case r of
     Left err -> show err
     Right val -> val
@@ -314,10 +316,10 @@ reprJS :: JSVal -> IO JSString
 reprJS val = do
   scope <- newIORef $ Scope [] [] [] [] Nothing
   id <- newIORef 0
-  r <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt val) (Context scope mempty undefined undefined undefined id))
+  r <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt val) (Context scope mempty undefined undefined undefined id ""))
   toJSString <$> case r of
-    VNoun arr -> fromRight' . second fst <$> (runResult $ runSt (showM $ Repr arr) (Context scope mempty undefined undefined undefined id))
-    o -> fromRight' . second fst <$> (runResult $ runSt (showM o) (Context scope mempty undefined undefined undefined id))
+    VNoun arr -> fromRight' . second fst <$> (runResult $ runSt (showM $ Repr arr) (Context scope mempty undefined undefined undefined id ""))
+    o -> fromRight' . second fst <$> (runResult $ runSt (showM o) (Context scope mempty undefined undefined undefined id ""))
 
 varArrow :: VariableType -> Char
 varArrow VariableNormal = assign

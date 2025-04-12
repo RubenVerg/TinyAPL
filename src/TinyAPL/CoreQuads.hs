@@ -25,6 +25,7 @@ import Data.Time.Clock.POSIX
 import Control.Concurrent
 import Data.List
 import Data.List.Split (splitOn)
+import System.FilePath
 
 io = Nilad (Just $ pure $ scalar $ Number 0) Nothing (G.quad : "io") Nothing
 ct = Nilad (Just $ pure $ scalar $ Number $ comparisonTolerance :+ 0) Nothing (G.quad : "ct") Nothing
@@ -104,19 +105,21 @@ core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, math, regex, inspectNam
 makeImport :: (FilePath -> St String) -> Maybe ([String] -> St String) -> Function
 makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
   let err = DomainError "Import argument must be a character vector"
+  currentDir <- getsContext contextDirectory
   path <- asVector err x >>= mapM (asCharacter err)
+  let absolutePath = if "std:" `isPrefixOf` path || isAbsolute path then path else currentDir </> path
   ctx <- getContext
   scope <- createRef $ Scope [] [] [] [] Nothing -- The scope has intentionally no parent; imports run in an isolated context
-  let ctx' = ctx{ contextScope = scope }
+  let ctx' = ctx{ contextScope = scope, contextDirectory = takeDirectory absolutePath }
   source <-
-    if isPrefixOf "std:" path
+    if isPrefixOf "std:" absolutePath
     then case readStd of
-      Just fn -> fn <$> splitOn "/" $ drop (length "std:") path
-      Nothing -> case lookup (splitOn "/" $ drop (length "std:") path) standardLibrary of
+      Just fn -> fn <$> splitOn "/" $ drop (length "std:") absolutePath
+      Nothing -> case lookup (splitOn "/" $ drop (length "std:") absolutePath) standardLibrary of
         Just source -> pure source
-        Nothing -> throwError $ DomainError $ "Standard library module " ++ path ++ " not found"
-    else read path
-  runWithContext ctx' $ run' path source
+        Nothing -> throwError $ DomainError $ "Standard library module " ++ absolutePath ++ " not found"
+    else read absolutePath
+  runWithContext ctx' $ run' absolutePath source
   pure $ scalar $ Struct ctx') Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "Import") Nothing
 
 bigEndian :: Bool

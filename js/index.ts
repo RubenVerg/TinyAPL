@@ -192,7 +192,7 @@ const context = await tinyapl.newContext(io.input.bind(io), io.output.bind(io), 
 	PlayAudio: quads.qPlayAudio,
 	Fetch: quads.qFetch,
 	_Graph: quads.qGraph,
-});
+}, window.location.href);
 
 function el<E extends HTMLElement>(tag: string, cls: string, contents: string | Node | Node[]) {
 	const el = document.createElement(tag) as E;

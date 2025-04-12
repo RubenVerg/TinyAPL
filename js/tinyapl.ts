@@ -91,8 +91,8 @@ await exports.hs_start();
  * @param error Function providing standard error
  * @param quads Quad names available to the interpreter
  */
-export async function newContext(input: () => PromiseLike<string>, output: (what: string) => PromiseLike<void>, error: (what: string) => PromiseLike<void>, quads: Quads): Promise<number> {
-	return await exports.tinyapl_newContext(input, output, error, quads);
+export async function newContext(input: () => PromiseLike<string>, output: (what: string) => PromiseLike<void>, error: (what: string) => PromiseLike<void>, quads: Quads, directory: string): Promise<number> {
+	return await exports.tinyapl_newContext(input, output, error, quads, directory);
 }
 
 /**
