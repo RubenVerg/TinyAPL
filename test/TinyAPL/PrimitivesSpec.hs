@@ -24,7 +24,7 @@ scope = unsafePerformIO $ newIORef $ Scope [] [] [] [] Nothing
 {-# NOINLINE scope #-}
 idRef = unsafePerformIO $ newIORef (0 :: Integer)
 {-# NOINLINE idRef #-}
-context = Context scope core undefined undefined undefined idRef
+context = Context scope core undefined undefined undefined idRef ""
 
 instance Show ScalarValue where
   show = runIdentity . showM

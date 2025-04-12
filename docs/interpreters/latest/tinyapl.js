@@ -26,8 +26,8 @@ await exports.hs_start();
  * @param error Function providing standard error
  * @param quads Quad names available to the interpreter
  */
-export async function newContext(input, output, error, quads) {
-    return await exports.tinyapl_newContext(input, output, error, quads);
+export async function newContext(input, output, error, quads, directory) {
+    return await exports.tinyapl_newContext(input, output, error, quads, directory);
 }
 /**
  * Run code in a context

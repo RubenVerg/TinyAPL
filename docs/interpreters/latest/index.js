@@ -179,7 +179,7 @@ const context = await tinyapl.newContext(io.input.bind(io), io.output.bind(io), 
     PlayAudio: quads.qPlayAudio,
     Fetch: quads.qFetch,
     _Graph: quads.qGraph,
-});
+}, window.location.href);
 function el(tag, cls, contents) {
     const el = document.createElement(tag);
     el.className = cls;

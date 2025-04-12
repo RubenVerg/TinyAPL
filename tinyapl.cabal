@@ -103,6 +103,7 @@ executable tinyapl
                     , deepseq
                     , exceptions
                     , mtl
+                    , directory
                     , tinyapl
     if os(linux) || os(darwin)
         build-depends:edited

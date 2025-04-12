@@ -1,0 +1,3 @@
+⦃a⦄ ⇇ ⎕Import"./a.tinyapl"
+
+⦃b⦄ ⇇ ⎕Import"./b.tinyapl"
