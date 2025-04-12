@@ -29,6 +29,7 @@ import Data.IORef
 import System.Info
 import Control.DeepSeq
 import Control.Exception (Exception(displayException))
+import System.Directory
 #ifdef is_linux
 import TinyAPL.Highlighter
 import qualified System.Console.Edited as E
@@ -64,6 +65,8 @@ cli = do
   hSetEncoding stdout utf8
   hSetEncoding stderr utf8
 
+  cwd <- getCurrentDirectory
+
   scope <- newIORef $ Scope [] [] [] [] Nothing
 
   id <- newIORef 0
@@ -77,7 +80,8 @@ cli = do
     , contextErr = \str -> do
       liftToSt $ hPutStr stderr str
       liftToSt $ hFlush stderr
-    , contextIncrementalId = id }
+    , contextIncrementalId = id
+    , contextDirectory = cwd }
 
   args <- getArgs
   case args of
