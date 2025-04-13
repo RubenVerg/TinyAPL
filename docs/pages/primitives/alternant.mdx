@@ -5,4 +5,4 @@ name: Alternant
 planned: true
 ---
 
-`F` should be a reduction function. `r` is the alternant, i.e. the generalized determinant, of `y`, using `F` and `G`. How is that computed? I have no idea. I promise I'll do more research eventually but frankly I don't understand any of the documentation I've found so far \(:
+Applies to matrices of `y`. `F` should be a reduction function. `r` is the alternant, i.e. the generalized determinant, of `y`, using `F` and `G`. If `y` is a 1x1 matrix, it returns its element. Otherwie, the alternant is computed by finding the minors of `y`, which are the submatrices formed by deleting each column in order and the first row; next the same alternant is applied to each minor; lastly the subalternants' results are inner-producted (using `F` and `G`) with the first row of `y`: `r←(0⊇y)F∙G F∙G⍤2 1↓◡y⊇ᓚ⍨ᓚ~ᓚ⍨⍳≢y`. Supports the `fill` extra argument, which sets the result for empty matrices.
