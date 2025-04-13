@@ -1971,3 +1971,18 @@ catch2 f g x y = do
   case res of
     Succeeded r -> pure r
     _ -> g x y
+
+-- {1=≢⍵:■⊃⍵⋄(0⊇⍵)-\∙×∇⍤2 1↓◡⍵⊇ᓚ⍨ᓚ~ᓚ⍨⍳≢⍵}
+alternant :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
+alternant cea f g y = let
+  go y | length (majorCells y) <= 1 = first cea y
+  go y = do
+    fc <- firstCell defaultCoreExtraArgs y
+    tally y
+      >>= indexGenerator defaultCoreExtraArgs
+      >>= duplicate (cellsRight defaultCoreExtraArgs $ difference' defaultCoreExtraArgs)
+      >>= cellsRight defaultCoreExtraArgs (commute $ cellsRight defaultCoreExtraArgs $ from defaultCoreExtraArgs) y
+      >>= onCells1 defaultCoreExtraArgs (TinyAPL.Functions.drop defaultCoreExtraArgs [1])
+      >>= atRank1 defaultCoreExtraArgs go 2
+      >>= innerProduct f g fc
+  in atRank1 defaultCoreExtraArgs go 2 y
