@@ -223,6 +223,9 @@ async function fancyShow(result, depth = 0) {
     if (result.type === 'array' && result.shape.length === 1 && result.contents.length !== 0 && !result.contents.every(x => typeof x === 'string')) {
         const table = document.createElement('table');
         table.className = 'vector';
+        const vectorMarker = document.createElement('div');
+        vectorMarker.className = 'marker vector-marker';
+        table.appendChild(vectorMarker);
         const tbody = document.createElement('tbody');
         table.appendChild(tbody);
         const tr = document.createElement('tr');
@@ -238,6 +241,12 @@ async function fancyShow(result, depth = 0) {
     else if (result.type === 'array' && result.shape.length === 2 && result.contents.length !== 0) {
         const table = document.createElement('table');
         table.className = 'matrix';
+        const vectorMarker = document.createElement('div');
+        vectorMarker.className = 'marker vector-marker';
+        table.appendChild(vectorMarker);
+        const matrixMarker = document.createElement('div');
+        matrixMarker.className = 'marker matrix-marker';
+        table.appendChild(matrixMarker);
         const tbody = document.createElement('tbody');
         table.appendChild(tbody);
         const allNumbers = result.contents.every(x => Array.isArray(x));
@@ -266,6 +275,15 @@ async function fancyShow(result, depth = 0) {
         const [a, b, c] = result.shape;
         const table = document.createElement('table');
         table.className = 'cube';
+        const vectorMarker = document.createElement('div');
+        vectorMarker.className = 'marker vector-marker';
+        table.appendChild(vectorMarker);
+        const matrixMarker = document.createElement('div');
+        matrixMarker.className = 'marker matrix-marker';
+        table.appendChild(matrixMarker);
+        const cubeMarker = document.createElement('div');
+        cubeMarker.className = 'marker cube-marker';
+        table.appendChild(cubeMarker);
         const tbody = document.createElement('tbody');
         table.appendChild(tbody);
         const allNumbers = result.contents.every(x => Array.isArray(x));
@@ -331,6 +349,9 @@ async function fancyShow(result, depth = 0) {
     else if (result.type === 'dictionary' && result.entries.length !== 0) {
         const table = document.createElement('table');
         table.className = 'dictionary';
+        const dictionaryMarker = document.createElement('div');
+        dictionaryMarker.className = 'marker dictionary-marker';
+        table.appendChild(dictionaryMarker);
         const tbody = document.createElement('tbody');
         table.appendChild(tbody);
         for (const [k, v] of result.entries) {
