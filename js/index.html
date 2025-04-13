@@ -160,19 +160,39 @@
 			vertical-align: top;
 		}
 
-		table.vector, table.vector > tbody > tr, table.vector > tbody > tr > td,
-		table.matrix, table.matrix > tbody > tr, table.matrix > tbody > tr > td,
-		table.dictionary, table.dictionary > tbody > tr {
-			border: 2px solid black;
+		table.vector, table.matrix, table.cube, table.dictionary {
 			border-collapse: collapse;
 		}
 
-		table.cube {
-			border-collapse: collapse;
+		table.vector td, table.matrix td, table.cube td:not(.filler), table.dictionary {
+			border: 2px solid black;
 		}
 
-		table.cube td:not(.filler) {
-			border: 2px solid black;
+		.marker {
+			position: relative;
+			width: 0;
+			height: 0;
+		}
+		.vector-marker::before {
+			content: '→';
+			position: absolute;
+			top: -0.55em;
+		}
+		.matrix-marker::before {
+			content: '↓';
+			position: absolute;
+			left: -0.3em;
+		}
+		.cube-marker::before {
+			content: '↘';
+			position: absolute;
+			top: -0.55em;
+			left: -0.3em;
+		}
+		.dictionary-marker::before {
+			content: ':';
+			position: absolute;
+			top: -0.7em;
 		}
 
 		.dictionary td:first-child {
