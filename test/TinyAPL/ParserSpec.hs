@@ -66,16 +66,19 @@ spec = do
       tok "Abc ⍙y" `shouldBe` pure [[TokenFunctionName "Abc" emptyPos, TokenFunctionName "⍙y" emptyPos]]
       tok "⍶⍶ ⍹⍹ ∇" `shouldBe` pure [[TokenFunctionName "⍶⍶" emptyPos, TokenFunctionName "⍹⍹" emptyPos, TokenFunctionName "∇" emptyPos]]
       tok "⎕C" `shouldBe` pure [[TokenFunctionName "⎕C" emptyPos]]
+      tok "⍞100" `shouldBe` pure [[TokenFunctionName "⍞100" emptyPos]]
   
     it "parses adverb names" $ do
       tok "_Abc _abc" `shouldBe` pure [[TokenAdverbName "_Abc" emptyPos, TokenAdverbName "_abc" emptyPos]]
       tok "_∇" `shouldBe` pure [[TokenAdverbName "_∇" emptyPos]]
       tok "⎕_BinFile" `shouldBe` pure [[TokenAdverbName "⎕_BinFile" emptyPos]]
+      tok "⍞_100" `shouldBe` pure [[TokenAdverbName "⍞_100" emptyPos]]
 
     it "parses conjunction names" $ do
       tok "_Abc_ _abc_" `shouldBe` pure [[TokenConjunctionName "_Abc_" emptyPos, TokenConjunctionName "_abc_" emptyPos]]
       tok "_∇_" `shouldBe` pure [[TokenConjunctionName "_∇_" emptyPos]]
       tok "⎕_Whatever_" `shouldBe` pure [[TokenConjunctionName "⎕_Whatever_" emptyPos]]
+      tok "⍞_100_" `shouldBe` pure [[TokenConjunctionName "⍞_100_" emptyPos]]
 
     it "parses qualified names" $ do
       tok "a→b→c" `shouldBe` pure [[TokenQualifiedArrayName (TokenArrayName "a" emptyPos) ["b", "c"] emptyPos]]

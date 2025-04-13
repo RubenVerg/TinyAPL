@@ -191,20 +191,20 @@ resolve ctx (name:ns) = do
     >>= flip resolve ns
 
 evalLeaf :: Token -> St Value
-evalLeaf (TokenNumber x _  )              = return $ VNoun $ scalar $ Number x
-evalLeaf (TokenChar [x] _)                = return $ VNoun $ scalar $ Character x
-evalLeaf (TokenChar xs _)                 = return $ VNoun $ vector $ Character <$> xs
-evalLeaf (TokenString xs _)               = return $ VNoun $ vector $ Character <$> xs
-evalLeaf (TokenPrimArray n _)             =
+evalLeaf (TokenNumber x _  )                                                   = return $ VNoun $ scalar $ Number x
+evalLeaf (TokenChar [x] _)                                                     = return $ VNoun $ scalar $ Character x
+evalLeaf (TokenChar xs _)                                                      = return $ VNoun $ vector $ Character <$> xs
+evalLeaf (TokenString xs _)                                                    = return $ VNoun $ vector $ Character <$> xs
+evalLeaf (TokenPrimArray n _)                                                  =
   lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive array " ++ [n]) $ VNoun <$> lookup n P.arrays
-evalLeaf (TokenPrimFunction n _)          =
+evalLeaf (TokenPrimFunction n _)                                               =
   lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive function " ++ [n]) $ VFunction <$> lookup n P.functions
-evalLeaf (TokenPrimAdverb n _)            =
+evalLeaf (TokenPrimAdverb n _)                                                 =
   lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive adverb " ++ [n]) $ VAdverb <$> lookup n P.adverbs
-evalLeaf (TokenPrimConjunction n _)       =
+evalLeaf (TokenPrimConjunction n _)                                            =
   lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive conjunction " ++ [n]) $ VConjunction <$> lookup n P.conjunctions
 evalLeaf (TokenArrayName name _)
-  | name == [G.quad]                      = do
+  | name == [G.quad]                                                           = do
     err <- gets contextErr
     input <- gets contextIn
     err $ G.quad : ": "
@@ -213,46 +213,46 @@ evalLeaf (TokenArrayName name _)
     (res, context') <- lift $ run [G.quad] code context
     put $ context'
     return res
-  | name == [G.quadQuote]                 = do
+  | name == [G.quadQuote]                                                      = do
     input <- gets contextIn
     str <- input
     return $ VNoun $ vector $ Character <$> str
-  | isPrefixOf [G.quad] name              = do
+  | [G.quad] `isPrefixOf` name                                                 = do
     quads <- gets contextQuads
     let nilad = lookup name $ quadArrays quads
     case nilad of
       Just x -> VNoun <$> getNilad x
       Nothing -> throwError $ SyntaxError $ "Unknown quad name " ++ name
-  | otherwise                             =
+  | otherwise                                                                  =
     gets contextScope >>= readRef >>= scopeLookupNoun True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VNoun)
 evalLeaf (TokenFunctionName name _)
-  | isPrefixOf [G.quad] name              = do
+  | isPrefixOf [G.quad] name || isPrefixOf [G.quadQuote] name                  = do
     quads <- gets contextQuads
     let fn = lookup name $ quadFunctions quads
     case fn of
       Just x -> return $ VFunction x
       Nothing -> throwError $ SyntaxError $ "Unknown quad name " ++ name
-  | otherwise                             =
+  | otherwise                                                                  =
     gets contextScope >>= readRef >>= scopeLookupFunction True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VFunction)
 evalLeaf (TokenAdverbName name _)
-  | isPrefixOf [G.quad] name              = do
+  | isPrefixOf [G.quad] name || isPrefixOf [G.quadQuote] name                  = do
     quads <- gets contextQuads
     let adv = lookup name $ quadAdverbs quads
     case adv of
       Just x -> return $ VAdverb x
       Nothing -> throwError $ SyntaxError $ "Unknown quad name " ++ name
-  | otherwise                             =
+  | otherwise                                                                  =
     gets contextScope >>= readRef >>= scopeLookupAdverb True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VAdverb)
 evalLeaf (TokenConjunctionName name _)
-  | isPrefixOf [G.quad] name              = do
+  | isPrefixOf [G.quad] name || isPrefixOf [G.quadQuote] name                  = do
     quads <- gets contextQuads
     let conj = lookup name $ quadConjunctions quads
     case conj of
       Just x -> return $ VConjunction x
       Nothing -> throwError $ SyntaxError $ "Unknown quad name " ++ name
-  | otherwise                             =
+  | otherwise                                                                  =
     gets contextScope >>= readRef >>= scopeLookupConjunction True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VConjunction)
-evalLeaf _                             = throwError $ DomainError "Invalid leaf type in evaluation"
+evalLeaf _                                                                     = throwError $ DomainError "Invalid leaf type in evaluation"
 
 evalLeafOrNothing :: Token -> St (Maybe Value)
 evalLeafOrNothing (TokenNothing _) = pure Nothing

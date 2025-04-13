@@ -311,13 +311,13 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
   arrayName = try (liftA3 (\x y z -> x : y : z) (char G.quad) (oneOf arrayStart) (many $ oneOf identifierRest)) <|> try (string [G.alpha, G.alpha]) <|> try (string [G.omega, G.omega]) <|> try (string [G.alpha]) <|> try (string [G.omega]) <|> try (string [G.epsilon]) <|> try (string [G.quad]) <|> try (string [G.quadQuote]) <|> liftA2 (:) (oneOf arrayStart) (many $ oneOf identifierRest)
 
   functionName :: Parser String
-  functionName = try (liftA3 (\x y z -> x : y : z) (char G.quad) (oneOf functionStart) (many $ oneOf identifierRest)) <|> try (string [G.del]) <|> try (string [G.alphaBar, G.alphaBar]) <|> try (string [G.omegaBar, G.omegaBar]) <|> liftA2 (:) (oneOf functionStart) (many $ oneOf identifierRest)
+  functionName = try (liftA2 (:) (char G.quadQuote) (some digitChar)) <|> try (liftA3 (\x y z -> x : y : z) (char G.quad) (oneOf functionStart) (many $ oneOf identifierRest)) <|> try (string [G.del]) <|> try (string [G.alphaBar, G.alphaBar]) <|> try (string [G.omegaBar, G.omegaBar]) <|> liftA2 (:) (oneOf functionStart) (many $ oneOf identifierRest)
 
   adverbName :: Parser String
-  adverbName = try (liftA3 (\x y z -> x : y : z) (char G.quad) (char G.underscore) (many $ oneOf identifierRest)) <|> try (string [G.underscore, G.del]) <|> liftA2 (:) (char G.underscore) (some $ oneOf identifierRest)
+  adverbName = try (liftA3 (\x y z -> x : y : z) (char G.quadQuote) (char G.underscore) (some digitChar)) <|> try (liftA3 (\x y z -> x : y : z) (char G.quad) (char G.underscore) (many $ oneOf identifierRest)) <|> try (string [G.underscore, G.del]) <|> liftA2 (:) (char G.underscore) (some $ oneOf identifierRest)
 
   conjunctionName :: Parser String
-  conjunctionName = try ((\x y z w -> x : y : z ++ [w]) <$> char G.quad <*> char G.underscore <*> many (oneOf identifierRest) <*> char G.underscore) <|> try (string [G.underscore, G.del, G.underscore]) <|> liftA3 (\a b c -> a : b ++ [c]) (char G.underscore) (some $ oneOf identifierRest) (char G.underscore)
+  conjunctionName = try ((\x y z w -> x : y : z ++ [w]) <$> char G.quadQuote <*> char G.underscore <*> some digitChar <*> char G.underscore) <|> try ((\x y z w -> x : y : z ++ [w]) <$> char G.quad <*> char G.underscore <*> many (oneOf identifierRest) <*> char G.underscore) <|> try (string [G.underscore, G.del, G.underscore]) <|> liftA3 (\a b c -> a : b ++ [c]) (char G.underscore) (some $ oneOf identifierRest) (char G.underscore)
 
   anyName :: Parser String
   anyName = try conjunctionName <|> try adverbName <|> try functionName <|> try arrayName
@@ -549,6 +549,7 @@ isFunctionName :: String -> Bool
 isFunctionName [] = False
 isFunctionName (x : xs)
   | x == G.quad = isFunctionName xs
+  | x == G.quadQuote = all (`elem` ['0'..'9']) xs
   | otherwise = x `elem` ['A'..'Z'] ++ [G.alphaBar, G.omegaBar, G.deltaBar, G.del]
 
 isAdverbName :: String -> Bool
@@ -556,6 +557,7 @@ isAdverbName [] = False
 isAdverbName [_] = False
 isAdverbName (x : xs) 
   | x == G.quad = isAdverbName xs
+  | x == G.quadQuote = headPromise xs == '_' && all (`elem` ['0'..'9']) (tailPromise xs)
   | otherwise = x == '_' && not (last xs == '_')
 
 isConjunctionName :: String -> Bool
@@ -563,6 +565,7 @@ isConjunctionName [] = False
 isConjunctionName [_] = False
 isConjunctionName (x : xs)
   | x == G.quad = isConjunctionName xs
+  | x == G.quadQuote = headPromise xs == '_' && all (`elem` ['0'..'9']) (init $ tailPromise xs) && last xs == '_'
   | otherwise = x == '_' && last xs == '_'
 
 data Category

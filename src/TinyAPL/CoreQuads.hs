@@ -18,6 +18,8 @@ import TinyAPL.Interpreter
 import TinyAPL.Random
 import TinyAPL.StandardLibrary
 import TinyAPL.Util
+import TinyAPL.Primitives (withCoreExtraArgs1)
+import TinyAPL.CoreExtraArgs
 
 import Control.Monad.State
 import Data.Time
@@ -26,6 +28,10 @@ import Control.Concurrent
 import Data.List
 import Data.List.Split (splitOn)
 import System.FilePath
+import Numeric.Natural
+import qualified Math.NumberTheory.Primes as Primes
+import qualified Math.NumberTheory.ArithmeticFunctions as Arith
+import Data.Maybe
 
 io = Nilad (Just $ pure $ scalar $ Number 0) Nothing (G.quad : "io") Nothing
 ct = Nilad (Just $ pure $ scalar $ Number $ comparisonTolerance :+ 0) Nothing (G.quad : "ct") Nothing
@@ -90,6 +96,31 @@ errorPrint = PrimitiveFunction (Just $ \_ y -> do
   err $ intercalate "\n" ss ++ "\n"
   pure $ vector []
   ) Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "E") Nothing
+primes = PrimitiveFunction (Just $ withCoreExtraArgs1 $ \CoreExtraArgs{ coreExtraArgsOrigin = o } -> scalarMonad $ \y -> do
+  let err = DomainError "Primes argument must be an array of naturals"
+  idx <- asNumber err y >>= asInt err
+  let pr = toEnum $ idx + 1 - fromIntegral o :: Primes.Prime Natural
+  pure $ Number $ (:+ 0) $ fromIntegral $ Primes.unPrime pr) (Just $ const $ scalarDyad $ \x y -> do
+  let err = DomainError "Primes arguments must be arrays of naturals"
+  x' <- asNumber err x >>= asInt err
+  y' <- (asNumber err y >>= asInt err) :: St Natural
+  case x' of
+    0 -> pure $ boolToScalar $ fromMaybe True $ False <$ Primes.isPrime y' -- is y not prime?
+    1 -> pure $ boolToScalar $ fromMaybe False $ True <$ Primes.isPrime y' -- is y prime?
+    4 -> pure $ Number $ (:+ 0) $ fromIntegral $ Primes.unPrime $ Primes.nextPrime y' -- prime after y
+    -4 -> pure $ Number $ (:+ 0) $ fromIntegral $ Primes.unPrime $ Primes.precPrime y' -- prime before y
+    -1 -> pure $ Number $ (:+ 0) $ fromIntegral $ fromEnum $ Primes.precPrime y' -- π(y) = how many primes before y
+    5 -> pure $ Number $ (:+ 0) $ fromIntegral $ Arith.totient y' -- φ(y) = how many numbers relatively prime to y
+    10 -> pure $ Number $ (:+ 0) $ fromIntegral $ Arith.tau y' -- τ(y) = amount of divisors of y
+    11 -> pure $ Number $ (:+ 0) $ fromIntegral $ Arith.sigma 1 y' - y' -- sum of divisors of y
+    12 -> pure $ Number $ (:+ 0) $ Arith.runMoebius $ Arith.moebius y' -- μ(n)
+    _ -> throwError $ DomainError "Invalid left argument to Primes") (Just $ const $ scalarMonad $ \y -> do
+  let err = DomainError "Un Primes argument must be an array of naturals"
+  num <- asNumber err y >>= asInt err
+  if num < 2 then pure $ Number 0
+  else 
+    let pr = Primes.precPrime num :: Primes.Prime Natural
+    in pure $ Number $ (:+ 0) $ fromIntegral $ fromEnum pr) Nothing Nothing Nothing Nothing Nothing (G.quadQuote : "28730") Nothing -- p:
 measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ \ea y -> do
   start <- realToFrac <$> liftToSt getPOSIXTime
   _ <- callMonad f ea y
@@ -100,7 +131,7 @@ measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction
   end <- realToFrac <$> liftToSt getPOSIXTime
   pure $ scalar $ Number $ (end - start) :+ 0) Nothing Nothing Nothing Nothing Nothing Nothing Nothing measure f) (G.quad : "_Measure") Nothing
 
-core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, math, regex, inspectNamespace ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF ] [ measure ] []
+core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, math, regex, inspectNamespace ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF, primes ] [ measure ] []
 
 makeImport :: (FilePath -> St String) -> Maybe ([String] -> St String) -> Function
 makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
