@@ -990,6 +990,14 @@ replicate' (Dictionary sk sv) (Dictionary ak av) = do
   dictionary <$> replicateDict (zip sk sv') (zip ak av)
 replicate' _ _ = throwError $ DomainError "Replicate left argument cannot mix arrays and dictionaries"
 
+runLengthEncode :: MonadError Error m => Eq a => [a] -> m [(a, Natural)]
+runLengthEncode xs = pure $ (liftA2 (,) NE.head $ fromIntegral . NE.length) <$> NE.group xs
+
+runLengthEncode' :: MonadError Error m => Noun -> m (Noun, Noun)
+runLengthEncode' arr = do
+  (els, lens) <- fmap unzip $ runLengthEncode $ majorCells arr
+  pure (vector $ (Number . (:+ 0) . fromIntegral) <$> lens, fromMajorCells els)
+
 indices :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 indices CoreExtraArgs { coreExtraArgsOrigin = o } n = do
   let err = DomainError "Where argument must be an array of naturals or dictionary with natural values"
