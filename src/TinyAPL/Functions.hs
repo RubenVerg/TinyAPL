@@ -19,7 +19,7 @@ import qualified TinyAPL.Complex as Cx
 import TinyAPL.Complex ( Complex((:+)) )
 import Data.Char
 import Data.Maybe (fromJust, fromMaybe)
-import Data.List (elemIndex, genericLength, genericTake, genericDrop, genericReplicate, nub, genericIndex, sortOn, sort, find, singleton, nubBy)
+import Data.List (elemIndex, genericLength, genericTake, genericDrop, genericReplicate, nub, genericIndex, sortOn, sort, find, singleton, nubBy, intercalate)
 import qualified Data.List.NonEmpty as NE
 import Numeric.Natural (Natural)
 import qualified Data.Bifunctor as Bi
@@ -1423,6 +1423,21 @@ partition' is xs = do
   is' <- asVector err is >>= mapM (asNumber err >=> asNat err)
   (vector . fmap (box . fromMajorCells)) <$> partition is' (majorCells xs)
 
+disPartition :: MonadError Error m => [[a]] -> m ([Natural], [a])
+disPartition xs = pure (concat $ zipWith (\idx x -> Prelude.take (length x) (Prelude.repeat idx)) [1..] xs, concat xs)
+
+disFilledPartition :: MonadError Error m => [a] -> [[a]] -> m ([Natural], [a])
+disFilledPartition fill xs = pure (intercalate (Prelude.take (length fill) (Prelude.repeat 0)) $ (\x -> Prelude.take (length x) (Prelude.repeat 1)) <$> xs, intercalate fill xs)
+
+disPartition' :: MonadError Error m => CoreExtraArgs -> Noun -> m (Noun, Noun)
+disPartition' CoreExtraArgs{ coreExtraArgsFill = fill } arr = do
+  let err = DomainError "Dis Partitioned enclose argument must be vector of boxes"
+  vec <- fmap (majorCells . fromScalar) <$> asVector err arr
+  (ps, xs) <- case fill of
+    Nothing -> disPartition vec
+    Just fl -> disFilledPartition (majorCells $ fromScalar fl) vec
+  pure (vector $ Number . (:+ 0) . fromIntegral <$> ps, fromMajorCells xs)
+
 partitionEnclose :: MonadError Error m => [Natural] -> [a] -> m [[a]]
 partitionEnclose ms xs = pure $ Prelude.reverse $ fmap Prelude.reverse $ foldl' (\ps (co, x) ->
   if (co == Nothing || co == Just 0) && null ps then ps
@@ -1431,9 +1446,28 @@ partitionEnclose ms xs = pure $ Prelude.reverse $ fmap Prelude.reverse $ foldl' 
 
 partitionEnclose' :: MonadError Error m => Noun -> Noun -> m Noun
 partitionEnclose' is xs = do
-  let err = DomainError "Partition left argument must be a vector of naturals"
+  let err = DomainError "Partitioned enclose left argument must be a vector of naturals"
   is' <- asVector err is >>= mapM (asNumber err >=> asNat err)
   (vector . fmap (box . fromMajorCells)) <$> partitionEnclose is' (majorCells xs)
+
+disPartitionEnclose :: MonadError Error m => [[a]] -> m ([Natural], [a])
+disPartitionEnclose xs = do
+  let everything = concat xs
+  let points = Prelude.reverse $ foldl' (\cases {
+    (0:ps) [] -> 1 : 0 : ps ;
+    (p:ps) [] -> p + 1 : ps ;
+    [] [] -> [1] ;
+    [] (_:xs) -> genericTake (genericLength xs) (Prelude.repeat 0) :> 1 ;
+    (0:ps) (_:xs) -> genericTake (genericLength xs) (Prelude.repeat 0) ++ 1 : 0 : ps ;
+    (p:ps) (_:xs) -> genericTake (genericLength xs) (Prelude.repeat 0) ++ p + 1 : ps }) [] xs
+  pure (points, everything)
+
+disPartitionEnclose' :: MonadError Error m => Noun -> m (Noun, Noun)
+disPartitionEnclose' arr = do
+  let err = DomainError "Dis Partitioned enclose argument must be vector of boxes"
+  vec <- fmap (majorCells . fromScalar) <$> asVector err arr
+  (ps, xs) <- disPartitionEnclose vec
+  pure (vector $ Number . (:+ 0) . fromIntegral <$> ps, fromMajorCells xs)
 
 execute :: String -> St Noun
 execute code = do
