@@ -61,7 +61,7 @@ rho = PrimitiveFunction (Just $ const F.shape') (Just $ const F.reshape') (Just 
 ravel = PrimitiveFunction (Just $ const F.ravel') (Just $ withCoreExtraArgs2 F.laminate) Nothing Nothing Nothing (Just $ withCoreExtraArgs1 F.firstAndLastCells) Nothing Nothing [G.ravel] Nothing
 reverse = PrimitiveFunction (Just $ const F.reverse') (Just $ withCoreExtraArgs2 F.rotate') (Just $ const F.reverse') (Just $ withCoreExtraArgs2 $ \cea -> F.rotate' cea{ coreExtraArgsBackward = not $ coreExtraArgsBackward cea }) Nothing Nothing Nothing Nothing [G.reverse] Nothing
 pair = PrimitiveFunction (Just $ const F.singleton) (Just $ const F.pair) (Just $ withCoreExtraArgs1 F.first) Nothing Nothing (Just $ withCoreExtraArgs1 F.firstAndLast) Nothing Nothing [G.pair] Nothing
-enclose = PrimitiveFunction (Just $ const F.enclose') (Just $ const F.partitionEnclose') (Just $ withCoreExtraArgs1 F.first) Nothing Nothing Nothing Nothing Nothing [G.enclose] Nothing
+enclose = PrimitiveFunction (Just $ const F.enclose') (Just $ const F.partitionEnclose') (Just $ withCoreExtraArgs1 F.first) Nothing Nothing (Just $ const F.disPartitionEnclose') Nothing Nothing [G.enclose] Nothing
 first = PrimitiveFunction (Just $ withCoreExtraArgs1 F.first) Nothing (Just $ const F.enclose') Nothing Nothing Nothing Nothing Nothing [G.first] Nothing
 last = PrimitiveFunction (Just $ withCoreExtraArgs1 F.last) (Just $ withCoreExtraArgs2 F.from) (Just $ const F.enclose') Nothing Nothing Nothing Nothing Nothing [G.last] Nothing
 take = PrimitiveFunction (Just $ withCoreExtraArgs1 F.mix) (Just $ withCoreExtraArgs2 F.take') (Just $ const F.majorCells') Nothing Nothing Nothing Nothing Nothing [G.take] Nothing
@@ -70,7 +70,7 @@ left = PrimitiveFunction (Just $ \_ x -> pure x) (Just $ \_ x _ -> pure x) (Just
 right = PrimitiveFunction (Just $ \_ x -> pure x) (Just $ \_ _ y -> pure y) (Just $ \_ x -> pure x) (Just $ \_ _ y -> pure y) Nothing Nothing Nothing Nothing [G.right] Nothing
 iota = PrimitiveFunction (Just $ withCoreExtraArgs1 F.indexGenerator') (Just $ withCoreExtraArgs2 F.indexOf) Nothing (Just $ withCoreExtraArgs2 $ F.commute . F.from) Nothing Nothing Nothing Nothing [G.iota] Nothing
 indices = PrimitiveFunction (Just $ withCoreExtraArgs1 F.indices) (Just $ withCoreExtraArgs2 F.intervalIndex) (Just $ withCoreExtraArgs1 F.histogram) Nothing Nothing Nothing Nothing Nothing [G.indices] Nothing
-replicate = PrimitiveFunction Nothing (Just $ const F.replicate') Nothing Nothing Nothing Nothing Nothing Nothing [G.replicate] Nothing
+replicate = PrimitiveFunction Nothing (Just $ const F.replicate') Nothing Nothing Nothing (Just $ const F.runLengthEncode') Nothing Nothing [G.replicate] Nothing
 abs = PrimitiveFunction (Just $ const F.abs') (Just $ withCoreExtraArgs2 F.remainder') Nothing Nothing Nothing Nothing Nothing Nothing [G.abs] Nothing
 phase = PrimitiveFunction (Just $ const F.phase') (Just $ const F.arctan') (Just $ const F.unitPolar') Nothing Nothing (Just $ const F.sineAndCosine') Nothing Nothing [G.phase] Nothing
 real = PrimitiveFunction (Just $ const F.real') Nothing Nothing Nothing Nothing Nothing Nothing Nothing [G.real] Nothing
@@ -105,7 +105,7 @@ range = PrimitiveFunction (Just $ withCoreExtraArgs1 F.oneRange) (Just $ withCor
 keyValue = PrimitiveFunction (Just $ const F.fromPairs) (Just $ const F.keyValuePair) (Just $ const F.majorCells') Nothing Nothing Nothing Nothing Nothing [G.keyValue] Nothing
 invertedTable = PrimitiveFunction (Just $ const F.fromInvertedTable) (Just $ const F.fromKeysAndValues') (Just $ const F.invertedTable') Nothing Nothing (Just $ withCoreExtraArgs1 F.firstAndLast) Nothing Nothing [G.invertedTable] Nothing
 group = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.group') Nothing Nothing Nothing Nothing Nothing Nothing [G.group] Nothing
-partition = PrimitiveFunction Nothing (Just $ const F.partition') Nothing Nothing Nothing Nothing Nothing Nothing [G.partition] Nothing
+partition = PrimitiveFunction Nothing (Just $ const F.partition') Nothing Nothing Nothing (Just $ withCoreExtraArgs1 F.disPartition') Nothing Nothing [G.partition] Nothing
 execute = PrimitiveFunction (Just $ const F.execute') Nothing (Just $ const $ \y -> vector . fmap Character <$> showM (Repr y)) Nothing Nothing Nothing Nothing Nothing [G.execute] Nothing
 format = PrimitiveFunction (Just $ const F.format') Nothing Nothing Nothing Nothing Nothing Nothing Nothing [G.format] Nothing
 find = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.find') Nothing Nothing Nothing Nothing Nothing Nothing [G.find] Nothing
@@ -203,11 +203,11 @@ reduce = PrimitiveAdverb
   { adverbRepr = [G.reduce]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.reduce' $ callDyad f []) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.fold' $ callDyad f []) (ea' ++ ea)) (Just $ const $ \y -> case f of
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.reduce' $ callDyad f []) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.fold' $ callDyad f []) (ea' ++ ea)) (Just $ \ea' y -> case f of
     DerivedFunctionFunction{ derivedFunctionFunctionLeft = f', derivedFunctionAdverb = adv } | adv == onContents -> callDis f' [] y >>= uncurry F.pair
-    _ -> callDis f [] y >>= uncurry (F.laminate defaultCoreExtraArgs)) (Just $ const $ \x y -> case f of
+    _ -> callDis f (ea' ++ ea) y >>= uncurry (F.laminate defaultCoreExtraArgs)) (Just $ \ea' x y -> case f of
     DerivedFunctionFunction{ derivedFunctionFunctionLeft = f', derivedFunctionAdverb = adv } | adv == onContents -> vector . fmap box <$> callAna f' [] x y
-    _ -> fromMajorCells <$> callAna f [] x y) Nothing Nothing Nothing Nothing Nothing reduce f }
+    _ -> fromMajorCells <$> callAna f (ea' ++ ea) x y) Nothing Nothing Nothing Nothing Nothing reduce f }
 onPrefixes = PrimitiveAdverb
   { adverbRepr = [G.onPrefixes]
   , adverbContext = Nothing
