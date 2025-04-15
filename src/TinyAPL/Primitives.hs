@@ -303,6 +303,17 @@ inverse = PrimitiveAdverb
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
   , adverbOnFunction = Just $ const $ \f -> pure $ DerivedFunctionFunction (Just $ callUn f) (Just $ callAnti f) (Just $ callMonad f) (Just $ callDyad f) Nothing Nothing Nothing Nothing Nothing inverse f }
+onLeft = PrimitiveAdverb
+  { adverbRepr = [G.onLeft]
+  , adverbContext = Nothing
+  , adverbOnNoun = Nothing
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' y -> callMonad f (ea' ++ ea) y) (Just $ \ea' x _ -> callMonad f (ea' ++ ea) x) (Just $ \ea' y -> callUn f (ea' ++ ea) y) Nothing Nothing Nothing Nothing Nothing Nothing onLeft f }
+onRight = PrimitiveAdverb
+  { adverbRepr = [G.onRight]
+  , adverbContext = Nothing
+  , adverbOnNoun = Nothing
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' y -> callMonad f (ea' ++ ea) y) (Just $ \ea' _ y -> callMonad f (ea' ++ ea) y) (Just $ \ea' y -> callUn f (ea' ++ ea) y) Nothing Nothing Nothing Nothing Nothing Nothing onRight f }
+
 
 adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   [ TinyAPL.Primitives.selfie
@@ -325,7 +336,9 @@ adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   , TinyAPL.Primitives.bitwise
   , TinyAPL.Primitives.cellsLeft
   , TinyAPL.Primitives.cellsRight
-  , TinyAPL.Primitives.inverse ]
+  , TinyAPL.Primitives.inverse
+  , TinyAPL.Primitives.onLeft
+  , TinyAPL.Primitives.onRight ]
 
 -- * Primitive conjunctions
 
