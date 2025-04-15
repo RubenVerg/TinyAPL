@@ -1133,7 +1133,8 @@ catenate _ d@(Dictionary _ _) (Array [_] []) = pure d
 catenate _ _ _ = throwError $ DomainError "Cannot catenate dictionary and array"
 
 join :: MonadError Error m => CoreExtraArgs -> [Noun] -> m Noun
-join cea = fold (catenate cea `after` first defaultCoreExtraArgs) (vector [])
+join cea@CoreExtraArgs{ coreExtraArgsFill = Just fill } xs = TinyAPL.Functions.join cea{ coreExtraArgsFill = Nothing } $ Prelude.drop 1 $ concat $ zipWith (\x y -> [x, y]) (Prelude.repeat $ fromScalar fill) xs
+join cea@CoreExtraArgs{ coreExtraArgsFill = Nothing } xs = fold (catenate cea `after` discloseIfScalar) (vector []) xs
 
 join' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 join' cea = TinyAPL.Functions.join cea . majorCells
