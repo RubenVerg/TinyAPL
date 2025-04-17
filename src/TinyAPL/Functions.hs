@@ -114,11 +114,19 @@ addS = orStruct2 "Add" add
 add' :: Noun -> Noun -> St Noun
 add' = scalarDyad addS
 
+addAna :: MonadError Error m => ScalarValue -> m [ScalarValue]
+addAna (Number y) = do
+  let err = DomainError "Add ana must receive a flat natural array"
+  n <- asNat err y
+  pure $ genericReplicate n $ Number 1
+addAna _ = throwError expectedNumber
+
 addAna' :: Noun -> Noun -> St [Noun]
 addAna' x y = do
-  let err = DomainError "Add ana must receive a natural"
-  n <- sub' y x >>= asScalar err >>= asNumber err >>= asNat err
-  pure $ genericTake n $ Prelude.repeat $ scalar $ Number 1
+  sub' y x >>= onScalars1 defaultCoreExtraArgs{ coreExtraArgsFill = Just $ Number 0 } (\y -> do
+    sc <- asScalar undefined y
+    ana <- addAna sc
+    pure $ vector $ Prelude.reverse ana) >>= atRank1 defaultCoreExtraArgs reverse' 1 >>= orient defaultCoreExtraArgs [-1] >>= pure . majorCells
 
 neg :: MonadError Error m => ScalarValue -> m ScalarValue
 neg (Number y) = pure $ Number $ negate y
@@ -167,11 +175,19 @@ timesS = orStruct2 "Times" times
 times' :: Noun -> Noun -> St Noun
 times' = scalarDyad timesS
 
+timesAna :: MonadError Error m => ScalarValue -> m [ScalarValue]
+timesAna (Number y) = do
+  let err = DomainError "Times ana must receive a flat natural array after division"
+  n <- asNat err y
+  pure $ concatMap (\(pr, ct) -> genericTake ct $ Prelude.repeat $ Number $ (:+ 0) $ fromIntegral $ unPrime pr) $ factorise n
+timesAna _ = throwError expectedNumber
+
 timesAna' :: Noun -> Noun -> St [Noun]
 timesAna' x y = do
-  let err = DomainError "Times ana must receive a natural after division"
-  n <- divide' y x >>= asScalar err >>= asNumber err >>= asNat err
-  pure $ factorise n >>= (\(pr, ct) -> genericTake ct $ Prelude.repeat $ scalar $ Number $ (:+ 0) $ fromIntegral $ unPrime pr)
+  divide' y x >>= onScalars1 defaultCoreExtraArgs{ coreExtraArgsFill = Just $ Number 1 } (\y -> do
+    sc <- asScalar undefined y
+    ana <- timesAna sc
+    pure $ vector $ Prelude.reverse ana) >>= atRank1 defaultCoreExtraArgs reverse' 1 >>= orient defaultCoreExtraArgs [-1] >>= pure . majorCells
 
 signAndAbs :: MonadError Error m => ScalarValue -> m (ScalarValue, ScalarValue)
 signAndAbs y = liftA2 (,) (sign y) (TinyAPL.Functions.abs y)
