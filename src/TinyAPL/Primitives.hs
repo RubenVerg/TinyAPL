@@ -204,10 +204,12 @@ reduce = PrimitiveAdverb
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
   , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.reduce' $ callDyad f []) (ea' ++ ea)) (Just $ \ea' -> withCoreExtraArgs2 (flip F.fold' $ callDyad f []) (ea' ++ ea)) (Just $ \ea' y -> case f of
-    DerivedFunctionFunction{ derivedFunctionFunctionLeft = f', derivedFunctionAdverb = adv } | adv == onContents -> callDis f' [] y >>= uncurry F.pair
+    DerivedFunctionFunction{ derivedFunctionFunctionLeft = f', derivedFunctionAdverb = adv } | adv == onContents -> callDis f' (ea' ++ ea) y >>= uncurry F.pair
     _ -> callDis f (ea' ++ ea) y >>= uncurry (F.laminate defaultCoreExtraArgs)) (Just $ \ea' x y -> case f of
-    DerivedFunctionFunction{ derivedFunctionFunctionLeft = f', derivedFunctionAdverb = adv } | adv == onContents -> vector . fmap box <$> callAna f' [] x y
-    _ -> fromMajorCells <$> callAna f (ea' ++ ea) x y) Nothing Nothing Nothing Nothing Nothing reduce f }
+    DerivedFunctionFunction{ derivedFunctionFunctionLeft = f', derivedFunctionAdverb = adv } | adv == onContents -> vector . fmap box <$> callAna f' (ea' ++ ea) x y
+    _ -> do
+      CoreExtraArgs{ coreExtraArgsFill = fill } <- parseCoreExtraArgs $ ea' ++ ea
+      fromMajorCellsMaybeFilled fill <$> callAna f (ea' ++ ea) x y) Nothing Nothing Nothing Nothing Nothing reduce f }
 onPrefixes = PrimitiveAdverb
   { adverbRepr = [G.onPrefixes]
   , adverbContext = Nothing
