@@ -255,7 +255,7 @@ Marked features are supported, unmarked features are planned
 		* [x] `⍣` repeat
 		* [x] `⍣` until
 		* [x] `∙` inner product
-		* [ ] `∙` alternant?
+		* [x] `∙` alternant
 		* [x] `⊞` table
 		* [x] `⍤` at rank
 		* [x] `◡` on cells (`⍤¯1`)
