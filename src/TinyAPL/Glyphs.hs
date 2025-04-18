@@ -284,8 +284,8 @@ functions =
 
 selfie = '⍨'
 reduce = '/'
-onPrefixes = '↟'
-onSuffixes = '↡'
+onPrefixes = '\\'
+onInfixes = '⌺'
 each = '¨'
 eachLeft = 'ᐵ'
 eachRight = 'ᑈ'
@@ -310,7 +310,7 @@ adverbs =
   [ TinyAPL.Glyphs.selfie
   , TinyAPL.Glyphs.reduce
   , TinyAPL.Glyphs.onPrefixes
-  , TinyAPL.Glyphs.onSuffixes
+  , TinyAPL.Glyphs.onInfixes
   , TinyAPL.Glyphs.each
   , TinyAPL.Glyphs.eachLeft
   , TinyAPL.Glyphs.eachRight

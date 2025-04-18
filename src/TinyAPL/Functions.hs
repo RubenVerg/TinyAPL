@@ -1641,14 +1641,11 @@ fold' CoreExtraArgs{ coreExtraArgsBackward = b } f s (Dictionary _ vs) = (if b t
 onPrefixes :: MonadError Error m => ([a] -> m b) -> [a] -> m [b]
 onPrefixes f = mapM f . prefixes
 
-onPrefixes' :: MonadError Error m => (Noun -> m Noun) -> Noun -> m Noun
-onPrefixes' f arr = fromMajorCells <$> onPrefixes (f . fromMajorCells) (majorCells arr)
-
 onSuffixes :: MonadError Error m => ([a] -> m b) -> [a] -> m [b]
 onSuffixes f = mapM f . suffixes
 
-onSuffixes' :: MonadError Error m => (Noun -> m Noun) -> Noun -> m Noun
-onSuffixes' f arr = fromMajorCells <$> onSuffixes (f . fromMajorCells) (majorCells arr)
+onPrefixes' :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Noun -> m Noun
+onPrefixes' CoreExtraArgs{ coreExtraArgsBackward = b } f arr = fromMajorCells <$> (if b then onSuffixes else onPrefixes) (f . fromMajorCells) (majorCells arr)
 
 each1 :: MonadError Error m => (Noun -> m Noun) -> Noun -> m Noun
 each1 f (Array sh cs) = Array sh <$> mapM (fmap box . f . fromScalar) cs
@@ -1980,6 +1977,13 @@ onInfixes' f x y = do
     args <- if length vec < 4 then pure [] else asVector err $ fromScalar $ vec !! 3
     pure (size, skip, mode, args)) rows
   onInfixes 0 f specs y
+
+onPairs :: MonadError Error m => (a -> a -> m b) -> [a] -> m [b]
+onPairs _ [] = pure []
+onPairs f xs@(_:xt) = zipWithM f xs xt
+
+onPairs' :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> m Noun
+onPairs' f arr = fromMajorCells <$> onPairs f (majorCells arr)
 
 bitwise1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> ScalarValue -> m ScalarValue
 bitwise1 cea@CoreExtraArgs{ coreExtraArgsBackward = b } f y'@(Number _) = do

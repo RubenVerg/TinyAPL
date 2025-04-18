@@ -982,11 +982,6 @@ spec = do
         it "applies a function to prefixes of an array" $ do
           afm P.onPrefixes P.enclose (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [box $ vector [Number 1], box $ vector [Number 1, Number 2], box $ vector [Number 1, Number 2, Number 3]])
 
-    describe [G.onSuffixes] $ do
-      describe "on suffixes" $ do
-        it "applies a function to suffixes of an array" $ do
-          afm P.onSuffixes P.enclose (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [box $ vector [Number 1, Number 2, Number 3], box $ vector [Number 2, Number 3], box $ vector [Number 3]])
-    
     describe [G.each] $ do
       describe "monad each" $ do
         it "applies a function to each element of an array" $ do

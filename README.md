@@ -241,12 +241,9 @@ Marked features are supported, unmarked features are planned
 	* operators
 		* [x] `/` reduce (left-to-right)
 		* [x] `/` fold (seeded reduce)
-		* [x] `\` reduce back (right-to-left)
-		* [x] `\` fold back
-		* [x] `↟` on prefixes
-		* [x] `↡` on suffixes
-		* [x] `↡` on infixes
-		* [ ] `↟` on outfixes
+		* [x] `\` on prefixes
+		* [x] `⌺` on adjacent pairs
+		* [x] `⌺` on infixes
 		* [x] `¨` each
 		* [x] `ᐵ` each-left
 		* [x] `ᑈ` each-right
