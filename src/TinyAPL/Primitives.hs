@@ -214,12 +214,12 @@ onPrefixes = PrimitiveAdverb
   { adverbRepr = [G.onPrefixes]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onPrefixes' $ callMonad f []) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing onPrefixes f }
-onSuffixes = PrimitiveAdverb
-  { adverbRepr = [G.onSuffixes]
+  , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' -> withCoreExtraArgs1 (flip F.onPrefixes' $ callMonad f []) (ea' ++ ea)) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing onPrefixes f }
+onInfixes = PrimitiveAdverb
+  { adverbRepr = [G.onInfixes]
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
-  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onSuffixes' $ callMonad f []) (Just $ const $ F.onInfixes' $ callMonad f []) Nothing Nothing Nothing Nothing Nothing Nothing Nothing onSuffixes f }
+  , adverbOnFunction = Just $ \_ f -> pure $ DerivedFunctionFunction (Just $ const $ F.onPairs' $ callDyad f []) (Just $ const $ F.onInfixes' $ callMonad f []) Nothing Nothing Nothing Nothing Nothing Nothing Nothing onInfixes f }
 each = PrimitiveAdverb
   { adverbRepr = [G.each]
   , adverbContext = Nothing
@@ -321,7 +321,7 @@ adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
   [ TinyAPL.Primitives.selfie
   , TinyAPL.Primitives.reduce
   , TinyAPL.Primitives.onPrefixes
-  , TinyAPL.Primitives.onSuffixes
+  , TinyAPL.Primitives.onInfixes
   , TinyAPL.Primitives.each
   , TinyAPL.Primitives.eachLeft
   , TinyAPL.Primitives.eachRight
