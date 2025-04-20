@@ -13,6 +13,7 @@ import {-# SOURCE #-} TinyAPL.Interpreter
 import TinyAPL.Random
 import TinyAPL.Util
 import TinyAPL.Glyphs (deltaBar)
+import {-# SOURCE #-} qualified TinyAPL.Primitives as P
 
 import Control.Monad.Except (MonadError)
 import qualified TinyAPL.Complex as Cx
@@ -1509,11 +1510,25 @@ executeWith conf' code' = do
   let confErr = DomainError "Execute left argument must be a struct"
   conf <- asScalar confErr conf' >>= asStruct confErr >>= readRef . contextScope
   scope <- scopeLookupNoun False "scope" conf >>= \case
+    Nothing -> createRef $ Scope [] [] [] [] Nothing True
     Just sc -> do
       let scErr = DomainError "Execute scope must be a struct"
       contextScope <$> (asScalar scErr sc >>= asStruct scErr)
-    Nothing -> createRef $ Scope [] [] [] [] Nothing True
-  (res, _) <- (liftToSt $ runResult $ runSt (run' "<execute>" code) $ ctx { contextScope = scope }) >>= liftEither
+  primitives <- scopeLookupNoun False "primitives" conf >>= \case
+    Nothing -> pure P.primitives
+    Just d -> do
+      let err = DomainError "Execute primitives must be a vector of exactly four dictionaries with string keys"
+      ds <- asVector err d >>= mapM (\case
+        (Box (Dictionary ks vs)) -> liftA2 (,) (mapM (asString err . fromScalar) ks) (pure vs)
+        _ -> throwError err)
+      when (length ds /= 4) $ throwError err
+      let [n', f', a', c'] = ds
+      n <- zip (fst n') <$> mapM (pure . fromScalar) (snd n')
+      f <- zip (fst f') <$> mapM (asWrap $ DomainError "Execute primitives second entry values must be wraps") (snd f')
+      a <- zip (fst a') <$> mapM (asAdverbWrap $ DomainError "Execute primitives third entry values must be adverb wraps") (snd a')
+      c <- zip (fst c') <$> mapM (asConjunctionWrap $ DomainError "Execute primitives fourth entry values must be conjunction wraps") (snd c')
+      pure (n, f, a, c)
+  (res, _) <- (liftToSt $ runResult $ runSt (run' "<execute>" code) $ ctx { contextScope = scope, contextPrimitives = primitives }) >>= liftEither
   case res of
     (VNoun x) -> pure x
     _ -> throwError $ DomainError "Execute code must return a noun"
