@@ -13,7 +13,6 @@ import TinyAPL.Error
 import qualified TinyAPL.Functions as F
 import qualified TinyAPL.Glyphs as G
 import TinyAPL.Parser
-import qualified TinyAPL.Primitives as P
 import TinyAPL.Util
 
 import Control.Applicative ((<|>))
@@ -90,88 +89,96 @@ inChildScope vals x parent = do
   ref <- foldrM (\(name, (t, val)) sc -> scopeUpdate True name t val sc) (Scope [] [] [] [] (Just $ contextScope parent)) vals >>= createRef
   runWithContext parent{ contextScope = ref } x
 
-interpret :: Tree -> Context -> ResultIO (Value, Context)
-interpret tree = runSt (eval tree)
+interpret :: Primitives -> Tree -> Context -> ResultIO (Value, Context)
+interpret p tree = runSt $ eval p tree
 
 forceTrees :: [Maybe Tree] -> [Tree]
 forceTrees = fmap $ fromMaybe $ VectorBranch []
 
+runWithPrimitives :: Primitives -> FilePath -> String -> Context -> ResultIO (Value, Context)
+runWithPrimitives p file src = runSt $ runWithPrimitives' p file src
+
+runWithPrimitives' :: Primitives -> FilePath -> String -> St Value
+runWithPrimitives' p@(pN, pF, pA, pC) file src = do
+  trees <- lift $ except (parse (fst <$> pN, fst <$> pF, fst <$> pA, fst <$> pC) file src)
+  last <$> mapM (eval p) (forceTrees trees)
+
 run :: FilePath -> String -> Context -> ResultIO (Value, Context)
-run file src = runSt (run' file src)
+run file src = runSt $ run' file src
 
 run' :: FilePath -> String -> St Value
 run' file src = do
-  trees <- lift $ except (parse file src)
-  last <$> mapM eval (forceTrees trees)
+  prims <- getsContext contextPrimitives
+  runWithPrimitives' prims file src
 
-eval :: Tree -> St Value
-eval (Leaf _ tok) = evalLeaf tok
-eval (QualifiedBranch _ h ns) = eval h >>= flip evalQualified ns
-eval (MonadCallBranch l r) = do
-  r' <- eval r
-  l' <- eval l
+eval :: Primitives -> Tree -> St Value
+eval p (Leaf _ tok) = evalLeaf p tok
+eval p (QualifiedBranch _ h ns) = eval p h >>= flip evalQualified ns
+eval p (MonadCallBranch l r) = do
+  r' <- eval p r
+  l' <- eval p l
   evalMonadCall l' r'
-eval (DyadCallBranch l r) = do
-  r' <- eval r
-  l' <- eval l
+eval p (DyadCallBranch l r) = do
+  r' <- eval p r
+  l' <- eval p l
   evalDyadCall l' r'
-eval (AdverbCallBranch l r) = do
-  r' <- eval r
-  l' <- eval l
+eval p (AdverbCallBranch l r) = do
+  r' <- eval p r
+  l' <- eval p l
   evalAdverbCall l' r'
-eval (ConjunctionCallBranch l r) = do
-  r' <- eval r
-  l' <- eval l
+eval p (ConjunctionCallBranch l r) = do
+  r' <- eval p r
+  l' <- eval p l
   evalConjunctionCall l' r'
-eval (AssignBranch _ n t val) = eval val >>= evalAssign False True n t
-eval (QualifiedAssignBranch _ h ns c val) = do
-  rs <- eval val
-  head <- eval h
+eval p (AssignBranch _ n t val) = eval p val >>= evalAssign False True n t
+eval p (QualifiedAssignBranch _ h ns c val) = do
+  rs <- eval p val
+  head <- eval p h
   evalQualifiedAssign head ns c rs
-eval (VectorAssignBranch ns c val) = eval val >>= evalVectorAssign ns c
-eval (HighRankAssignBranch ns c val) = eval val >>= evalHighRankAssign ns c
-eval (StructAssignBranch ns c val) = eval val >>= evalStructAssign ns c
-eval (DefinedBranch cat statements) = evalDefined statements cat
-eval (GuardBranch _ _) = throwError $ DomainError "Guards are not allowed outside of dfns"
-eval (ExitBranch _) = throwError $ DomainError "Exits are not allowed outside of dfns"
-eval (VectorBranch es) = do
-  entries <- mapM (eval >=> \case
+eval p (VectorAssignBranch ns c val) = eval p val >>= evalVectorAssign ns c
+eval p (HighRankAssignBranch ns c val) = eval p val >>= evalHighRankAssign ns c
+eval p (StructAssignBranch ns c val) = eval p val >>= evalStructAssign ns c
+eval p (DefinedBranch cat statements) = evalDefined p statements cat
+eval _ (GuardBranch _ _) = throwError $ DomainError "Guards are not allowed outside of dfns"
+eval _ (ExitBranch _) = throwError $ DomainError "Exits are not allowed outside of dfns"
+eval p (VectorBranch es) = do
+  entries <- mapM (eval p >=> \case
     VNoun x -> pure $ box x
     VFunction f -> pure $ Wrap f
     VAdverb a -> pure $ AdverbWrap a
     VConjunction c -> pure $ ConjunctionWrap c) $ reverse es
   return $ VNoun $ vector $ reverse entries
-eval (HighRankBranch es) = do
-  entries <- mapM (eval >=> unwrapNoun (DomainError "Array notation entries must be arrays")) $ reverse es
+eval p (HighRankBranch es) = do
+  entries <- mapM (eval p >=> unwrapNoun (DomainError "Array notation entries must be arrays")) $ reverse es
   case entries of
     [] -> return $ VNoun $ fromMajorCells []
     (e:es) ->
       if all ((== arrayShape e) . arrayShape) es
       then return $ VNoun $ fromMajorCells $ reverse entries
       else throwError $ DomainError "High rank notation entries must be of the same shape"
-eval (DictionaryBranch es) = do
+eval p (DictionaryBranch es) = do
   let toScalar (VNoun x) = box x
       toScalar (VFunction f) = Wrap f
       toScalar (VAdverb a) = AdverbWrap a
       toScalar (VConjunction c) = ConjunctionWrap c
-  entries <- mapM (\(k, v) -> liftA2 (,) (toScalar <$> eval k) (toScalar <$> eval v)) es
+  entries <- mapM (\(k, v) -> liftA2 (,) (toScalar <$> eval p k) (toScalar <$> eval p v)) es
   return $ VNoun $ dictionary entries
-eval (TrainBranch cat es) = evalTrain cat es
-eval (WrapBranch fn) = eval fn >>= (\case
+eval p (TrainBranch cat es) = evalTrain p cat es
+eval p (WrapBranch fn) = eval p fn >>= (\case
   VFunction fn -> pure $ VNoun $ scalar $ Wrap fn
   VAdverb adv -> pure $ VNoun $ scalar $ AdverbWrap adv
   VConjunction conj -> pure $ VNoun $ scalar $ ConjunctionWrap conj
   _ -> throwError $ DomainError "Wrap notation: function or modifier required")
-eval (UnwrapBranch cat fn) = eval fn >>= evalUnwrap cat
-eval (StructBranch es) = evalStruct es
-eval (TernaryBranch cond true false) = do
+eval p (UnwrapBranch cat fn) = eval p fn >>= evalUnwrap cat
+eval p (StructBranch es) = evalStruct p es
+eval p (TernaryBranch cond true false) = do
   let err = DomainError "Ternary condition must be a scalar boolean"
-  c <- eval cond >>= unwrapNoun err >>= asScalar err >>= asBool err
-  if c then eval true else eval false
-eval (UnboundExtraArgsBranch e) = eval e
-eval (ExtraArgsBranch _ mod args) = do
-  mod' <- eval mod
-  argsN <- eval args >>= unwrapNoun (SyntaxError "Extra args must be dictionaries")
+  c <- eval p cond >>= unwrapNoun err >>= asScalar err >>= asBool err
+  if c then eval p true else eval p false
+eval p (UnboundExtraArgsBranch e) = eval p e
+eval p (ExtraArgsBranch _ mod args) = do
+  mod' <- eval p mod
+  argsN <- eval p args >>= unwrapNoun (SyntaxError "Extra args must be dictionaries")
   case argsN of
     (Dictionary ks vs) -> let ea = zip ks vs in case mod' of
       (VFunction f) -> pure $ VFunction $ bindExtraArgsFunction ea f
@@ -179,7 +186,6 @@ eval (ExtraArgsBranch _ mod args) = do
       (VConjunction c) -> pure $ VConjunction $ bindExtraArgsConjunction ea c
       _ -> throwError $ SyntaxError "Extra args must modify functions or modifiers"
     _ -> throwError $ SyntaxError "Extra args must be dictionaries"
-
 
 resolve :: Context -> [String] -> St Context
 resolve ctx [] = pure ctx
@@ -190,27 +196,27 @@ resolve ctx (name:ns) = do
     >>= asStruct (DomainError "Names of a qualified identifier should be structs")
     >>= flip resolve ns
 
-evalLeaf :: Token -> St Value
-evalLeaf (TokenNumber x _  )                                                   = return $ VNoun $ scalar $ Number x
-evalLeaf (TokenChar [x] _)                                                     = return $ VNoun $ scalar $ Character x
-evalLeaf (TokenChar xs _)                                                      = return $ VNoun $ vector $ Character <$> xs
-evalLeaf (TokenString xs _)                                                    = return $ VNoun $ vector $ Character <$> xs
-evalLeaf (TokenPrimArray n _)                                                  =
-  lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive array " ++ [n]) $ VNoun <$> lookup n P.arrays
-evalLeaf (TokenPrimFunction n _)                                               =
-  lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive function " ++ [n]) $ VFunction <$> lookup n P.functions
-evalLeaf (TokenPrimAdverb n _)                                                 =
-  lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive adverb " ++ [n]) $ VAdverb <$> lookup n P.adverbs
-evalLeaf (TokenPrimConjunction n _)                                            =
-  lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive conjunction " ++ [n]) $ VConjunction <$> lookup n P.conjunctions
-evalLeaf (TokenArrayName name _)
+evalLeaf :: Primitives -> Token -> St Value
+evalLeaf _ (TokenNumber x _)                                                   = return $ VNoun $ scalar $ Number x
+evalLeaf _ (TokenChar [x] _)                                                   = return $ VNoun $ scalar $ Character x
+evalLeaf _ (TokenChar xs _)                                                    = return $ VNoun $ vector $ Character <$> xs
+evalLeaf _ (TokenString xs _)                                                  = return $ VNoun $ vector $ Character <$> xs
+evalLeaf (pN, _, _, _) (TokenPrimArray n _)                                    =
+  lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive array " ++ n) $ VNoun <$> lookup n pN
+evalLeaf (_, pF, _, _) (TokenPrimFunction n _)                                 =
+  lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive function " ++ n) $ VFunction <$> lookup n pF
+evalLeaf (_, _, pA, _) (TokenPrimAdverb n _)                                   =
+  lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive adverb " ++ n) $ VAdverb <$> lookup n pA
+evalLeaf (_, _, _, pC) (TokenPrimConjunction n _)                              =
+  lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive conjunction " ++ n) $ VConjunction <$> lookup n pC
+evalLeaf p (TokenArrayName name _)
   | name == [G.quad]                                                           = do
     err <- gets contextErr
     input <- gets contextIn
     err $ G.quad : ": "
     code <- input
     context <- get
-    (res, context') <- lift $ run [G.quad] code context
+    (res, context') <- lift $ runWithPrimitives p [G.quad] code context
     put $ context'
     return res
   | name == [G.quadQuote]                                                      = do
@@ -225,7 +231,7 @@ evalLeaf (TokenArrayName name _)
       Nothing -> throwError $ SyntaxError $ "Unknown quad name " ++ name
   | otherwise                                                                  =
     gets contextScope >>= readRef >>= scopeLookupNoun True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VNoun)
-evalLeaf (TokenFunctionName name _)
+evalLeaf _ (TokenFunctionName name _)
   | isPrefixOf [G.quad] name || isPrefixOf [G.quadQuote] name                  = do
     quads <- gets contextQuads
     let fn = lookup name $ quadFunctions quads
@@ -234,7 +240,7 @@ evalLeaf (TokenFunctionName name _)
       Nothing -> throwError $ SyntaxError $ "Unknown quad name " ++ name
   | otherwise                                                                  =
     gets contextScope >>= readRef >>= scopeLookupFunction True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VFunction)
-evalLeaf (TokenAdverbName name _)
+evalLeaf _ (TokenAdverbName name _)
   | isPrefixOf [G.quad] name || isPrefixOf [G.quadQuote] name                  = do
     quads <- gets contextQuads
     let adv = lookup name $ quadAdverbs quads
@@ -243,7 +249,7 @@ evalLeaf (TokenAdverbName name _)
       Nothing -> throwError $ SyntaxError $ "Unknown quad name " ++ name
   | otherwise                                                                  =
     gets contextScope >>= readRef >>= scopeLookupAdverb True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VAdverb)
-evalLeaf (TokenConjunctionName name _)
+evalLeaf _ (TokenConjunctionName name _)
   | isPrefixOf [G.quad] name || isPrefixOf [G.quadQuote] name                  = do
     quads <- gets contextQuads
     let conj = lookup name $ quadConjunctions quads
@@ -252,15 +258,15 @@ evalLeaf (TokenConjunctionName name _)
       Nothing -> throwError $ SyntaxError $ "Unknown quad name " ++ name
   | otherwise                                                                  =
     gets contextScope >>= readRef >>= scopeLookupConjunction True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VConjunction)
-evalLeaf _                                                                     = throwError $ DomainError "Invalid leaf type in evaluation"
+evalLeaf _ _                                                                   = throwError $ DomainError "Invalid leaf type in evaluation"
 
-evalLeafOrNothing :: Token -> St (Maybe Value)
-evalLeafOrNothing (TokenNothing _) = pure Nothing
-evalLeafOrNothing tok = Just <$> evalLeaf tok
+evalLeafOrNothing :: Primitives -> Token -> St (Maybe Value)
+evalLeafOrNothing _ (TokenNothing _) = pure Nothing
+evalLeafOrNothing p tok = Just <$> evalLeaf p tok
 
-evalOrNothing :: Tree -> St (Maybe Value)
-evalOrNothing (Leaf _ tok) = evalLeafOrNothing tok
-evalOrNothing t = Just <$> eval t
+evalOrNothing :: Primitives -> Tree -> St (Maybe Value)
+evalOrNothing p (Leaf _ tok) = evalLeafOrNothing p tok
+evalOrNothing p t = Just <$> eval p t
 
 evalQualified :: Value -> NonEmpty String -> St Value
 evalQualified head ns = do
@@ -376,15 +382,15 @@ evalStructAssign ns c val = do
     ; pure () }) ns
   pure val
 
-evalDefined :: NonEmpty Tree -> Category -> St Value
-evalDefined statements cat = let
+evalDefined :: Primitives -> NonEmpty Tree -> Category -> St Value
+evalDefined p statements cat = let
   ev :: Tree -> St (Value, Bool)
   ev (GuardBranch check result) = do
-    c <- eval check >>= unwrapNoun (DomainError "Guard check not array") >>= lift . except . asScalar (DomainError "Guard check not scalar") >>= lift . except . asBool (DomainError "Guard check not boolean")
+    c <- eval p check >>= unwrapNoun (DomainError "Guard check not array") >>= lift . except . asScalar (DomainError "Guard check not scalar") >>= lift . except . asBool (DomainError "Guard check not boolean")
     if c then ev result
     else return (VNoun $ Array [0, 0] [], False)
-  ev (ExitBranch result) = (, True) <$> eval result
-  ev other = (, False) <$> eval other
+  ev (ExitBranch result) = (, True) <$> eval p result
+  ev other = (, False) <$> eval p other
 
   runDefined :: NonEmpty Tree -> St Value
   runDefined (x :| xs) = case NE.nonEmpty xs of
@@ -669,8 +675,8 @@ bindExtraArgsConjunction ea c = ExtraArgsConjunction
   , extraArgsConjunctionExtraArgs = ea
   , extraArgsConjunctionConjunction = c }
 
-evalTrain :: Category -> [Maybe Tree] -> St Value
-evalTrain cat es = let
+evalTrain :: Primitives -> Category -> [Maybe Tree] -> St Value
+evalTrain p cat es = let
   makeValueAdverb :: (Value -> St Function) -> String -> Adverb
   makeValueAdverb a s = PrimitiveAdverb
     { adverbOnNoun = Just $ \_ x -> a (VNoun x)
@@ -846,7 +852,7 @@ evalTrain cat es = let
   in do
     us <- mapM (\case
       Nothing -> pure Nothing
-      Just x -> evalOrNothing x) $ reverse es
+      Just x -> evalOrNothing p x) $ reverse es
     t <- train us
     r <- withTrainRepr (reverse us) t
     case (cat, r) of
@@ -856,12 +862,12 @@ evalTrain cat es = let
       (CatConjunction, r@(VConjunction _)) -> pure r
       (exp, g) -> throwError $ DomainError $ "Expected train of category " ++ show exp ++ ", got a " ++ show (valueCategory g)
 
-evalStruct :: [Tree] -> St Value
-evalStruct statements = do
+evalStruct :: Primitives -> [Tree] -> St Value
+evalStruct p statements = do
   ctx <- get
   newScope <- createRef $ Scope [] [] [] [] (Just $ contextScope ctx)
   let newContext = ctx{ contextScope = newScope }
-  mapM_ (runWithContext newContext . eval) statements
+  mapM_ (runWithContext newContext . eval p) statements
   pure $ VNoun $ scalar $ Struct newContext
 
 evalUnwrap :: Category -> Value -> St Value

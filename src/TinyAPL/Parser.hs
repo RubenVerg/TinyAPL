@@ -53,10 +53,10 @@ data Token
   = TokenNumber (Complex Double) SourcePos
   | TokenChar String SourcePos
   | TokenString String SourcePos
-  | TokenPrimArray Char SourcePos
-  | TokenPrimFunction Char SourcePos
-  | TokenPrimAdverb Char SourcePos
-  | TokenPrimConjunction Char SourcePos
+  | TokenPrimArray String SourcePos
+  | TokenPrimFunction String SourcePos
+  | TokenPrimAdverb String SourcePos
+  | TokenPrimConjunction String SourcePos
   | TokenDfn (NonEmpty [Token]) SourcePos
   | TokenDadv (NonEmpty [Token]) SourcePos
   | TokenDconj (NonEmpty [Token]) SourcePos
@@ -156,10 +156,10 @@ instance Show Token where
   show (TokenNumber x _) = "(number " ++ show x ++ ")"
   show (TokenChar x _) = "(character " ++ [G.charDelimiter] ++ x ++ [G.charDelimiter] ++ ")"
   show (TokenString x _) = "(string " ++ [G.stringDelimiter] ++ x ++ [G.stringDelimiter] ++ ")"
-  show (TokenPrimArray x _) = "(primitive array " ++ [x] ++ ")"
-  show (TokenPrimFunction x _) = "(primitive function " ++ [x] ++ ")"
-  show (TokenPrimAdverb x _) = "(primitive adverb " ++ [x] ++ ")"
-  show (TokenPrimConjunction x _) = "(primitive conjunction " ++ [x] ++ ")"
+  show (TokenPrimArray x _) = "(primitive array " ++ x ++ ")"
+  show (TokenPrimFunction x _) = "(primitive function " ++ x ++ ")"
+  show (TokenPrimAdverb x _) = "(primitive adverb " ++ x ++ ")"
+  show (TokenPrimConjunction x _) = "(primitive conjunction " ++ x ++ ")"
   show (TokenDfn xs _) = "(dfn " ++ [fst G.braces, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . fmap show <$> NE.toList xs) ++ [' ', snd G.braces] ++ ")"
   show (TokenDadv xs _) = "(dadv " ++ [G.underscore, fst G.braces, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . fmap show <$> NE.toList xs) ++ [' ', snd G.braces] ++ ")"
   show (TokenDconj xs _) = "(dconj " ++ [G.underscore, fst G.braces, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . fmap show <$> NE.toList xs) ++ [' ', snd G.braces, G.underscore] ++ ")"
@@ -275,8 +275,8 @@ makeParseErrors :: String -> ParseErrorBundle String Void -> Error
 makeParseErrors source es = case attachSourcePos errorOffset (bundleErrors es) (bundlePosState es) of
   (r :| rs, _) -> SyntaxError $ concatMap (uncurry $ flip $ prettyParseError source) $ r : rs
 
-tokenize :: String -> String -> Result [[Token]]
-tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (sepBy1 bitsMaybe separator <* eof) file source where
+tokenize :: ([String], [String], [String], [String]) -> String -> String -> Result [[Token]]
+tokenize (pN, pF, pA, pC) file source = first (makeParseErrors source) $ Text.Megaparsec.parse (sepBy1 bitsMaybe separator <* eof) file source where
   withPos :: Parser (SourcePos -> a) -> Parser a
   withPos = (<**>) getSourcePos
 
@@ -399,7 +399,7 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
       , try $ between (char $ fst G.vector) (char $ snd G.vector) (TokenDictionary <$> sepBy1 (liftA2 (,) (bits `commitOn` (lexeme $ char G.guard)) bits) separator ) ]
 
     primArray :: Parser Token
-    primArray = withPos $ TokenPrimArray <$> oneOf G.arrays
+    primArray = withPos $ TokenPrimArray <$> choice (string <$> pN)
 
     wrap :: Parser Token
     wrap = withPos $ TokenWrap <$> (char G.wrap *> bit)
@@ -433,7 +433,7 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
     train = withPos $ TokenTrain <$> (string [fst G.train] *> sepBy1 bitsMaybe separator <* string [snd G.train])
 
     primFunction :: Parser Token
-    primFunction = withPos $ TokenPrimFunction <$> oneOf G.functions
+    primFunction = withPos $ TokenPrimFunction <$> choice (string <$> pF)
 
     unwrap :: Parser Token
     unwrap = withPos $ TokenUnwrap <$> (char G.unwrap *> bit)
@@ -452,7 +452,7 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
     adverbTrain = withPos $ TokenAdverbTrain <$> (string [G.underscore, fst G.train] *> sepBy1 bitsMaybe separator <* string [snd G.train] <* notFollowedBy (char G.underscore))
 
     primAdverb :: Parser Token
-    primAdverb = withPos $ TokenPrimAdverb <$> oneOf G.adverbs
+    primAdverb = withPos $ TokenPrimAdverb <$> choice (string <$> pA)
 
     unwrapAdverb :: Parser Token
     unwrapAdverb = withPos $ TokenUnwrapAdverb <$> (string [G.underscore, G.unwrap] *> bit)
@@ -471,7 +471,7 @@ tokenize file source = first (makeParseErrors source) $ Text.Megaparsec.parse (s
     conjunctionTrain = withPos $ TokenConjunctionTrain <$> (string [G.underscore, fst G.train] *> sepBy1 bitsMaybe separator <* string [snd G.train, G.underscore])
 
     primConjunction :: Parser Token
-    primConjunction = withPos $ TokenPrimConjunction <$> oneOf G.conjunctions
+    primConjunction = withPos $ TokenPrimConjunction <$> choice (string <$> pC)
 
     unwrapConjunction :: Parser Token
     unwrapConjunction = withPos $ TokenUnwrapConjunction <$> (string [G.underscore, G.unwrap, G.underscore] *> bit)
@@ -724,8 +724,8 @@ bindAllMultiple map xs = bindPairMaybe map xs >>= (\case
   Nothing -> pure xs
   Just xs' -> bindAllMultiple map xs')
 
-categorize :: String -> String -> Result [[Tree]]
-categorize name source = tokenize name source >>= mapM (\xs -> case NE.nonEmpty xs of
+categorize :: ([String], [String], [String], [String]) -> String -> String -> Result [[Tree]]
+categorize p name source = tokenize p name source >>= mapM (\xs -> case NE.nonEmpty xs of
   Nothing -> pure []
   Just xs -> NE.toList <$> categorizeTokens xs) where
   orEmptyToken :: [Token] -> NonEmpty Token
@@ -869,7 +869,7 @@ categorize name source = tokenize name source >>= mapM (\xs -> case NE.nonEmpty 
     _ -> throwError $ makeSyntaxError (tokenPos $ NE.head es) source $ "Extra args must be arrays")
   tokenToTree (TokenNothing pos)                            = pure $ Leaf CatNothing (TokenNothing pos)
 
-parse :: String -> String -> Result [Maybe Tree]
-parse name = categorize name >=> mapM (\xs -> case NE.nonEmpty xs of
+parse :: ([String], [String], [String], [String]) -> String -> String -> Result [Maybe Tree]
+parse p name = categorize p name >=> mapM (\xs -> case NE.nonEmpty xs of
   Nothing -> pure Nothing
   Just xs -> Just <$> bindAll xs)

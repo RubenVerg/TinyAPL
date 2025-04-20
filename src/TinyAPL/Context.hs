@@ -23,6 +23,7 @@ module TinyAPL.Context
   , scopeShallowModifyFunction
   , scopeShallowModifyAdverb
   , scopeShallowModifyConjunction
+  , Primitives
   , Context(..)
   , assignId
   , St
@@ -221,6 +222,8 @@ scopeShallowModifyConjunction private name val sc = if name `elem` specialNames 
   Just _ -> scopeUpdateConjunction private name VariableNormal val sc
   Nothing -> throwError $ DomainError "Modifying a non-existent variable"
 
+type Primitives = ([(String, Noun)], [(String, Function)], [(String, Adverb)], [(String, Conjunction)])
+
 data Context = Context
   { contextScope :: IORef Scope
   , contextQuads :: Quads
@@ -228,10 +231,11 @@ data Context = Context
   , contextOut :: String -> St ()
   , contextErr :: String -> St ()
   , contextIncrementalId :: IORef Integer
-  , contextDirectory :: FilePath }
+  , contextDirectory :: FilePath
+  , contextPrimitives :: Primitives }
 
 instance NFData Context where
-  rnf (Context s q i o e d r) = rnf s `seq` rnf q `seq` rwhnf i `seq` rnf o `seq` rnf e `seq` rnf d `seq` rnf r `seq` ()
+  rnf (Context s q i o e d r p) = rnf s `seq` rnf q `seq` rwhnf i `seq` rnf o `seq` rnf e `seq` rnf d `seq` rnf r `seq` rnf p `seq` ()
 
 assignId :: St Integer
 assignId = do
