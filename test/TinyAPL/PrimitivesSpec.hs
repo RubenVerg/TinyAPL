@@ -20,7 +20,7 @@ import System.IO.Unsafe
 import Data.List (singleton)
 import Data.Functor.Identity (Identity(runIdentity))
 
-scope = unsafePerformIO $ newIORef $ Scope [] [] [] [] Nothing
+scope = unsafePerformIO $ newIORef $ Scope [] [] [] [] Nothing True
 {-# NOINLINE scope #-}
 idRef = unsafePerformIO $ newIORef (0 :: Integer)
 {-# NOINLINE idRef #-}

@@ -144,7 +144,7 @@ lastQuads l = let readLast = (!! l) <$> (liftToSt $ readIORef lasts) in
 newContext :: JSVal -> JSVal -> JSVal -> JSVal -> JSString -> IO Int
 newContext input output error quads cwd = do
   l <- length <$> readIORef contexts
-  emptyScope <- newIORef $ Scope [] [] [] [] Nothing
+  emptyScope <- newIORef $ Scope [] [] [] [] Nothing True
   let cwd' = fromJSString cwd
   let input' = liftToSt $ fromJSString <$> callInput input
   let output' = liftToSt . callOutput output . toJSString
@@ -305,7 +305,7 @@ foreign export javascript "tinyapl_show" showJS :: JSVal -> IO JSString
 
 showJS :: JSVal -> IO JSString
 showJS val = do
-  scope <- newIORef $ Scope [] [] [] [] Nothing
+  scope <- newIORef $ Scope [] [] [] [] Nothing True
   id <- newIORef 0
   r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME showM) (Context scope mempty undefined undefined undefined id "" primitives)) :: IO (Either Error String)
   pure $ toJSString $ case r of
@@ -316,7 +316,7 @@ foreign export javascript "tinyapl_repr" reprJS :: JSVal -> IO JSString
 
 reprJS :: JSVal -> IO JSString
 reprJS val = do
-  scope <- newIORef $ Scope [] [] [] [] Nothing
+  scope <- newIORef $ Scope [] [] [] [] Nothing True
   id <- newIORef 0
   r <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt val) (Context scope mempty undefined undefined undefined id "" primitives))
   toJSString <$> case r of

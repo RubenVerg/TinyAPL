@@ -1489,7 +1489,7 @@ disPartitionEnclose' arr = do
 execute :: String -> St Noun
 execute code = do
   ctx <- getContext
-  scope <- createRef $ Scope [] [] [] [] Nothing -- The scope has intentionally no parent; execution runs in an isolated context
+  scope <- createRef $ Scope [] [] [] [] Nothing True -- The scope has intentionally no parent; execution runs in an isolated context
   (res, _) <- (liftToSt $ runResult $ runSt (run' "<execute>" code) $ ctx { contextScope = scope }) >>= liftEither
   case res of
     (VNoun x) -> pure x
@@ -1501,6 +1501,22 @@ execute' code = do
   (sh, ss) <- asArrayOfStrings err code
   res <- mapM execute ss
   pure $ Array sh (toScalar <$> res)
+
+executeWith :: Noun -> Noun -> St Noun
+executeWith conf' code' = do
+  ctx <- getContext
+  code <- asString (DomainError "Execute code must be a string") code'
+  let confErr = DomainError "Execute left argument must be a struct"
+  conf <- asScalar confErr conf' >>= asStruct confErr >>= readRef . contextScope
+  scope <- scopeLookupNoun False "scope" conf >>= \case
+    Just sc -> do
+      let scErr = DomainError "Execute scope must be a struct"
+      contextScope <$> (asScalar scErr sc >>= asStruct scErr)
+    Nothing -> createRef $ Scope [] [] [] [] Nothing True
+  (res, _) <- (liftToSt $ runResult $ runSt (run' "<execute>" code) $ ctx { contextScope = scope }) >>= liftEither
+  case res of
+    (VNoun x) -> pure x
+    _ -> throwError $ DomainError "Execute code must return a noun"
 
 format :: (MonadError Error m, MonadShow m ScalarValue) => Noun -> m String
 format x = showM x

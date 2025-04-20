@@ -84,9 +84,9 @@ scopeShallowModify private name (VFunction val) sc    = scopeShallowModifyFuncti
 scopeShallowModify private name (VAdverb val) sc      = scopeShallowModifyAdverb private name val sc
 scopeShallowModify private name (VConjunction val) sc = scopeShallowModifyConjunction private name val sc
 
-inChildScope :: [(String, (VariableType, Value))] -> St a -> Context -> St a
-inChildScope vals x parent = do
-  ref <- foldrM (\(name, (t, val)) sc -> scopeUpdate True name t val sc) (Scope [] [] [] [] (Just $ contextScope parent)) vals >>= createRef
+inChildScope :: [(String, (VariableType, Value))] -> Bool -> St a -> Context -> St a
+inChildScope vals isStruct x parent = do
+  ref <- foldrM (\(name, (t, val)) sc -> scopeUpdate True name t val sc) (Scope [] [] [] [] (Just $ contextScope parent) isStruct) vals >>= createRef
   runWithContext parent{ contextScope = ref } x
 
 interpret :: Primitives -> Tree -> Context -> ResultIO (Value, Context)
@@ -399,7 +399,7 @@ evalDefined p statements cat = let
       (v, r) <- ev x
       if r then return v else runDefined xs
 
-  run xs sc = inChildScope xs (runDefined statements) sc >>= unwrapNoun (DomainError "Dfn must return an array")
+  run xs sc = inChildScope xs False (runDefined statements) sc >>= unwrapNoun (DomainError "Dfn must return an array")
   in do
     sc <- get
     case cat of
@@ -865,7 +865,7 @@ evalTrain p cat es = let
 evalStruct :: Primitives -> [Tree] -> St Value
 evalStruct p statements = do
   ctx <- get
-  newScope <- createRef $ Scope [] [] [] [] (Just $ contextScope ctx)
+  newScope <- createRef $ Scope [] [] [] [] (Just $ contextScope ctx) True
   let newContext = ctx{ contextScope = newScope }
   mapM_ (runWithContext newContext . eval p) statements
   pure $ VNoun $ scalar $ Struct newContext

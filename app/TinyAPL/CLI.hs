@@ -66,7 +66,7 @@ cli = do
 
   cwd <- getCurrentDirectory
 
-  scope <- newIORef $ Scope [] [] [] [] Nothing
+  scope <- newIORef $ Scope [] [] [] [] Nothing True
 
   id <- newIORef 0
   let context = Context {

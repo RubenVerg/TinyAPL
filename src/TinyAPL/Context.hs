@@ -71,13 +71,14 @@ data Scope = Scope
   , scopeFunctions :: [(String, (VariableType, Function))]
   , scopeAdverbs :: [(String, (VariableType, Adverb))]
   , scopeConjunctions :: [(String, (VariableType, Conjunction))]
-  , scopeParent :: Maybe (IORef Scope) }
+  , scopeParent :: Maybe (IORef Scope)
+  , scopeIsStruct :: Bool }
   deriving (Generic, NFData)
 
 instance (Monad m, MonadShow m ScalarValue) => MonadShow m Scope where
-  showM (Scope nouns fns advs conjs parent) = (printf "Scope { nouns = %s, functions = %s, adverbs = %s, conjunctions = %s, %s }") <$> showM nouns <*> showM fns <*> showM advs <*> showM conjs <*> (pure $ case parent of
+  showM (Scope nouns fns advs conjs parent str) = (printf "Scope { nouns = %s, functions = %s, adverbs = %s, conjunctions = %s, %s, is struct: %s }") <$> showM nouns <*> showM fns <*> showM advs <*> showM conjs <*> (pure $ case parent of
     Nothing -> "no parent"
-    Just _ -> "a parent")
+    Just _ -> "a parent") <*> pure (show str)
 
 specialNames :: [String]
 specialNames = [[G.alpha], [G.omega], [G.alpha, G.alpha], [G.omega, G.omega], [G.alphaBar, G.alphaBar], [G.omegaBar, G.omegaBar], [G.del], [G.underscore, G.del], [G.underscore, G.del, G.underscore]]

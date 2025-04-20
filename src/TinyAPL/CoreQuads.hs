@@ -32,6 +32,7 @@ import Numeric.Natural
 import qualified Math.NumberTheory.Primes as Primes
 import qualified Math.NumberTheory.ArithmeticFunctions as Arith
 import Data.Maybe
+import Data.IORef (IORef)
 
 io = Nilad (Just $ pure $ scalar $ Number 0) Nothing (G.quad : "io") Nothing
 ct = Nilad (Just $ pure $ scalar $ Number $ comparisonTolerance :+ 0) Nothing (G.quad : "ct") Nothing
@@ -50,6 +51,18 @@ ts = Nilad (Just $ do
   let s = floor $ fixedToFractional s'
   let ms = round $ fracPart (fixedToFractional s') * 1000
   pure $ vector [Number $ fromIntegral y, Number $ fromIntegral m, Number $ fromIntegral d, Number $ fromIntegral h, Number $ fromIntegral min, Number $ fromIntegral s, Number $ fromIntegral ms]) Nothing (G.quad : "ts") Nothing
+this = Nilad (Just $ do
+  ctx <- getContext
+  let findStructParent :: IORef Scope -> St (IORef Scope)
+      findStructParent ref = do
+        sc <- readRef ref
+        case sc of {
+          Scope{ scopeParent = Nothing } -> pure ref ;
+          Scope{ scopeIsStruct = True } -> pure ref ;
+          Scope{ scopeParent = Just p } -> findStructParent p }
+  scopeRef <- getsContext contextScope
+  str <- findStructParent scopeRef
+  pure $ scalar $ Struct $ ctx{ contextScope = str }) Nothing (G.quad : "this") Nothing
 
 exists = PrimitiveFunction (Just $ \_ y -> do
   var <- asString (DomainError "Exists argument must be a string") y
@@ -131,7 +144,7 @@ measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction
   end <- realToFrac <$> liftToSt getPOSIXTime
   pure $ scalar $ Number $ (end - start) :+ 0) Nothing Nothing Nothing Nothing Nothing Nothing Nothing measure f) (G.quad : "_Measure") Nothing
 
-core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, math, regex, inspectNamespace ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF, primes ] [ measure ] []
+core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, {- this, -}math, regex, inspectNamespace ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF, primes ] [ measure ] []
 
 makeImport :: (FilePath -> St String) -> Maybe ([String] -> St String) -> Function
 makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
@@ -140,7 +153,7 @@ makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
   path <- asVector err x >>= mapM (asCharacter err)
   let absolutePath = if "std:" `isPrefixOf` path || isAbsolute path then path else currentDir </> path
   ctx <- getContext
-  scope <- createRef $ Scope [] [] [] [] Nothing -- The scope has intentionally no parent; imports run in an isolated context
+  scope <- createRef $ Scope [] [] [] [] Nothing True -- The scope has intentionally no parent; imports run in an isolated context
   let ctx' = ctx{ contextScope = scope, contextDirectory = takeDirectory absolutePath }
   source <-
     if isPrefixOf "std:" absolutePath
@@ -165,6 +178,6 @@ makeSystemInfo os arch js bigEndian = Nilad (Just $ do
   scope <- createRef $ Scope [ ("os", (VariableConstant, vector $ Character <$> os))
                              , ("arch", (VariableConstant, vector $ Character <$> arch))
                              , ("js", (VariableConstant, scalar $ boolToScalar js))
-                             , ("bigEndian", (VariableConstant, scalar $ boolToScalar bigEndian)) ] [] [] [] Nothing
+                             , ("bigEndian", (VariableConstant, scalar $ boolToScalar bigEndian)) ] [] [] [] Nothing True
   ctx <- get
   pure $ scalar $ Struct $ ctx{ contextScope = scope } ) Nothing (G.quad : "systemInfo") Nothing
