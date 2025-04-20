@@ -104,7 +104,7 @@ inspectNamespace = Nilad (Just $ do
     , ("unwrapArray", (VariableConstant, scalar inspectKeyUnwrapArrayFunction))
     , ("train", (VariableConstant, scalar inspectKeyTrain))
     , ("extraArgs", (VariableConstant, scalar inspectKeyExtraArgs)) ]
-    [] [] [] Nothing
+    [] [] [] Nothing True
   ctx <- getContext
   pure $ scalar $ Struct $ ctx{ contextScope = scope }) Nothing (G.quad : "inspect") Nothing
 

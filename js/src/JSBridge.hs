@@ -218,7 +218,7 @@ instance IsJSSt ScalarValue where
       else if fromJSVal (jsLookup v $ toJSString "type") == "conjunction" then ConjunctionWrap <$> fromJSValSt v
       else if fromJSVal (jsLookup v $ toJSString "type") == "struct" then do
         ctx <- getContext
-        scope <- foldrM (\(n, v) s -> fromJSValSt v >>= \(t, v') -> scopeUpdate True n t v' s) (Scope [] [] [] [] Nothing) (valToObject $ jsLookup v $ toJSString "entries") >>= createRef
+        scope <- foldrM (\(n, v) s -> fromJSValSt v >>= \(t, v') -> scopeUpdate True n t v' s) (Scope [] [] [] [] Nothing True) (valToObject $ jsLookup v $ toJSString "entries") >>= createRef
         pure $ Struct ctx{ contextScope = scope }
       else throwError $ DomainError "fromJSValSt ScalarValue: wrong type"
     _ -> throwError $ DomainError "fromJSValSt ScalarValue: wrong type"
@@ -528,7 +528,7 @@ instance IsJSSt Nilad where
       let repr = fromJSString $ fromJSVal $ jsLookup v $ toJSString "repr"
       let get = jsLookup v $ toJSString "get"
       let set = jsLookup v $ toJSString "set"
-      sc <- createRef $ Scope [] [] [] [] Nothing
+      sc <- createRef $ Scope [] [] [] [] Nothing True
       ctx <- getContext
       pure $ Nilad {
         niladRepr = repr,

@@ -9,7 +9,7 @@ import TinyAPL.CoreExtraArgs
 import qualified TinyAPL.Functions as F
 import qualified TinyAPL.Glyphs as G
 import TinyAPL.Error
-import TinyAPL.Util (headPromise, rollR, bothM, showM)
+import TinyAPL.Util (rollR, bothM, showM)
 import TinyAPL.Complex (Complex((:+)))
 
 import Data.Tuple (swap)
@@ -27,9 +27,10 @@ withCoreExtraArgs2 f ea a b = parseCoreExtraArgs ea >>= (\cea -> f cea a b)
 zilde = vector []
 cilde = dictionary []
 
+arrays :: [([Char], Noun)]
 arrays =
-  [ (G.zilde, zilde)
-  , (G.cilde, cilde) ]
+  [ ([G.zilde], zilde)
+  , ([G.cilde], cilde) ]
 
 -- * Primitive functions
 
@@ -106,13 +107,14 @@ keyValue = PrimitiveFunction (Just $ const F.fromPairs) (Just $ const F.keyValue
 invertedTable = PrimitiveFunction (Just $ const F.fromInvertedTable) (Just $ const F.fromKeysAndValues') (Just $ const F.invertedTable') Nothing Nothing (Just $ withCoreExtraArgs1 F.firstAndLast) Nothing Nothing [G.invertedTable] Nothing
 group = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.group') Nothing Nothing Nothing Nothing Nothing Nothing [G.group] Nothing
 partition = PrimitiveFunction Nothing (Just $ const F.partition') Nothing Nothing Nothing (Just $ withCoreExtraArgs1 F.disPartition') Nothing Nothing [G.partition] Nothing
-execute = PrimitiveFunction (Just $ const F.execute') Nothing (Just $ const $ \y -> vector . fmap Character <$> showM (Repr y)) Nothing Nothing Nothing Nothing Nothing [G.execute] Nothing
+execute = PrimitiveFunction (Just $ const F.execute') (Just $ const F.executeWith) (Just $ const $ \y -> vector . fmap Character <$> showM (Repr y)) Nothing Nothing Nothing Nothing Nothing [G.execute] Nothing
 format = PrimitiveFunction (Just $ const F.format') Nothing Nothing Nothing Nothing Nothing Nothing Nothing [G.format] Nothing
 find = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.find') Nothing Nothing Nothing Nothing Nothing Nothing [G.find] Nothing
 mask = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.mask') Nothing Nothing Nothing Nothing Nothing Nothing [G.mask] Nothing
 raises = PrimitiveFunction (Just $ const F.square') (Just $ const F.raises') (Just $ const F.squareRoot') (Just $ const F.root') (Just $ const $ F.commute F.log') Nothing Nothing Nothing [G.raises] Nothing
 
-functions = (\x -> (headPromise $ functionRepr x, x)) <$>
+functions :: [(String, Function)]
+functions = (\x -> (functionRepr x, x)) <$>
   [ TinyAPL.Primitives.plus
   , TinyAPL.Primitives.minus
   , TinyAPL.Primitives.times
@@ -316,8 +318,8 @@ onRight = PrimitiveAdverb
   , adverbOnNoun = Nothing
   , adverbOnFunction = Just $ \ea f -> pure $ DerivedFunctionFunction (Just $ \ea' y -> callMonad f (ea' ++ ea) y) (Just $ \ea' _ y -> callMonad f (ea' ++ ea) y) (Just $ \ea' y -> callUn f (ea' ++ ea) y) Nothing Nothing Nothing Nothing Nothing Nothing onRight f }
 
-
-adverbs = (\x -> (headPromise $ adverbRepr x, x)) <$>
+adverbs :: [(String, Adverb)]
+adverbs = (\x -> (adverbRepr x, x)) <$>
   [ TinyAPL.Primitives.selfie
   , TinyAPL.Primitives.reduce
   , TinyAPL.Primitives.onPrefixes
@@ -550,7 +552,8 @@ catch = PrimitiveConjunction
   , conjOnFunctionNoun = Just $ \_ f v -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.catch1 (callMonad f []) (F.constant1 v)) (Just $ const $ F.catch2 (callDyad f []) (F.constant2 v)) Nothing Nothing Nothing Nothing Nothing Nothing Nothing catch f v
   , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.catch1 (callMonad f []) (callMonad g [])) (Just $ const $ F.catch2 (callDyad f []) (callDyad g [])) Nothing Nothing Nothing Nothing Nothing Nothing Nothing catch f g }
 
-conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
+conjunctions :: [(String, Conjunction)]
+conjunctions = (\x -> (conjRepr x, x)) <$>
   [ TinyAPL.Primitives.atop
   , TinyAPL.Primitives.over
   , TinyAPL.Primitives.reverseAtop
@@ -573,3 +576,6 @@ conjunctions = (\x -> (headPromise $ conjRepr x, x)) <$>
   , TinyAPL.Primitives.approximate
   , TinyAPL.Primitives.fill
   , TinyAPL.Primitives.catch ]
+
+primitives :: Primitives
+primitives = (arrays, functions, adverbs, conjunctions)

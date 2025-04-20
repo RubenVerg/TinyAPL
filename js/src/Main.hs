@@ -57,6 +57,7 @@ import TinyAPL.Highlighter
 import TinyAPL.Interpreter
 import TinyAPL.Parser
 import TinyAPL.Util
+import TinyAPL.Primitives (primitives)
 
 import Data.IORef
 import GHC.Wasm.Prim
@@ -143,13 +144,13 @@ lastQuads l = let readLast = (!! l) <$> (liftToSt $ readIORef lasts) in
 newContext :: JSVal -> JSVal -> JSVal -> JSVal -> JSString -> IO Int
 newContext input output error quads cwd = do
   l <- length <$> readIORef contexts
-  emptyScope <- newIORef $ Scope [] [] [] [] Nothing
+  emptyScope <- newIORef $ Scope [] [] [] [] Nothing True
   let cwd' = fromJSString cwd
   let input' = liftToSt $ fromJSString <$> callInput input
   let output' = liftToSt . callOutput output . toJSString
   let error' = liftToSt . callOutput error . toJSString
   id <- newIORef 0
-  let qpc = Context emptyScope core input' output' error' id cwd'
+  let qpc = Context emptyScope core input' output' error' id cwd' primitives
   qs <- fromRight' . second fst <$> (runResult $ runSt (mapM (secondM fromJSValSt) $ valToObject quads) qpc )
   nilads <- secondM (\x -> fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) qpc)) `mapM` filter (isArrayName . fst) qs
   functions <- secondM (\x -> fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) qpc)) `mapM` filter (isFunctionName . fst) qs
@@ -166,7 +167,8 @@ newContext input output error quads cwd = do
     , contextOut = output'
     , contextErr = error'
     , contextIncrementalId = id
-    , contextDirectory = cwd' }])
+    , contextDirectory = cwd'
+    , contextPrimitives = primitives }])
   modifyIORef lasts (++ [Nothing])
   return l
 
@@ -303,9 +305,9 @@ foreign export javascript "tinyapl_show" showJS :: JSVal -> IO JSString
 
 showJS :: JSVal -> IO JSString
 showJS val = do
-  scope <- newIORef $ Scope [] [] [] [] Nothing
+  scope <- newIORef $ Scope [] [] [] [] Nothing True
   id <- newIORef 0
-  r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME showM) (Context scope mempty undefined undefined undefined id "")) :: IO (Either Error String)
+  r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME showM) (Context scope mempty undefined undefined undefined id "" primitives)) :: IO (Either Error String)
   pure $ toJSString $ case r of
     Left err -> show err
     Right val -> val
@@ -314,12 +316,12 @@ foreign export javascript "tinyapl_repr" reprJS :: JSVal -> IO JSString
 
 reprJS :: JSVal -> IO JSString
 reprJS val = do
-  scope <- newIORef $ Scope [] [] [] [] Nothing
+  scope <- newIORef $ Scope [] [] [] [] Nothing True
   id <- newIORef 0
-  r <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt val) (Context scope mempty undefined undefined undefined id ""))
+  r <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt val) (Context scope mempty undefined undefined undefined id "" primitives))
   toJSString <$> case r of
-    VNoun arr -> fromRight' . second fst <$> (runResult $ runSt (showM $ Repr arr) (Context scope mempty undefined undefined undefined id ""))
-    o -> fromRight' . second fst <$> (runResult $ runSt (showM o) (Context scope mempty undefined undefined undefined id ""))
+    VNoun arr -> fromRight' . second fst <$> (runResult $ runSt (showM $ Repr arr) (Context scope mempty undefined undefined undefined id "" primitives))
+    o -> fromRight' . second fst <$> (runResult $ runSt (showM o) (Context scope mempty undefined undefined undefined id "" primitives))
 
 varArrow :: VariableType -> Char
 varArrow VariableNormal = assign

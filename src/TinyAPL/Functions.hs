@@ -13,6 +13,7 @@ import {-# SOURCE #-} TinyAPL.Interpreter
 import TinyAPL.Random
 import TinyAPL.Util
 import TinyAPL.Glyphs (deltaBar)
+import {-# SOURCE #-} qualified TinyAPL.Primitives as P
 
 import Control.Monad.Except (MonadError)
 import qualified TinyAPL.Complex as Cx
@@ -1489,7 +1490,7 @@ disPartitionEnclose' arr = do
 execute :: String -> St Noun
 execute code = do
   ctx <- getContext
-  scope <- createRef $ Scope [] [] [] [] Nothing -- The scope has intentionally no parent; execution runs in an isolated context
+  scope <- createRef $ Scope [] [] [] [] Nothing True -- The scope has intentionally no parent; execution runs in an isolated context
   (res, _) <- (liftToSt $ runResult $ runSt (run' "<execute>" code) $ ctx { contextScope = scope }) >>= liftEither
   case res of
     (VNoun x) -> pure x
@@ -1501,6 +1502,36 @@ execute' code = do
   (sh, ss) <- asArrayOfStrings err code
   res <- mapM execute ss
   pure $ Array sh (toScalar <$> res)
+
+executeWith :: Noun -> Noun -> St Noun
+executeWith conf' code' = do
+  ctx <- getContext
+  code <- asString (DomainError "Execute code must be a string") code'
+  let confErr = DomainError "Execute left argument must be a struct"
+  conf <- asScalar confErr conf' >>= asStruct confErr >>= readRef . contextScope
+  scope <- scopeLookupNoun False "scope" conf >>= \case
+    Nothing -> createRef $ Scope [] [] [] [] Nothing True
+    Just sc -> do
+      let scErr = DomainError "Execute scope must be a struct"
+      contextScope <$> (asScalar scErr sc >>= asStruct scErr)
+  primitives <- scopeLookupNoun False "primitives" conf >>= \case
+    Nothing -> pure P.primitives
+    Just d -> do
+      let err = DomainError "Execute primitives must be a vector of exactly four dictionaries with string keys"
+      ds <- asVector err d >>= mapM (\case
+        (Box (Dictionary ks vs)) -> liftA2 (,) (mapM (asString err . fromScalar) ks) (pure vs)
+        _ -> throwError err)
+      when (length ds /= 4) $ throwError err
+      let [n', f', a', c'] = ds
+      n <- zip (fst n') <$> mapM (pure . fromScalar) (snd n')
+      f <- zip (fst f') <$> mapM (asWrap $ DomainError "Execute primitives second entry values must be wraps") (snd f')
+      a <- zip (fst a') <$> mapM (asAdverbWrap $ DomainError "Execute primitives third entry values must be adverb wraps") (snd a')
+      c <- zip (fst c') <$> mapM (asConjunctionWrap $ DomainError "Execute primitives fourth entry values must be conjunction wraps") (snd c')
+      pure (n, f, a, c)
+  (res, _) <- (liftToSt $ runResult $ runSt (run' "<execute>" code) $ ctx { contextScope = scope, contextPrimitives = primitives }) >>= liftEither
+  case res of
+    (VNoun x) -> pure x
+    _ -> throwError $ DomainError "Execute code must return a noun"
 
 format :: (MonadError Error m, MonadShow m ScalarValue) => Noun -> m String
 format x = showM x

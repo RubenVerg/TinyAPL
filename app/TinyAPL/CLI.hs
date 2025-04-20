@@ -24,7 +24,6 @@ import TinyAPL.Quads.FFI (ffi, ffiStruct)
 import System.Environment
 import Control.Monad (void, when)
 import System.IO
-import Data.List (singleton)
 import Data.IORef
 import System.Info
 import Control.DeepSeq
@@ -67,7 +66,7 @@ cli = do
 
   cwd <- getCurrentDirectory
 
-  scope <- newIORef $ Scope [] [] [] [] Nothing
+  scope <- newIORef $ Scope [] [] [] [] Nothing True
 
   id <- newIORef 0
   let context = Context {
@@ -81,7 +80,8 @@ cli = do
       liftToSt $ hPutStr stderr str
       liftToSt $ hFlush stderr
     , contextIncrementalId = id
-    , contextDirectory = cwd }
+    , contextDirectory = cwd
+    , contextPrimitives = P.primitives }
 
   args <- getArgs
   case args of
@@ -327,10 +327,10 @@ repl context = let
   in do
     putStrLn "TinyAPL REPL, empty line to exit"
     putStrLn "Supported primitives:"
-    putStrLn $ "  " ++ unwords (singleton . fst <$> P.arrays)
-    putStrLn $ "  " ++ unwords (singleton . fst <$> P.functions)
-    putStrLn $ "  " ++ unwords (singleton . fst <$> P.adverbs)
-    putStrLn $ "  " ++ unwords (singleton . fst <$> P.conjunctions)
+    putStrLn $ "  " ++ unwords (fst <$> P.arrays)
+    putStrLn $ "  " ++ unwords (fst <$> P.functions)
+    putStrLn $ "  " ++ unwords (fst <$> P.adverbs)
+    putStrLn $ "  " ++ unwords (fst <$> P.conjunctions)
     putStrLn "Supported quad names:"
     putStrLn $ "  " ++ unwords (fst <$> quadArrays (contextQuads context))
     putStrLn $ "  " ++ unwords (fst <$> quadFunctions (contextQuads context))

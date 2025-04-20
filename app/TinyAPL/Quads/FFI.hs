@@ -1015,7 +1015,7 @@ pointer typ ptr = do
       sc <- asScalar undefined y
       p <- pointerGet sc
       pure $ scalar $ boolToScalar $ castPtr p == nullPtr) Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.deltaBar : "Sign") Nothing)) ]
-    [] [] Nothing
+    [] [] Nothing True
   ctx <- getContext
   pure $ Struct $ ctx{ contextScope = scope }
 
@@ -1071,7 +1071,7 @@ ffiStruct = Nilad (Just $ do
       case mapM parseFFI typs of
         Nothing -> throwError$ DomainError "Invalid SizeOf type"
         Just typs' -> pure $ Array sh $ Number . (:+ 0) . fromIntegral . ffiSize <$> typs') Nothing Nothing Nothing Nothing Nothing Nothing Nothing "SizeOf" Nothing)) ]
-    [] [] Nothing
+    [] [] Nothing True
   ctx <- getContext
   pure $ scalar $ Struct $ ctx{ contextScope = scope }) Nothing (G.quad : "ffi") Nothing
 #endif

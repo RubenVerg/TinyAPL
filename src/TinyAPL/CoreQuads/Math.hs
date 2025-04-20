@@ -106,7 +106,7 @@ artanhF :: Function
 artanhF = PrimitiveFunction (Just $ const $ scalarMonad artanhS) Nothing Nothing Nothing Nothing Nothing Nothing Nothing "Artanh" Nothing
 
 math = Nilad (Just $ do
-  scope <- createRef (Scope [("pi", (VariableConstant, piA))] ((\n -> (functionRepr n, (VariableConstant, n))) <$>
+  scope <- createRef $ Scope [("pi", (VariableConstant, piA))] ((\n -> (functionRepr n, (VariableConstant, n))) <$>
     [ complementaryF
     , sinF
     , arcsinF
@@ -120,6 +120,6 @@ math = Nilad (Just $ do
     , arcoshF
     , tanhF
     , artanhF
-    ]) [] [] Nothing)
+    ]) [] [] Nothing True
   ctx <- getContext
   pure $ scalar $ Struct $ ctx{ contextScope = scope } ) Nothing (G.quad : "math") Nothing
