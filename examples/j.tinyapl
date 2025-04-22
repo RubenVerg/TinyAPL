@@ -1,0 +1,153 @@
+Eq⇇= ⋄
+Lt⇇⊂⁖< ⋄
+LtDot⇇⌊ ⋄
+LtCo⇇ⵧ⁖≤ ⋄
+Gt⇇⊃⁖> ⋄
+GtDot⇇⌈ ⋄
+GtCo⇇⧺⁖≥ ⋄
+Plus⇇+ ⋄
+PlusDot⇇⦅ℜ⍮ℑ⦆◠⁖∨ ⋄
+PlusCo⇇2∘×⁖⍱ ⋄
+Star⇇× ⋄
+StarDot⇇⦅|⍮∡⦆◠⁖∧ ⋄
+StarCo⇇↗⁖⍲ ⋄
+Minus⇇- ⋄
+MinusDot⇇~ ⋄
+MinusCo⇇÷∘2⁖≡ ⋄
+Percent⇇÷ ⋄
+PercentDot⇇⌹ ⋄
+PercentCo⇇√ ⋄
+Hat⇇* ⋄
+HatDot⇇⍟ ⋄
+⍝ _HatCo_
+Dollar⇇⍴⁖{↑⍺⍴↓⍵} ⋄
+_Tilde⇇⍨ ⋄
+TildeDot⇇∪ ⋄
+TildeCo⇇≠ ⋄
+Bar⇇| ⋄
+BarDot⇇⌽ ⋄
+BarCo⇇⍉ ⋄
+_Dot_⇇∙ ⋄
+_CoCo_⇇⎊ ⋄
+Comma⇇,⁖⍪ ⋄
+CommaDot⇇,◡⁖(⍪◡) ⋄
+CommaCo⇇∧⁖, ⋄
+Semi⇇⍪⁖{1≥≡⍵:■(⊂⍺)⍪⍵⋄⍺⍮⍵} ⋄
+Number⇇≢⁖⌿ ⋄
+NumberDot⇇⊥ ⋄
+NumberCo⇇⊤ ⋄
+Bang⇇! ⋄
+_Slash⇇_⦅⫤_⦅/⁖⊞⦆_⦆ ⋄
+SlashCo⇇⍋ ⋄
+_Bslash⇇_⦅⫤_⦅\⁖⌺⦆_⦆ ⋄
+_BslashDot⇇_⦅\⤺⦆ ⋄
+BslashCo⇇⍒ ⋄
+Squarelf⇇⊣ ⋄
+_SquarelfDot_⇇⫣ ⋄
+Squarert⇇⊢ ⋄
+_SquarertDot_⇇⊩ ⋄
+_SquarertCo⇇⫤ ⋄
+Curlylf⇇⊇ ⋄
+CurlylfDot⇇>⁖↑ ⋄
+CurlylfCo⇇≥ ⋄
+CurlyrtDot⇇1○↓ ⋄
+CurlyrtCo⇇¯1∘↓ ⋄
+_Quote_⇇⍤ ⋄
+QuoteDot⇇⍎ ⋄
+QuoteCo⇇⍕ ⋄
+_At_⇇∘ ⋄
+_AtCo_⇇∘ ⋄
+_Amp_⇇○ ⋄
+_AmpCo_⇇○ ⋄
+_AmpDotCo_⇇⍢ ⋄
+Query⇇? ⋄
+aDot⇇⎕Unicode⍳256 ⋄
+aCo⇇⊂⍬ ⋄
+EDot⇇∊ ⋄
+EcapDot⇇⍷ ⋄
+IDot⇇⍳ ⋄
+ICo⇇{-∘↓⍛1⊸⍪⍳⧺⍵}⁖(⍳⤺) ⋄
+IcapDot⇇⍸ ⋄
+JDot⇇⊕ ⋄
+LcapDot⇇≡ ⋄
+_LcapCo_⇇⍥ ⋄
+ODot⇇(⎕Import"std:math")→Circle ⋄
+RDot⇇⊗ ⋄
+UCo⇇⎕Unicode
+
+jPrimitives⇇⟨"a.": aDot ⋄ "a:": aCo⟩‿⟨
+  "=": Eq
+⋄ "<.": LtDot
+⋄ "<:": LtCo
+⋄ "<": Lt
+⋄ ">.": GtDot
+⋄ ">:": GtCo
+⋄ ">": Gt
+⋄ "+.": PlusDot
+⋄ "+:": PlusCo
+⋄ "+": Plus
+⋄ "*.": StarDot
+⋄ "*:": StarCo
+⋄ "*": Star
+⋄ "-.": MinusDot
+⋄ "-:": MinusCo
+⋄ "-": Minus
+⋄ "%.": PercentDot
+⋄ "%:": PercentCo
+⋄ "%": Percent
+⋄ "^.": HatDot
+⋄ "^": Hat
+⋄ "$": Dollar
+⋄ "~.": TildeDot
+⋄ "~:": TildeCo
+⋄ "|.": BarDot
+⋄ "|:": BarCo
+⋄ "|": Bar
+⋄ ",.": CommaDot
+⋄ ",:": CommaCo
+⋄ ",": Comma
+⋄ ";": Semi
+⋄ "#.": NumberDot
+⋄ "#:": NumberCo
+⋄ "#": Number
+⋄ "!": Bang
+⋄ "/:": SlashCo
+⋄ "\:": BslashCo
+⋄ "[": Squarelf
+⋄ "]": Squarert
+⋄ "{.": CurlylfDot
+⋄ "{:": CurlylfCo
+⋄ "{": Curlylf
+⋄ "}.": CurlyrtDot
+⋄ "}:": CurlyrtCo
+⋄ "⍘".": QuoteDot
+⋄ "⍘":": QuoteCo
+⋄ "?": Query
+⋄ "e.": EDot
+⋄ "E.": EcapDot
+⋄ "i.": IDot
+⋄ "i:": ICo
+⋄ "I.": IcapDot
+⋄ "j.": JDot
+⋄ "L.": LcapDot
+⋄ "o.": ODot
+⋄ "r.": RDot
+⋄ "u:": UCo
+⟩‿⟨
+  "~": _Tilde
+⋄ "/": _Slash
+⋄ "\.": _BslashDot
+⋄ "\": _Bslash
+⋄ "]:": _SquarertCo
+⟩‿⟨
+	"[.": _SquarelfDot_
+⋄ "].": _SquarertDot_
+⋄ "⍘"": _Quote_
+⋄ "@:": _AtCo_
+⋄ "@": _At_
+⋄ "&:": _AmpCo_
+⋄ "&.:": _AmpDotCo_
+⋄ "&": _Amp_
+⋄ "L:": _LcapCo_ ⟩
+
+J⇇{⦃primitives←jPrimitives⦄⍎⍵}
