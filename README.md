@@ -160,7 +160,7 @@ Marked features are supported, unmarked features are planned
 		* [x] `~` difference
 		* [x] `§` symmetric difference
 		* [x] `≠` nub sieve
-		* [ ] multisets?
+		* [x] `⍦` multisets
 	* property functions
 		* [x] `⍳` index of
 		* [x] `⍸` interval index

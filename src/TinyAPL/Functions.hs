@@ -2080,3 +2080,21 @@ alternant cea f g y = let
       >>= atRank1 defaultCoreExtraArgs go 2
       >>= innerProduct f g fc
   in atRank1 defaultCoreExtraArgs go 2 y
+
+occurrenceCount :: Ord a => [a] -> [Natural]
+occurrenceCount xs = let
+  go [] _ = []
+  go (x:xs) mp = case Map.lookup x mp of
+    Nothing -> 0 : go xs (Map.insert x 0 mp)
+    Just oc -> oc + 1 : go xs (Map.insert x (oc + 1) mp)
+  in go xs Map.empty
+
+onCounts :: MonadError Error m => (Noun -> m Noun) -> Noun -> m Noun
+onCounts f arr = f $ vector $ Number . fromIntegral <$> occurrenceCount (majorCells arr)
+
+multisets :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+multisets f x y = do
+  x' <- each2 pair (vector $ box <$> majorCells x) $ vector $ Number . fromIntegral <$> occurrenceCount (majorCells x)
+  y' <- each2 pair (vector $ box <$> majorCells y) $ vector $ Number . fromIntegral <$> occurrenceCount (majorCells y)
+  res <- f x' y'
+  onCells1 defaultCoreExtraArgs (first defaultCoreExtraArgs `compose` first defaultCoreExtraArgs) res
