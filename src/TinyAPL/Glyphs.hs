@@ -305,6 +305,7 @@ cellsRight = 'ᓚ'
 inverse = '˝'
 onLeft = '⥽'
 onRight = '⥼'
+multisets = '⍦'
 
 adverbs =
   [ TinyAPL.Glyphs.selfie
@@ -329,7 +330,8 @@ adverbs =
   , TinyAPL.Glyphs.cellsRight
   , TinyAPL.Glyphs.inverse
   , TinyAPL.Glyphs.onLeft
-  , TinyAPL.Glyphs.onRight ]
+  , TinyAPL.Glyphs.onRight
+  , TinyAPL.Glyphs.multisets ]
 
 -- * Conjunctions
 
