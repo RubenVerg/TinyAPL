@@ -151,10 +151,10 @@ eval p (VectorBranch es) = do
 eval p (HighRankBranch es) = do
   entries <- mapM (eval p >=> unwrapNoun (DomainError "Array notation entries must be arrays")) $ reverse es
   case entries of
-    [] -> return $ VNoun $ fromMajorCells []
+    [] -> VNoun <$> fromMajorCells []
     (e:es) ->
       if all ((== arrayShape e) . arrayShape) es
-      then return $ VNoun $ fromMajorCells $ reverse entries
+      then VNoun <$> fromMajorCells (reverse entries)
       else throwError $ DomainError "High rank notation entries must be of the same shape"
 eval p (DictionaryBranch es) = do
   let toScalar (VNoun x) = box x

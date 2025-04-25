@@ -157,32 +157,32 @@ majorCells (Array (_:sh) cs) = mapMaybe (arrayOf sh) $ chunk (product sh) cs whe
   chunk l xs = genericTake l xs : chunk l (genericDrop l xs)
 majorCells (Dictionary ks vs) = zipWith (\a b -> vector [a, b]) ks vs
 
-fromMajorCells :: [Noun] -> Noun
-fromMajorCells [] = Array [0] []
+fromMajorCells :: MonadError Error m => [Noun] -> m Noun
+fromMajorCells [] = pure $ Array [0] []
 fromMajorCells (c:cs) = let
   impl = fromJust $ arrayReshaped (1 + genericLength cs : arrayShape c) $ concatMap arrayContents $ c : cs
   in if all (\case
     Array sh _ -> sh == arrayShape c
-    Dictionary _ _ -> False) cs then impl else error "fromMajorCells: mismatched shapes or dictionary"
+    Dictionary _ _ -> False) cs then pure impl else throwError $ DomainError "fromMajorCells: mismatched shapes or dictionary"
 
-fillArray :: [Natural] -> ScalarValue -> Noun -> Noun
-fillArray _ _ (Dictionary _ _) = error $ "Fill dictionary"
-fillArray [] _ a = a
-fillArray (m:ms) f a = let
-  inner = fromMajorCells $ fillArray ms f <$> majorCells a
-  (_:tl) = arrayShape inner
-  in Array (m : tl) (genericTake (m * product tl) $ arrayContents inner ++ repeat f)
+fillArray :: MonadError Error m => [Natural] -> ScalarValue -> Noun -> m Noun
+fillArray _ _ (Dictionary _ _) = throwError $ DomainError "Fill dictionary"
+fillArray [] _ a = pure a
+fillArray (m:ms) f a = do
+  inner <- mapM (fillArray ms f) (majorCells a) >>= fromMajorCells
+  let (_:tl) = arrayShape inner
+  pure $ Array (m : tl) (genericTake (m * product tl) $ arrayContents inner ++ repeat f)
 
-fromMajorCellsFilled :: ScalarValue -> [Noun] -> Noun
-fromMajorCellsFilled _ xs | any (\case Array{} -> False; _ -> True) xs = error "fromMajorCellsFilled: dictionary cell"
-fromMajorCellsFilled _ [] = Array [0] []
-fromMajorCellsFilled f cs = let
-  shapes = arrayShape <$> cs
-  maxShape = foldr (\a b -> zipWith max a b) (const 0 <$> headPromise shapes) shapes
-  cells = fillArray maxShape f <$> cs
-  in fromMajorCells cells
+fromMajorCellsFilled :: MonadError Error m => ScalarValue -> [Noun] -> m Noun
+fromMajorCellsFilled _ xs | any (\case Array{} -> False; _ -> True) xs = throwError $ DomainError "fromMajorCellsFilled: dictionary cell"
+fromMajorCellsFilled _ [] = pure $ Array [0] []
+fromMajorCellsFilled f cs = do
+  let shapes = arrayShape <$> cs
+  let maxShape = foldr (\a b -> zipWith max a b) (const 0 <$> headPromise shapes) shapes
+  cells <- mapM (fillArray maxShape f) cs
+  fromMajorCells cells
 
-fromMajorCellsMaybeFilled :: Maybe ScalarValue -> [Noun] -> Noun
+fromMajorCellsMaybeFilled :: MonadError Error m => Maybe ScalarValue -> [Noun] -> m Noun
 fromMajorCellsMaybeFilled Nothing = fromMajorCells
 fromMajorCellsMaybeFilled (Just f) = fromMajorCellsFilled f
 
@@ -514,7 +514,7 @@ scalarDyad f a@(Array ash as) b@(Array bsh bs)
   | null ash = let [a'] = as in Array bsh <$> mapM (a' `f'`) bs
   | null bsh = let [b'] = bs in Array ash <$> mapM (`f'` b') as
   | ash == bsh = Array (arrayShape a) <$> zipWithM f' (arrayContents a) (arrayContents b)
-  | ash `isPrefixOf` bsh || bsh `isPrefixOf` ash = fromMajorCells <$> zipWithM (scalarDyad f) (majorCells a) (majorCells b)
+  | ash `isPrefixOf` bsh || bsh `isPrefixOf` ash = zipWithM (scalarDyad f) (majorCells a) (majorCells b) >>= fromMajorCells
   | length ash /= length bsh = throwError $ RankError "Mismatched left and right argument ranks"
   | otherwise = throwError $ LengthError "Mismatched left and right argument shapes"
   where

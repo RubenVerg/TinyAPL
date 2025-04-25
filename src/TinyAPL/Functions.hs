@@ -842,10 +842,10 @@ reverse' = onMajorCells TinyAPL.Functions.reverse
 rotate :: MonadError Error m => CoreExtraArgs -> [Integer] -> Noun -> m Noun
 rotate _ [] xs = pure xs
 rotate _ _ sc@(Array [] _) = pure sc
-rotate cea@CoreExtraArgs{ coreExtraArgsFill = Nothing } (r:rs) xs = fromMajorCells . TinyAPL.Util.rotate r <$> mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs)
+rotate cea@CoreExtraArgs{ coreExtraArgsFill = Nothing } (r:rs) xs = mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs) >>= fromMajorCells . TinyAPL.Util.rotate r
 rotate cea@CoreExtraArgs{ coreExtraArgsFill = Just fill } (r:rs) xs = do
-  re <- fromMajorCells . (if r < 0 then Prelude.reverse . genericDrop (negate r) . Prelude.reverse else genericDrop r) <$> mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs)
-  if r < 0 then reverse' re >>= reverse' . fillArray (arrayShape xs) fill else pure $ fillArray (arrayShape xs) fill re
+  re <- mapM (TinyAPL.Functions.rotate cea rs) (majorCells xs) >>= fromMajorCells . (if r < 0 then Prelude.reverse . genericDrop (negate r) . Prelude.reverse else genericDrop r)
+  if r < 0 then reverse' re >>= fillArray (arrayShape xs) fill >>= reverse' else fillArray (arrayShape xs) fill re
 
 rotate' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 rotate' cea rot arr = do
@@ -858,11 +858,11 @@ take _ [] xs = pure xs
 take cea@CoreExtraArgs{ coreExtraArgsBackward = True } ts xs = TinyAPL.Functions.take cea{ coreExtraArgsBackward = False } (negate <$> ts) xs
 take cea@CoreExtraArgs{ coreExtraArgsFill = Nothing } (t:ts) xs = do
   let take' c = if c < 0 then Prelude.reverse . genericTake (negate c) . Prelude.reverse else genericTake c
-  fromMajorCells . take' t <$> mapM (TinyAPL.Functions.take cea ts) (majorCells xs)
+  mapM (TinyAPL.Functions.take cea ts) (majorCells xs) >>= fromMajorCells . take' t
 take cea@CoreExtraArgs{ coreExtraArgsFill = Just fill } ts'@(t:ts) xs = do
-  r <- fromMajorCells <$> mapM (TinyAPL.Functions.take cea ts) (majorCells xs)
+  r <- mapM (TinyAPL.Functions.take cea ts) (majorCells xs) >>= fromMajorCells
   let finalShape = (fromInteger . Prelude.abs <$> ts') ++ Prelude.drop (length ts') (arrayShape r)
-  if t < 0 then reverse' r >>= reverse' . fillArray finalShape fill else pure $ fillArray finalShape fill r
+  if t < 0 then reverse' r >>= fillArray finalShape fill >>= reverse' else fillArray finalShape fill r
 
 take' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 take' cea tak arr = do
@@ -875,7 +875,7 @@ drop _ [] xs = pure xs
 drop cea@CoreExtraArgs{ coreExtraArgsBackward = True } ts xs = TinyAPL.Functions.drop cea{ coreExtraArgsBackward = False } (negate <$> ts) xs
 drop cea (d:ds) xs = let
   drop' c = if c < 0 then Prelude.reverse . genericDrop (negate c) . Prelude.reverse else genericDrop c
-  in fromMajorCells . drop' d <$> mapM (TinyAPL.Functions.drop cea ds) (majorCells xs)
+  in mapM (TinyAPL.Functions.drop cea ds) (majorCells xs) >>= fromMajorCells . drop' d
 
 drop' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 drop' cea dro arr = do
@@ -1000,7 +1000,7 @@ replicate' rs@(Array _ _) arr@(Array _ _) = do
   rs' <- asVector err rs >>= mapM (asNumber err >=> asNat err)
   let cells = majorCells arr
   rs'' <- if isScalar rs then case rs' of [r] -> pure $ Prelude.replicate (length cells) r; _ -> throwError unreachable else pure rs'
-  fromMajorCells <$> TinyAPL.Functions.replicate rs'' cells
+  TinyAPL.Functions.replicate rs'' cells >>= fromMajorCells
 replicate' (Dictionary sk sv) (Dictionary ak av) = do
   let err = DomainError "Replicate left argument must be a dictionary with boolean values"
   sv' <- mapM (asBool err) sv
@@ -1013,7 +1013,8 @@ runLengthEncode xs = pure $ (liftA2 (,) NE.head $ fromIntegral . NE.length) <$> 
 runLengthEncode' :: MonadError Error m => Noun -> m (Noun, Noun)
 runLengthEncode' arr = do
   (els, lens) <- fmap unzip $ runLengthEncode $ majorCells arr
-  pure (vector $ (Number . (:+ 0) . fromIntegral) <$> lens, fromMajorCells els)
+  rr <- fromMajorCells els
+  pure (vector $ (Number . (:+ 0) . fromIntegral) <$> lens, rr)
 
 indices :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 indices CoreExtraArgs { coreExtraArgsOrigin = o } n = do
@@ -1034,14 +1035,14 @@ unique :: (Eq a, MonadError Error m) => [a] -> m [a]
 unique xs = pure $ nub xs
 
 unique' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
-unique' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> unique (TolerantL t <$> majorCells arr)
+unique' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = unique (TolerantL t <$> majorCells arr) >>= fromMajorCells . fmap unTolerantL
 unique' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary _ vs) = vector . fmap unTolerantL <$> unique (TolerantL t <$> vs)
 
 union :: (Eq a, MonadError Error m) => [a] -> [a] -> m [a]
 union xs ys = pure $ xs ++ filter (Prelude.not . (`elem` xs)) ys
 
 union' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-union' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = fromMajorCells . fmap unTolerantL <$> union (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y)
+union' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = union (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y) >>= fromMajorCells . fmap unTolerantL
 union' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ nubBy ((==) `on` TolerantL t `on` fst) $ zip aks avs ++ zip bks bvs
 union' _ _ _ = throwError $ DomainError "Cannot union array and dictionary"
 
@@ -1049,7 +1050,7 @@ intersection :: (Eq a, MonadError Error m) => [a] -> [a] -> m [a]
 intersection xs ys = pure $ filter (`elem` ys) xs
 
 intersection' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-intersection' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = fromMajorCells . fmap unTolerantL <$> intersection (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y)
+intersection' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = intersection (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y) >>= fromMajorCells . fmap unTolerantL
 intersection' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ fmap (Bi.first unTolerantL) $ filter (\(k, _) -> k `elem` (TolerantL t <$> aks) && k `elem` (TolerantL t <$> bks)) $ zip (TolerantL t <$> aks) avs ++ zip (TolerantL t <$> bks) bvs
 intersection' _ _ _ = throwError $ DomainError "Cannot intersect array and dictionary"
 
@@ -1057,7 +1058,7 @@ difference :: (Eq a, MonadError Error m) => [a] -> [a] -> m [a]
 difference xs ys = pure $ filter (Prelude.not . (`elem` ys)) xs
 
 difference' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-difference' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = fromMajorCells . fmap unTolerantL <$> difference (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y)
+difference' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = difference (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y) >>= fromMajorCells . fmap unTolerantL
 difference' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ fmap (Bi.first unTolerantL) $ filter (\(k, _) -> k `elem` (TolerantL t <$> aks) && Prelude.not (k `elem` (TolerantL t <$> bks))) $ zip (TolerantL t <$> aks) avs ++ zip (TolerantL t <$> bks) bvs
 difference' _ _ _ = throwError $ DomainError "Cannot difference array and dictionary"
 
@@ -1068,7 +1069,7 @@ symmetricDifference xs ys = do
   pure $ a ++ b
 
 symmetricDifference' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
-symmetricDifference' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = fromMajorCells . fmap unTolerantL <$> symmetricDifference (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y)
+symmetricDifference' CoreExtraArgs{ coreExtraArgsTolerance = t } x@(Array _ _) y@(Array _ _) = symmetricDifference (TolerantL t <$> majorCells x) (TolerantL t <$> majorCells y) >>= fromMajorCells . fmap unTolerantL
 symmetricDifference' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary aks avs) (Dictionary bks bvs) = pure $ dictionary $ fmap (Bi.first unTolerantL) $ filter (\(k, _) -> (k `elem` (TolerantL t <$> aks)) /= (k `elem` (TolerantL t <$> bks))) $ zip (TolerantL t <$> aks) avs ++ zip (TolerantL t <$> bks) bvs
 symmetricDifference' _ _ _ = throwError $ DomainError "Cannot symmetric difference array and dictionary"
 
@@ -1137,7 +1138,7 @@ catenate cea@CoreExtraArgs{ coreExtraArgsFill = fill } a@(Array ash acs) b@(Arra
   if null acs && Prelude.not (null bcs) then pure b
   else if null bcs && Prelude.not (null acs) then pure a
   else if arrayRank a == arrayRank b then
-    if (isScalar a && isScalar b) || (fill /= Nothing || tailMaybe ash == tailMaybe bsh) then pure $ fromMajorCellsMaybeFilled fill $ majorCells a ++ majorCells b
+    if (isScalar a && isScalar b) || (fill /= Nothing || tailMaybe ash == tailMaybe bsh) then fromMajorCellsMaybeFilled fill $ majorCells a ++ majorCells b
     else throwError $ LengthError "Incompatible shapes to Catenate"
   else if isScalar a then catenate cea (fromJust $ arrayReshaped (1 : tailPromise bsh) acs) b
   else if isScalar b then catenate cea a (fromJust $ arrayReshaped (1 : tailPromise ash) bcs)
@@ -1177,7 +1178,7 @@ sortByUp as bs = pure $ map fst $ sortOn snd $ zip as bs
 
 sortByUp' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 sortByUp' cea@CoreExtraArgs{ coreExtraArgsBackward = True } as bs = sortByDown' cea{ coreExtraArgsBackward = False } as bs
-sortByUp' CoreExtraArgs{ coreExtraArgsTolerance = t } as@(Array _ _) bs@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortByUp (TolerantL t <$> majorCells as) (TolerantL t <$> majorCells bs)
+sortByUp' CoreExtraArgs{ coreExtraArgsTolerance = t } as@(Array _ _) bs@(Array _ _) = sortByUp (TolerantL t <$> majorCells as) (TolerantL t <$> majorCells bs) >>= fromMajorCells . fmap unTolerantL
 sortByUp' _ _ _ = throwError $ DomainError "Only arrays can be sorted"
 
 sortByDown :: MonadError Error m => Ord b => [a] -> [b] -> m [a]
@@ -1185,7 +1186,7 @@ sortByDown as bs = pure $ map fst $ sortOn snd $ zip as $ Down <$> bs
 
 sortByDown' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 sortByDown' cea@CoreExtraArgs{ coreExtraArgsBackward = True } as bs = sortByUp' cea{ coreExtraArgsBackward = False } as bs
-sortByDown' CoreExtraArgs{ coreExtraArgsTolerance = t } as@(Array _ _) bs@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortByDown (TolerantL t <$> majorCells as) (TolerantL t <$> majorCells bs)
+sortByDown' CoreExtraArgs{ coreExtraArgsTolerance = t } as@(Array _ _) bs@(Array _ _) = sortByDown (TolerantL t <$> majorCells as) (TolerantL t <$> majorCells bs) >>= fromMajorCells . fmap unTolerantL
 sortByDown' _ _ _ = throwError $ DomainError "Only arrays can be sorted"
 
 sortUp :: MonadError Error m => Ord a =>[a] -> m [a]
@@ -1193,7 +1194,7 @@ sortUp = pure . sort
 
 sortUp' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 sortUp' cea@CoreExtraArgs{ coreExtraArgsBackward = True } arr = sortDown' cea{ coreExtraArgsBackward = False } arr
-sortUp' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortUp (TolerantL t <$> majorCells arr)
+sortUp' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = sortUp (TolerantL t <$> majorCells arr) >>= fromMajorCells . fmap unTolerantL
 sortUp' _ _ = throwError $ DomainError "Only arrays can be sorted"
 
 sortDown :: MonadError Error m => Ord a => [a] -> m [a]
@@ -1201,7 +1202,7 @@ sortDown = pure . fmap getDown . sort . fmap Down
 
 sortDown' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
 sortDown' cea@CoreExtraArgs{ coreExtraArgsBackward = True } arr = sortUp' cea{ coreExtraArgsBackward = False } arr
-sortDown' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = fromMajorCells . fmap unTolerantL <$> sortDown (TolerantL t <$> majorCells arr)
+sortDown' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = sortDown (TolerantL t <$> majorCells arr) >>= fromMajorCells . fmap unTolerantL
 sortDown' _ _ = throwError $ DomainError "Only arrays can be sorted"
 
 reorderAxesInner :: MonadError Error m => Noun -> Noun -> m Noun
@@ -1424,7 +1425,7 @@ group' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun
 group' cea is xs = do
   let err = DomainError "Group left argument must be a vector of integers"
   is' <- asVector err is >>= mapM (asNumber err >=> asInt err)
-  (vector . fmap (box . fromMajorCells)) <$> TinyAPL.Functions.group cea is' (majorCells xs)
+  vector <$> (TinyAPL.Functions.group cea is' (majorCells xs) >>= mapM (fmap box . fromMajorCells))
 
 partition :: MonadError Error m => [Natural] -> [a] -> m [[a]]
 partition is xs = do
@@ -1439,7 +1440,7 @@ partition' :: MonadError Error m => Noun -> Noun -> m Noun
 partition' is xs = do
   let err = DomainError "Partition left argument must be a vector of naturals"
   is' <- asVector err is >>= mapM (asNumber err >=> asNat err)
-  (vector . fmap (box . fromMajorCells)) <$> partition is' (majorCells xs)
+  vector <$> (partition is' (majorCells xs) >>= mapM (fmap box . fromMajorCells))
 
 disPartition :: MonadError Error m => [[a]] -> m ([Natural], [a])
 disPartition xs = pure (concat $ zipWith (\idx x -> Prelude.take (length x) (Prelude.repeat idx)) [1..] xs, concat xs)
@@ -1454,7 +1455,8 @@ disPartition' CoreExtraArgs{ coreExtraArgsFill = fill } arr = do
   (ps, xs) <- case fill of
     Nothing -> disPartition vec
     Just fl -> disFilledPartition (majorCells $ fromScalar fl) vec
-  pure (vector $ Number . (:+ 0) . fromIntegral <$> ps, fromMajorCells xs)
+  rr <- fromMajorCells xs
+  pure (vector $ Number . (:+ 0) . fromIntegral <$> ps, rr)
 
 partitionEnclose :: MonadError Error m => [Natural] -> [a] -> m [[a]]
 partitionEnclose ms xs = pure $ Prelude.reverse $ fmap Prelude.reverse $ foldl' (\ps (co, x) ->
@@ -1466,7 +1468,7 @@ partitionEnclose' :: MonadError Error m => Noun -> Noun -> m Noun
 partitionEnclose' is xs = do
   let err = DomainError "Partitioned enclose left argument must be a vector of naturals"
   is' <- asVector err is >>= mapM (asNumber err >=> asNat err)
-  (vector . fmap (box . fromMajorCells)) <$> partitionEnclose is' (majorCells xs)
+  vector <$> (partitionEnclose is' (majorCells xs) >>= mapM (fmap box . fromMajorCells))
 
 disPartitionEnclose :: MonadError Error m => [[a]] -> m ([Natural], [a])
 disPartitionEnclose xs = do
@@ -1485,7 +1487,8 @@ disPartitionEnclose' arr = do
   let err = DomainError "Dis Partitioned enclose argument must be vector of boxes"
   vec <- fmap (majorCells . fromScalar) <$> asVector err arr
   (ps, xs) <- disPartitionEnclose vec
-  pure (vector $ Number . (:+ 0) . fromIntegral <$> ps, fromMajorCells xs)
+  rr <- fromMajorCells xs
+  pure (vector $ Number . (:+ 0) . fromIntegral <$> ps, rr)
 
 execute :: String -> St Noun
 execute code = do
@@ -1676,7 +1679,7 @@ onSuffixes :: MonadError Error m => ([a] -> m b) -> [a] -> m [b]
 onSuffixes f = mapM f . suffixes
 
 onPrefixes' :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Noun -> m Noun
-onPrefixes' CoreExtraArgs{ coreExtraArgsBackward = b } f arr = fromMajorCells <$> (if b then onSuffixes else onPrefixes) (f . fromMajorCells) (majorCells arr)
+onPrefixes' CoreExtraArgs{ coreExtraArgsBackward = b } f arr = (if b then onSuffixes else onPrefixes) (fromMajorCells >=> f) (majorCells arr) >>= fromMajorCells
 
 each1 :: MonadError Error m => (Noun -> m Noun) -> Noun -> m Noun
 each1 f (Array sh cs) = Array sh <$> mapM (fmap box . f . fromScalar) cs
@@ -1732,7 +1735,7 @@ key f ks vs
   | otherwise = throwError $ LengthError "Incompatible shapes to Key"
 
 key' :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
-key' f karr@(Array _ _) varr@(Array _ _) = fromMajorCells <$> key (\k vs -> f k $ vector $ toScalar <$> vs) (majorCells karr) (majorCells varr)
+key' f karr@(Array _ _) varr@(Array _ _) = key (\k vs -> f k $ vector $ toScalar <$> vs) (majorCells karr) (majorCells varr) >>= fromMajorCells
 key' _ _ _ = throwError $ NYIError "Key on dictionaries"
 
 keyMonad :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
@@ -1755,9 +1758,9 @@ atRank1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> Integer ->
 atRank1 cea@CoreExtraArgs{ coreExtraArgsFill = fill } f rank arr@(Array _ _)
   | arrayRank arr == 0 = f arr
   | rank >= 0 && toInteger (arrayRank arr) <= rank = f arr
-  | rank >= 0 = fromMajorCellsMaybeFilled fill <$> mapM (atRank1 cea f rank) (majorCells arr)
-  | rank == -1 = fromMajorCellsMaybeFilled fill <$> mapM f (majorCells arr)
-  | otherwise = fromMajorCellsMaybeFilled fill <$> mapM (atRank1 cea f $ rank + 1) (majorCells arr)
+  | rank >= 0 = mapM (atRank1 cea f rank) (majorCells arr) >>= fromMajorCellsMaybeFilled fill
+  | rank == -1 = mapM f (majorCells arr) >>= fromMajorCellsMaybeFilled fill
+  | otherwise = mapM (atRank1 cea f $ rank + 1) (majorCells arr) >>= fromMajorCellsMaybeFilled fill
 atRank1 _ _ _ (Dictionary _ _) = throwError $ NYIError "At Rank on dictionaries"
 
 atRank2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> (Integer, Integer) -> Noun -> Noun -> m Noun
@@ -1922,7 +1925,7 @@ encloseAnAxis :: MonadError Error m => Natural -> Noun -> m [Noun]
 encloseAnAxis n arr = majorCells <$> orient defaultCoreExtraArgs [fromIntegral n] arr
 
 mixAnAxis :: MonadError Error m => Natural -> [Noun] -> m Noun
-mixAnAxis n arrs = reorderAxes defaultCoreExtraArgs [fromIntegral n] $ fromMajorCells arrs
+mixAnAxis n arrs = fromMajorCells arrs >>= reorderAxes defaultCoreExtraArgs [fromIntegral n]
 
 onInfixes :: MonadError Error m => Natural -> (Noun -> m Noun) -> [(Natural, Natural, Integer, [ScalarValue])] -> Noun -> m Noun
 onInfixes _ _ [] y = pure y
@@ -1930,22 +1933,22 @@ onInfixes axis f ((size, skip, 1, _) : specs) y = do
   cells <- encloseAnAxis axis y
   let howMany = let n = 1 + ((genericLength cells `naturalSaturatedSub` size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength cells then n + 1 else n
   let slices = (\i -> genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices
+  mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices >>= fromMajorCells
 onInfixes axis f ((size, skip, -1, _) : specs) y = do
   cells <- Prelude.reverse <$> encloseAnAxis axis y
   let howMany = let n = 1 + ((genericLength cells `naturalSaturatedSub` size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength cells then n + 1 else n
   let slices = Prelude.reverse $ filter (Prelude.not . null) $ (\i -> Prelude.reverse $ genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices
+  mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices >>= fromMajorCells
 onInfixes axis f ((size, skip, 2, _) : specs) y = do
   cells <- encloseAnAxis axis y
   let howMany = 1 + ((genericLength cells `naturalSaturatedSub` size) `div` skip)
   let slices = (\i -> genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices
+  mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices >>= fromMajorCells
 onInfixes axis f ((size, skip, -2, _) : specs) y = do
   cells <- Prelude.reverse <$> encloseAnAxis axis y
   let howMany = 1 + ((genericLength cells `naturalSaturatedSub` size) `div` skip)
   let slices = Prelude.reverse $ filter (Prelude.not . null) $ (\i -> Prelude.reverse $ genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices
+  mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices >>= fromMajorCells
 onInfixes axis f ((size, skip, 3, (mode' : params)) : specs) y = do
   let modeErr = DomainError "On Infixes: invalid mode"
   mode <- asNumber modeErr mode' >>= asNat modeErr
@@ -1953,7 +1956,8 @@ onInfixes axis f ((size, skip, 3, (mode' : params)) : specs) y = do
   let padSize = let n = 1 + ((genericLength originalCells `naturalSaturatedSub` size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength originalCells then (fromIntegral n * fromIntegral skip - genericLength originalCells) `mod` fromIntegral size else 0
   padCells <- onInfixesFill mode params padSize (NE.fromList originalCells)
   let cells = originalCells ++ padCells
-  onInfixes axis f ((size, skip, 2, []) : specs) (fromMajorCells cells)
+  rr <- fromMajorCells cells
+  onInfixes axis f ((size, skip, 2, []) : specs) rr
 onInfixes axis f ((size, skip, -3, (mode' : params)) : specs) y = do
   let modeErr = DomainError "On Infixes: invalid mode"
   mode <- asNumber modeErr mode' >>= asNat modeErr
@@ -1961,7 +1965,8 @@ onInfixes axis f ((size, skip, -3, (mode' : params)) : specs) y = do
   let padSize = let n = 1 + ((genericLength originalCells `naturalSaturatedSub` size) `div` skip) in if skip * (n - 1) + (size `Prelude.max` skip) < genericLength originalCells then (fromIntegral n * fromIntegral skip - genericLength originalCells) `mod` fromIntegral size else 0
   padCells <- onInfixesFill mode params (negate padSize) (NE.fromList originalCells)
   let cells = padCells ++ originalCells
-  onInfixes axis f ((size, skip, -2, []) : specs) (fromMajorCells cells)
+  rr <- fromMajorCells cells
+  onInfixes axis f ((size, skip, -2, []) : specs) rr
 onInfixes axis f ((size, skip, 5, (mode' : params)) : specs) y = do
   let modeErr = DomainError "On Infixes: invalid mode"
   mode <- asNumber modeErr mode' >>= asNat modeErr
@@ -1969,7 +1974,8 @@ onInfixes axis f ((size, skip, 5, (mode' : params)) : specs) y = do
   let padSize = fromIntegral $ size `naturalSaturatedSub` (genericLength originalCells `naturalSaturatedSub` (ceiling $ fromIntegral (genericLength originalCells) / fromIntegral skip - 1) * skip)
   padCells <- onInfixesFill mode params padSize (NE.fromList originalCells)
   let cells = originalCells ++ padCells
-  onInfixes axis f ((size, skip, 2, []) : specs) (fromMajorCells cells)
+  rr <- fromMajorCells cells
+  onInfixes axis f ((size, skip, 2, []) : specs) rr
 onInfixes axis f ((size, skip, -5, (mode' : params)) : specs) y = do
   let modeErr = DomainError "On Infixes: invalid mode"
   mode <- asNumber modeErr mode' >>= asNat modeErr
@@ -1977,17 +1983,18 @@ onInfixes axis f ((size, skip, -5, (mode' : params)) : specs) y = do
   let padSize = fromIntegral $ size `naturalSaturatedSub` (genericLength originalCells `naturalSaturatedSub` (ceiling $ fromIntegral (genericLength originalCells) / fromIntegral skip) * (skip - 1))
   padCells <- onInfixesFill mode params (negate padSize) (NE.fromList originalCells)
   let cells = padCells ++ originalCells
-  onInfixes axis f ((size, skip, -2, []) : specs) (fromMajorCells cells)
+  rr <- fromMajorCells cells
+  onInfixes axis f ((size, skip, -2, []) : specs) rr
 onInfixes axis f ((size, skip, 6, _) : specs) y = do
   cells <- encloseAnAxis axis y
   let howMany = ceiling $ fromIntegral (genericLength cells) / fromIntegral skip
   let slices = filter (Prelude.not . null) $ (\i -> genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices
+  mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices >>= fromMajorCells
 onInfixes axis f ((size, skip, -6, _) : specs) y = do
   cells <- Prelude.reverse <$> encloseAnAxis axis y
   let howMany = ceiling $ fromIntegral (genericLength cells) / fromIntegral skip
   let slices = Prelude.reverse $ filter (Prelude.not . null) $ (\i -> Prelude.reverse $ genericTake size $ genericDrop (i * skip) cells) <$> [0..howMany - 1]
-  fromMajorCells <$> mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices
+  mapM (mixAnAxis axis >=> (if null specs then f else onInfixes (axis + 1) f specs)) slices >>= fromMajorCells
 onInfixes _ _ ((_, _, other, _) : _) _ = throwError $ DomainError $ "On Infixes: invalid mode " ++ show other
 
 onInfixes' :: MonadError Error m => (Noun -> m Noun) -> Noun -> Noun -> m Noun
@@ -2014,7 +2021,7 @@ onPairs _ [] = pure []
 onPairs f xs@(_:xt) = zipWithM f xs xt
 
 onPairs' :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> m Noun
-onPairs' f arr = fromMajorCells <$> onPairs f (majorCells arr)
+onPairs' f arr = onPairs f (majorCells arr) >>= fromMajorCells
 
 bitwise1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> ScalarValue -> m ScalarValue
 bitwise1 cea@CoreExtraArgs{ coreExtraArgsBackward = b } f y'@(Number _) = do

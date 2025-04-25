@@ -211,7 +211,7 @@ reduce = PrimitiveAdverb
     DerivedFunctionFunction{ derivedFunctionFunctionLeft = f', derivedFunctionAdverb = adv } | adv == onContents -> vector . fmap box <$> callAna f' (ea' ++ ea) x y
     _ -> do
       CoreExtraArgs{ coreExtraArgsFill = fill } <- parseCoreExtraArgs $ ea' ++ ea
-      fromMajorCellsMaybeFilled fill <$> callAna f (ea' ++ ea) x y) Nothing Nothing Nothing Nothing Nothing reduce f }
+      callAna f (ea' ++ ea) x y >>= fromMajorCellsMaybeFilled fill) Nothing Nothing Nothing Nothing Nothing reduce f }
 onPrefixes = PrimitiveAdverb
   { adverbRepr = [G.onPrefixes]
   , adverbContext = Nothing

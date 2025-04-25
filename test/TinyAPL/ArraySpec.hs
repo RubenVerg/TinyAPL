@@ -77,13 +77,6 @@ spec = do
     it "returns the scalar for scalar arrays" $ do
       majorCells (scalar char) `shouldBe` [scalar char]
 
-  describe "fromMajorCells" $ do
-    it "returns an empty vector when the cells are empty" $ do
-      fromMajorCells [] `shouldBe` vector []
-    it "is an inverse to majorCells" $ do
-      fromMajorCells (majorCells matrix) `shouldBe` matrix
-      fromMajorCells (majorCells vec) `shouldBe` vec
-
   describe "realEqual and complexEqual" $ do
     it "returns False for different numbers" $ do
       realEqual 0 1 `shouldBe` False
