@@ -4,7 +4,7 @@ name: Trains
 
 Unlike in many other APLs, trains in TinyAPL are written using special syntax: <hl code="⦅" />, <hl code="⋄" /> and <hl code="⦆" />. They are a sequence of arrays, functions, adverbs and conjunctions that combine to create functions or modifiers.
 
-Note that, if a train has no diamonds, the contents are parsed with a special syntax where function application doesn't exist (but modifier application does), and then each tree becomes a tine. This means that in most cases, you can omit diamonds in trains:&nbsp;<hl code="⦅+-×⦆" />&nbsp;for&nbsp;<hl code="⦅+⋄-⋄×⦆" />.
+Note that, if a train has no diamonds, the contents are parsed with a special syntax where function application doesn't exist (but modifier application does), and then each tree becomes a tine. This means that, in most cases, you can omit diamonds in trains, making a Compact Train:&nbsp;<hl code="⦅+-×⦆" />&nbsp;for&nbsp;<hl code="⦅+⋄-⋄×⦆" /> .
 
 ## 1-trains
 
@@ -70,4 +70,4 @@ The simplest train is the 1-train:
 
 ## Longer trains
 
-Longer trains are parsed right-to-left, two tines at a time, creating 3-trains; the result of an evaluation becomes the rightmost tine of the next group. If only a tine is left it is used to create a 2-train. If the left tine of a 3-train is empty, it becomes a 2-train. This can be useful to force a chain of functions to be an Atop instead of a Fork. In order to use an empty tine when eliding diamonds, you can use the special token `·` instead.
+Longer trains are parsed right-to-left, two tines at a time, creating 3-trains; the result of an evaluation becomes the rightmost tine of the next group. If only a tine is left it is used to create a 2-train. If the left tine of a 3-train is empty, it becomes a 2-train, which can be useful to force a chain of functions to be an Atop instead of a Fork. To use an empty tine in a compact train, you can use the special token `·` instead.
