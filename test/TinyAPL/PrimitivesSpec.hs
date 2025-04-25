@@ -26,6 +26,9 @@ idRef = unsafePerformIO $ newIORef (0 :: Integer)
 {-# NOINLINE idRef #-}
 context = Context scope core undefined undefined undefined idRef "" P.primitives
 
+fmc :: [Noun] -> Noun
+fmc = fromRight' . fromMajorCells
+
 instance Show ScalarValue where
   show = runIdentity . showM
 
@@ -309,20 +312,20 @@ spec = do
       describe "first cell" $ do
         it "returns the first cell of the array" $ do
           m P.greater (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 1)
-          m P.greater (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 1, Number 2])
+          m P.greater (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 1, Number 2])
           m P.greater (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 1)
 
     describe [G.greaterEqual] $ do
       describe "last cell" $ do
         it "returns the last cell of the array" $ do
           m P.greaterEqual (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 3)
-          m P.greaterEqual (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 3, Number 4])
+          m P.greaterEqual (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 3, Number 4])
           m P.greaterEqual (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 1)
 
     describe [G.and] $ do
       describe "promote" $ do
         it "adds a unit leading axis to arrays" $ do
-          m P.and (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2, Number 3]])
+          m P.and (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (fmc [vector [Number 1, Number 2, Number 3]])
           m P.and (scalar $ Number 1) `shouldReturn` pure (vector [Number 1])
       describe "and" $ do
         it "combines boolean values with the and logical operation" $ do
@@ -334,7 +337,7 @@ spec = do
     describe [G.or] $ do
       describe "demote" $ do
         it "combines two leading axes" $ do
-          m P.or (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6])
+          m P.or (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6])
         it "extracts the first element of vectors" $ do
           m P.or (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 1)
         it "leaves scalars unchanged" $ do
@@ -380,7 +383,7 @@ spec = do
           m P.identical (scalar $ box $ vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 2)
         it "returns 1 for simple arrays" $ do
           m P.identical (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 1)
-          m P.identical (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (scalar $ Number 1)
+          m P.identical (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (scalar $ Number 1)
         it "returns the correct depth for complex arrays" $ do
           m P.identical (vector [box $ vector [Number 1, box $ vector [Number 2, Number 3]], box $ vector [Number 4, Number 5, box $ vector [Number 6, box $ vector [Number 7, Number 8], box $ scalar $ box $ scalar $ box $ vector [Number 9]]]]) `shouldReturn` pure (scalar $ Number 6)
 
@@ -389,7 +392,7 @@ spec = do
         it "returns the length of a vector" $ do
           m P.notIdentical (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 3)
         it "returns the count of major cells for a higher-rank vector" $ do
-          m P.notIdentical (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (scalar $ Number 2)
+          m P.notIdentical (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (scalar $ Number 2)
         it "returns 1 for a scalar" $ do
           m P.notIdentical (scalar $ Number 10) `shouldReturn` pure (scalar $ Number 1)
 
@@ -431,14 +434,14 @@ spec = do
       describe "shape" $ do
         it "returns the shape of an array" $ do
           m P.rho (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [Number 3])
-          m P.rho (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 2, Number 3])
+          m P.rho (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 2, Number 3])
       describe "reshape" $ do
         it "reshapes a vector into a matrix" $ do
-          d P.rho (vector [Number 2, Number 3]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
+          d P.rho (vector [Number 2, Number 3]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6]) `shouldReturn` pure (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
         it "recycles elements when there aren't enough" $ do
-          d P.rho (vector [Number 2, Number 3]) (vector [Number 1, Number 2, Number 3, Number 4]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 1, Number 2]])
+          d P.rho (vector [Number 2, Number 3]) (vector [Number 1, Number 2, Number 3, Number 4]) `shouldReturn` pure (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 1, Number 2]])
         it "discards extra elements" $ do
-          d P.rho (vector [Number 2, Number 3]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6, Number 7, Number 8]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
+          d P.rho (vector [Number 2, Number 3]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6, Number 7, Number 8]) `shouldReturn` pure (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
         it "transforms empty vectors" $ do
           d P.rho (vector [Number 0]) (Array [0, 1] []) `shouldReturn` pure (vector [])
         it "fails when turning an empty vector into a nonempty vector" $ do
@@ -452,25 +455,25 @@ spec = do
           e2m <$> d P.rho (vector [Number 2, Number -1]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` Nothing
           e2m <$> d P.rho (vector [Number 0, Number -1]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` Nothing
         it "reshapes arrays to a size that fits when a ¯1 is given" $ do
-          d P.rho (vector [Number -1, Number 3]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
-          d P.rho (vector [Number 2, Number -1]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
-          d P.rho (vector [Number -1, Number 2]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]])
+          d P.rho (vector [Number -1, Number 3]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6]) `shouldReturn` pure (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
+          d P.rho (vector [Number 2, Number -1]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6]) `shouldReturn` pure (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
+          d P.rho (vector [Number -1, Number 2]) (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6]) `shouldReturn` pure (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]])
       
     describe [G.ravel] $ do
       describe "ravel" $ do
         it "returns the ravel of an array" $ do
           m P.ravel (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3])
-          m P.ravel (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6])
+          m P.ravel (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6])
           m P.ravel (scalar $ Number 1) `shouldReturn` pure (vector [Number 1])
       describe "laminate" $ do
         it "joins two arrays on a new axis" $ do
-          d P.ravel (vector [Number 1, Number 2, Number 3]) (vector [Number 4, Number 5, Number 6]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
+          d P.ravel (vector [Number 1, Number 2, Number 3]) (vector [Number 4, Number 5, Number 6]) `shouldReturn` pure (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]])
     
     describe [G.reverse] $ do
       describe "reverse" $ do
         it "reverses arrays" $ do
           m P.reverse (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [Number 3, Number 2, Number 1])
-          m P.reverse (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (fromMajorCells [vector [Number 4, Number 5, Number 6], vector [Number 1, Number 2, Number 3]])
+          m P.reverse (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (fmc [vector [Number 4, Number 5, Number 6], vector [Number 1, Number 2, Number 3]])
           m P.reverse (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 1)
       describe "rotate" $ do
         it "rotates arrays" $ do
@@ -479,7 +482,7 @@ spec = do
           d P.reverse (scalar $ Number -1) (vector [Number 1, Number 2, Number 3, Number 4]) `shouldReturn` pure (vector [Number 4, Number 1, Number 2, Number 3])
           d P.reverse (scalar $ Number 0) (vector [Number 1, Number 2, Number 3, Number 4]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4])
         it "rotates arrays along multiple axes" $ do
-          d P.reverse (vector [Number 1, Number 2]) (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (fromMajorCells [vector [Number 6, Number 4, Number 5], vector [Number 3, Number 1, Number 2]])
+          d P.reverse (vector [Number 1, Number 2]) (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (fmc [vector [Number 6, Number 4, Number 5], vector [Number 3, Number 1, Number 2]])
     
     describe [G.pair] $ do
       describe "singleton" $ do
@@ -534,8 +537,8 @@ spec = do
         it "indexes major cells of an array" $ do
           d P.last (vector [Number 0, Number -1]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [Number 1, Number 3])
         it "does scatter indexing" $ do
-          d P.last (fromMajorCells [vector [Number 0, Number 2], vector [Number 1, Number -1]]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 3], vector [Number 2, Number 3]])
-          d P.last (vector [box $ vector [Number 0, Number 0], box $ vector [Number 1, Number 1]]) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 1, Number 4])
+          d P.last (fmc [vector [Number 0, Number 2], vector [Number 1, Number -1]]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (fmc [vector [Number 1, Number 3], vector [Number 2, Number 3]])
+          d P.last (vector [box $ vector [Number 0, Number 0], box $ vector [Number 1, Number 1]]) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 1, Number 4])
     
     describe [G.take] $ do
       describe "take" $ do
@@ -544,10 +547,10 @@ spec = do
         it "takes the last elements of arrays" $ do
           d P.take (scalar $ Number -2) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [Number 2, Number 3])
         it "takes elements across multiple axes" $ do
-          d P.take (vector [Number 1, Number 2]) (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2]])
+          d P.take (vector [Number 1, Number 2]) (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (fmc [vector [Number 1, Number 2]])
       describe "mix" $ do
         it "mixes nested arrays" $ do
-          m P.take (vector [box $ vector [Number 1, Number 2], box $ vector [Number 3, Number 4]]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]])
+          m P.take (vector [box $ vector [Number 1, Number 2], box $ vector [Number 3, Number 4]]) `shouldReturn` pure (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]])
 
     describe [G.drop] $ do
       describe "drop" $ do
@@ -556,10 +559,10 @@ spec = do
         it "drops the last elements of arrays" $ do
           d P.drop (scalar $ Number -1) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [Number 1, Number 2])
         it "drops elements across multiple axes" $ do
-          d P.drop (vector [Number 1, Number 2]) (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (fromMajorCells [vector [Number 6]])
+          d P.drop (vector [Number 1, Number 2]) (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (fmc [vector [Number 6]])
       describe "major cells" $ do
         it "returns major cells of an array" $ do
-          m P.drop (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [box $ vector [Number 1, Number 2], box $ vector [Number 3, Number 4]])
+          m P.drop (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [box $ vector [Number 1, Number 2], box $ vector [Number 3, Number 4]])
       describe "key-value pairs" $ do
         it "returns key-value pairs of a dictionary" $ do
           m P.drop (dictionary [(Character 'a', Number 1), (Character 'b', Number 2)]) `shouldReturn` pure (vector [box $ vector [Character 'a', Number 1], box $ vector [Character 'b', Number 2]])
@@ -585,7 +588,7 @@ spec = do
         it "returns a vector of indices for scalar arguments" $ do
           m P.iota (scalar $ Number 3) `shouldReturn` pure (vector [Number 0, Number 1, Number 2])
         it "returns a higher-rank array for vector arguments" $ do
-          m P.iota (vector [Number 2, Number 3]) `shouldReturn` pure (fromMajorCells
+          m P.iota (vector [Number 2, Number 3]) `shouldReturn` pure (fmc
             [ vector [box $ vector [Number 0, Number 0], box $ vector [Number 0, Number 1], box $ vector [Number 0, Number 2]]
             , vector [box $ vector [Number 1, Number 0], box $ vector [Number 1, Number 1], box $ vector [Number 1, Number 2]] ])
         it "returns an empty vector on zero" $ do
@@ -605,7 +608,7 @@ spec = do
         it "returns indices of true values in a vector" $ do
           m P.indices (vector [Number 0, Number 1, Number 0, Number 1]) `shouldReturn` pure (vector [Number 1, Number 3])
         it "returns indices of true values in a higher-rank array" $ do
-          m P.indices (fromMajorCells [vector [Number 0, Number 1, Number 0], vector [Number 1, Number 0, Number 1]]) `shouldReturn` pure (vector
+          m P.indices (fmc [vector [Number 0, Number 1, Number 0], vector [Number 1, Number 0, Number 1]]) `shouldReturn` pure (vector
             [ box $ vector [Number 0, Number 1]
             , box $ vector [Number 1, Number 0]
             , box $ vector [Number 1, Number 2] ])
@@ -626,7 +629,7 @@ spec = do
         it "replicates a vector" $ do
           d P.replicate (vector [Number 1, Number 0, Number 2]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [Number 1, Number 3, Number 3])
         it "replicates a higher-rank array" $ do
-          d P.replicate (vector [Number 1, Number 0, Number 2]) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 5, Number 6], vector [Number 5, Number 6]])
+          d P.replicate (vector [Number 1, Number 0, Number 2]) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]]) `shouldReturn` pure (fmc [vector [Number 1, Number 2], vector [Number 5, Number 6], vector [Number 5, Number 6]])
         it "fails when the lengths of the arguments don't match" $ do
           e2m <$> d P.replicate (vector [Number 1, Number 0]) (vector [Number 2, Number 1, Number 5]) `shouldReturn` Nothing
       describe "dictionary replicate" $ do
@@ -697,12 +700,12 @@ spec = do
     describe [G.element] $ do
       describe "enlist" $ do
         it "flattens a nested array" $ do
-          m P.element (fromMajorCells [vector [Number 1, box $ vector [Number 2, Number 3]], vector [Number 4, box $ vector [Number 5, box $ vector [Number 6, Number 7]]]]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6, Number 7])
+          m P.element (fmc [vector [Number 1, box $ vector [Number 2, Number 3]], vector [Number 4, box $ vector [Number 5, box $ vector [Number 6, Number 7]]]]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4, Number 5, Number 6, Number 7])
       describe "element of" $ do
         it "checks whether cells of an array are members of major cells of another array" $ do
           d P.element (vector [Number 2, Number 4]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (vector [Number 1, Number 0])
-          d P.element (fromMajorCells [vector $ Character <$> "high", vector $ Character <$> "rank"]) (vector $ Character <$> "list arg") `shouldReturn` pure (fromMajorCells [vector [Number 0, Number 1, Number 1, Number 0], vector [Number 1, Number 1, Number 0, Number 0]])
-          d P.element (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6], vector [Number 7, Number 8]]) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 1, Number 2]])
+          d P.element (fmc [vector $ Character <$> "high", vector $ Character <$> "rank"]) (vector $ Character <$> "list arg") `shouldReturn` pure (fmc [vector [Number 0, Number 1, Number 1, Number 0], vector [Number 1, Number 1, Number 0, Number 0]])
+          d P.element (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6], vector [Number 7, Number 8]]) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 1, Number 2]])
             `shouldReturn` pure (vector [Number 1, Number 1, Number 0, Number 0])
       describe "element of dictionary" $ do
         it "checks whether a value appears in a dictionary" $ do
@@ -722,23 +725,23 @@ spec = do
     describe [G.squad] $ do
       describe "index" $ do
         it "indexes cells of an array" $ do
-          d P.squad (vector [Number 0, box $ vector [Number 0, Number -2]]) (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 1, Number 2])
+          d P.squad (vector [Number 0, box $ vector [Number 0, Number -2]]) (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 1, Number 2])
 
     describe [G.rank] $ do
       describe "rank" $ do
         it "returns the rank of an array" $ do
           m P.rank (scalar $ Number 1) `shouldReturn` pure (scalar $ Number 0)
           m P.rank (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number 1)
-          m P.rank (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (scalar $ Number 2)
+          m P.rank (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (scalar $ Number 2)
       describe "rerank" $ do
         it "leaves arrays unchanged if argument is equal to the rank" $ do
           d P.rank (scalar $ Number 1) (vector [Number 1, Number 2]) `shouldReturn` pure (vector [Number 1, Number 2])
         it "promotes arrays if argument is greater than the rank" $ do
-          d P.rank (scalar $ Number 2) (vector [Number 1, Number 2]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2]])
-          d P.rank (scalar $ Number 2) (scalar $ Number 1) `shouldReturn` pure (fromMajorCells [vector [Number 1]])
+          d P.rank (scalar $ Number 2) (vector [Number 1, Number 2]) `shouldReturn` pure (fmc [vector [Number 1, Number 2]])
+          d P.rank (scalar $ Number 2) (scalar $ Number 1) `shouldReturn` pure (fmc [vector [Number 1]])
         it "demotes arrays if argument is less than the rank" $ do
-          d P.rank (scalar $ Number 1) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4])
-          d P.rank (scalar $ Number 0) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (scalar $ Number 1)
+          d P.rank (scalar $ Number 1) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4])
+          d P.rank (scalar $ Number 0) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (scalar $ Number 1)
 
     describe [G.catenate] $ do
       describe "join" $ do
@@ -752,20 +755,20 @@ spec = do
           d P.catenate (scalar $ Number 1) (scalar $ Number 2) `shouldReturn` pure (vector [Number 1, Number 2])
         it "catenates arrays of equal rank" $ do
           d P.catenate (vector [Number 1, Number 2]) (vector [Number 3, Number 4]) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4])
-          d P.catenate (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (fromMajorCells [vector [Number 5, Number 6], vector [Number 7, Number 8]]) `shouldReturn`
-            pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6], vector [Number 7, Number 8]])
+          d P.catenate (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (fmc [vector [Number 5, Number 6], vector [Number 7, Number 8]]) `shouldReturn`
+            pure (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6], vector [Number 7, Number 8]])
         it "promotes arrays once if necessary" $ do
-          d P.catenate (vector [Number 1, Number 2]) (fromMajorCells [vector [Number 3, Number 4], vector [Number 5, Number 6]]) `shouldReturn`
-            pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]])
-          d P.catenate (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (vector [Number 5, Number 6]) `shouldReturn`
-            pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]])
+          d P.catenate (vector [Number 1, Number 2]) (fmc [vector [Number 3, Number 4], vector [Number 5, Number 6]]) `shouldReturn`
+            pure (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]])
+          d P.catenate (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (vector [Number 5, Number 6]) `shouldReturn`
+            pure (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]])
         it "reshapes scalars" $ do
-          d P.catenate (scalar $ Number 10) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn`
-            pure (fromMajorCells [vector [Number 10, Number 10], vector [Number 1, Number 2], vector [Number 3, Number 4]])
-          d P.catenate (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (scalar $ Number 10) `shouldReturn`
-            pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 10, Number 10]])
+          d P.catenate (scalar $ Number 10) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn`
+            pure (fmc [vector [Number 10, Number 10], vector [Number 1, Number 2], vector [Number 3, Number 4]])
+          d P.catenate (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (scalar $ Number 10) `shouldReturn`
+            pure (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 10, Number 10]])
         it "fails with mismatched trailing shapes" $ do
-          e2m <$> d P.catenate (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (fromMajorCells [vector [Number 5, Number 6, Number 7], vector [Number 8, Number 9, Number 10]]) `shouldReturn` Nothing
+          e2m <$> d P.catenate (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (fmc [vector [Number 5, Number 6, Number 7], vector [Number 8, Number 9, Number 10]]) `shouldReturn` Nothing
 
     describe [G.gradeUp] $ do
       describe "grade up" $ do
@@ -794,12 +797,12 @@ spec = do
     describe [G.transpose] $ do
       describe "monad transpose" $ do
         it "transposes an array" $ do
-          m P.transpose (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 3], vector [Number 2, Number 4]])
+          m P.transpose (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (fmc [vector [Number 1, Number 3], vector [Number 2, Number 4]])
       describe "dyad transpose" $ do
         it "reorders axes of an array" $ do
-          d P.transpose (vector [Number 1, Number 0]) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 3], vector [Number 2, Number 4]])
+          d P.transpose (vector [Number 1, Number 0]) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (fmc [vector [Number 1, Number 3], vector [Number 2, Number 4]])
         it "extracts diagonals" $ do
-          d P.transpose (vector [Number 0, Number 0]) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 1, Number 4])
+          d P.transpose (vector [Number 0, Number 0]) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 1, Number 4])
       describe "inverted table" $ do
         it "returns the inverted table of a dictionary" $ do
           m P.transpose (dictionary [(Character 'a', Number 1), (Character 'b', Number 2)]) `shouldReturn` pure (vector [box $ vector [Character 'a', Character 'b'], box $ vector [Number 1, Number 2]])
@@ -807,11 +810,11 @@ spec = do
     describe [G.matrixInverse] $ do
       describe "matrix inverse" $ do
         it "returns the inverse of a square matrix" $ do
-          m P.matrixInverse (fromMajorCells [vector [Number 0, Number 0, Number 1], vector [Number 1, Number 0, Number 0], vector [Number 0, Number 1, Number 0]]) `shouldReturn`
-            pure (fromMajorCells [vector [Number 0, Number 1, Number 0], vector [Number 0, Number 0, Number 1], vector [Number 1, Number 0, Number 0]])
+          m P.matrixInverse (fmc [vector [Number 0, Number 0, Number 1], vector [Number 1, Number 0, Number 0], vector [Number 0, Number 1, Number 0]]) `shouldReturn`
+            pure (fmc [vector [Number 0, Number 1, Number 0], vector [Number 0, Number 0, Number 1], vector [Number 1, Number 0, Number 0]])
         it "returns the left inverse of a non-square matrix" $ do
-          m P.matrixInverse (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]]) `shouldReturn`
-            pure (fromMajorCells [vector [Number (-4 / 3), Number (-1 / 3), Number (2 / 3)], vector [Number (13 / 12), Number (1 / 3), Number (-5 / 12)]])
+          m P.matrixInverse (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4], vector [Number 5, Number 6]]) `shouldReturn`
+            pure (fmc [vector [Number (-4 / 3), Number (-1 / 3), Number (2 / 3)], vector [Number (13 / 12), Number (1 / 3), Number (-5 / 12)]])
         it "returns the reciprocal of a scalar" $ do
           m P.matrixInverse (scalar $ Number 2) `shouldReturn` pure (scalar $ Number 0.5)
         it "returns the invere of the transpose of a vector" $ do
@@ -819,9 +822,9 @@ spec = do
       describe "matrix divide" $ do
         it "divides two matrices" $ do
           d P.matrixInverse
-            (fromMajorCells [vector [Number 2, Number 1], vector [Number 3, Number 5], vector [Number 9, Number 1]])
-            (fromMajorCells [vector [Number 3, Number 1, Number 4], vector [Number 1, Number 5, Number 9], vector [Number 2, Number 6, Number 5]]) `shouldReturn`
-            pure (fromMajorCells [vector [Number (10 / 9), Number (-11 / 18)], vector [Number (16 / 9), Number (-5 / 18)], vector [Number (-7 / 9), Number (7 / 9)]])
+            (fmc [vector [Number 2, Number 1], vector [Number 3, Number 5], vector [Number 9, Number 1]])
+            (fmc [vector [Number 3, Number 1, Number 4], vector [Number 1, Number 5, Number 9], vector [Number 2, Number 6, Number 5]]) `shouldReturn`
+            pure (fmc [vector [Number (10 / 9), Number (-11 / 18)], vector [Number (16 / 9), Number (-5 / 18)], vector [Number (-7 / 9), Number (7 / 9)]])
 
     describe [G.factorial] $ do
       describe "factorial" $ do
@@ -898,7 +901,7 @@ spec = do
       describe "one range" $ do
         it "makes a range starting at 1 and ending at the number" $ do
           m P.range (scalar $ Number 4) `shouldReturn` pure (vector [Number 1, Number 2, Number 3, Number 4])
-          m P.range (vector [Number 3, Number 2]) `shouldReturn` pure (fromMajorCells
+          m P.range (vector [Number 3, Number 2]) `shouldReturn` pure (fmc
             [ vector [box $ vector [Number 1, Number 1], box $ vector [Number 1, Number 2]]
             , vector [box $ vector [Number 2, Number 1], box $ vector [Number 2, Number 2]]
             , vector [box $ vector [Number 3, Number 1], box $ vector [Number 3, Number 2]] ])
@@ -906,7 +909,7 @@ spec = do
       describe "range" $ do
         it "makes a range between two numbers" $ do
           d P.range (scalar $ Number 2) (scalar $ Number 4) `shouldReturn` pure (vector [Number 2, Number 3, Number 4])
-          d P.range (vector [Number 2, Number 3]) (vector [Number 4, Number 5]) `shouldReturn` pure (fromMajorCells
+          d P.range (vector [Number 2, Number 3]) (vector [Number 4, Number 5]) `shouldReturn` pure (fmc
             [ vector [box $ vector [Number 2, Number 3], box $ vector [Number 2, Number 4], box $ vector [Number 2, Number 5]]
             , vector [box $ vector [Number 3, Number 3], box $ vector [Number 3, Number 4], box $ vector [Number 3, Number 5]]
             , vector [box $ vector [Number 4, Number 3], box $ vector [Number 4, Number 4], box $ vector [Number 4, Number 5]] ])
@@ -919,7 +922,7 @@ spec = do
         it "converts a vector ofca pairs to a dictionary" $ do
           m P.keyValue (vector [box $ vector [Character 'a', Character 'b'], box $ vector [Character 'c', Character 'd']]) `shouldReturn` pure (dictionary [(Character 'a', Character 'b'), (Character 'c', Character 'd')])
         it "converts a 2-column matrix to a dictionary" $ do
-          m P.keyValue (fromMajorCells [vector [Character 'a', Character 'b'], vector [Character 'c', Character 'd'], vector [Character 'e', Character 'f']]) `shouldReturn` pure (dictionary [(Character 'a', Character 'b'), (Character 'c', Character 'd'), (Character 'e', Character 'f')])
+          m P.keyValue (fmc [vector [Character 'a', Character 'b'], vector [Character 'c', Character 'd'], vector [Character 'e', Character 'f']]) `shouldReturn` pure (dictionary [(Character 'a', Character 'b'), (Character 'c', Character 'd'), (Character 'e', Character 'f')])
 
     describe [G.invertedTable] $ do
       describe "from keys and values" $ do
@@ -929,7 +932,7 @@ spec = do
         it "converts a pair of vectors to a dictionary" $ do
           m P.invertedTable (vector [box $ vector [Character 'a', Character 'b'], box $ vector [Character 'c', Character 'd']]) `shouldReturn` pure (dictionary [(Character 'a', Character 'c'), (Character 'b', Character 'd')])
         it "converts a 2-row matrix to a dictionary" $ do
-          m P.invertedTable (fromMajorCells [vector [Character 'a', Character 'b', Character 'c'], vector [Character 'd', Character 'e', Character 'f']]) `shouldReturn` pure (dictionary [(Character 'a', Character 'd'), (Character 'b', Character 'e'), (Character 'c', Character 'f')])
+          m P.invertedTable (fmc [vector [Character 'a', Character 'b', Character 'c'], vector [Character 'd', Character 'e', Character 'f']]) `shouldReturn` pure (dictionary [(Character 'a', Character 'd'), (Character 'b', Character 'e'), (Character 'c', Character 'f')])
 
     describe [G.group] $ do
       describe "group" $ do
@@ -947,11 +950,11 @@ spec = do
       describe "find" $ do
         it "marks the top left corner of subarrays in arrays" $ do
           d P.find (scalar $ Number 2) (vector [Number 1, Number 2, Number 3, Number 2, Number 1]) `shouldReturn` pure (vector [Number 0, Number 1, Number 0, Number 1, Number 0])
-          d P.find (scalar $ Number 2) (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 2, Number 0]]) `shouldReturn` pure (fromMajorCells [vector [Number 0, Number 1, Number 0], vector [Number 0, Number 1, Number 0]])
+          d P.find (scalar $ Number 2) (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 2, Number 0]]) `shouldReturn` pure (fmc [vector [Number 0, Number 1, Number 0], vector [Number 0, Number 1, Number 0]])
           d P.find (vector [Number 1, Number 1]) (vector [Number 1, Number 1, Number 1, Number 3]) `shouldReturn` pure (vector [Number 1, Number 1, Number 0, Number 0])
-          d P.find (vector [Number 2, Number 4]) (fromMajorCells [vector [Number 1, Number 2, Number 4], vector [Number 2, Number 4, Number 0]]) `shouldReturn` pure (fromMajorCells [vector [Number 0, Number 1, Number 0], vector [Number 1, Number 0, Number 0]])
-          d P.find (fromMajorCells [vector [Number 1, Number 2], vector [Number 2, Number 0]]) (fromMajorCells [vector [Number 0, Number 1, Number 2, Number 0], vector [Number 1, Number 2, Number 0, Number 1], vector [Number 2, Number 0, Number 1, Number 2], vector [Number 0, Number 1, Number 2, Number 0]])
-            `shouldReturn` pure (fromMajorCells [vector [Number 0, Number 1, Number 0, Number 0], vector [Number 1, Number 0, Number 0, Number 0], vector [Number 0, Number 0, Number 1, Number 0], vector [Number 0, Number 0, Number 0, Number 0]])
+          d P.find (vector [Number 2, Number 4]) (fmc [vector [Number 1, Number 2, Number 4], vector [Number 2, Number 4, Number 0]]) `shouldReturn` pure (fmc [vector [Number 0, Number 1, Number 0], vector [Number 1, Number 0, Number 0]])
+          d P.find (fmc [vector [Number 1, Number 2], vector [Number 2, Number 0]]) (fmc [vector [Number 0, Number 1, Number 2, Number 0], vector [Number 1, Number 2, Number 0, Number 1], vector [Number 2, Number 0, Number 1, Number 2], vector [Number 0, Number 1, Number 2, Number 0]])
+            `shouldReturn` pure (fmc [vector [Number 0, Number 1, Number 0, Number 0], vector [Number 1, Number 0, Number 0, Number 0], vector [Number 0, Number 0, Number 1, Number 0], vector [Number 0, Number 0, Number 0, Number 0]])
 
   describe "adverbs" $ do
     describe [G.selfie] $ do
@@ -969,7 +972,7 @@ spec = do
     describe [G.reduce] $ do
       describe "reduce" $ do
         it "reduces an array left-to-right" $ do
-          afm P.reduce P.plus (fromMajorCells [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 5, Number 7, Number 9])
+          afm P.reduce P.plus (fmc [vector [Number 1, Number 2, Number 3], vector [Number 4, Number 5, Number 6]]) `shouldReturn` pure (vector [Number 5, Number 7, Number 9])
           afm P.reduce P.minus (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (scalar $ Number -4)
       describe "fold" $ do
         it "folds an array left-to-right" $ do
@@ -1003,37 +1006,37 @@ spec = do
     describe [G.key] $ do
       describe "key" $ do
         it "applies a function to each unique element of the left argument and the corresponding elements of the right argument" $ do
-          afd P.key P.pair (vector $ Character <$> "mississippi") (vector $ Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) `shouldReturn` pure (fromMajorCells [vector [Character 'm', box $ vector [Number 1]], vector [Character 'i', box $ vector [Number 2, Number 5, Number 8, Number 11]], vector [Character 's', box $ vector [Number 3, Number 4, Number 6, Number 7]], vector [Character 'p', box $ vector [Number 9, Number 10]]])
+          afd P.key P.pair (vector $ Character <$> "mississippi") (vector $ Number <$> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) `shouldReturn` pure (fmc [vector [Character 'm', box $ vector [Number 1]], vector [Character 'i', box $ vector [Number 2, Number 5, Number 8, Number 11]], vector [Character 's', box $ vector [Number 3, Number 4, Number 6, Number 7]], vector [Character 'p', box $ vector [Number 9, Number 10]]])
         it "fails when the arguments have mismatched lengths" $ do
           e2m <$> afd P.key P.pair (vector []) (vector [Number 1]) `shouldReturn` Nothing
       describe "monad key" $ do
         it "applies a function to each unique element of the argument and the corresponding indices" $ do
-          afm P.key P.pair (vector $ Character <$> "mississippi") `shouldReturn` pure (fromMajorCells [vector [Character 'm', box $ vector [Number 0]], vector [Character 'i', box $ vector [Number 1, Number 4, Number 7, Number 10]], vector [Character 's', box $ vector [Number 2, Number 3, Number 5, Number 6]], vector [Character 'p', box $ vector [Number 8, Number 9]]])
+          afm P.key P.pair (vector $ Character <$> "mississippi") `shouldReturn` pure (fmc [vector [Character 'm', box $ vector [Number 0]], vector [Character 'i', box $ vector [Number 1, Number 4, Number 7, Number 10]], vector [Character 's', box $ vector [Number 2, Number 3, Number 5, Number 6]], vector [Character 'p', box $ vector [Number 8, Number 9]]])
 
     describe [G.onCells] $ do
       describe "on cells" $ do
         it "applies a function to major cells of arrays" $ do
-          afm P.onCells P.enclose (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [box $ vector [Number 1, Number 2], box $ vector [Number 3, Number 4]])
-          afd P.onCells P.pair (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (fromMajorCells [vector [Number 5, Number 6], vector [Number 7, Number 8]]) `shouldReturn` pure (fromMajorCells [vector [box $ vector [Number 1, Number 2], box $ vector [Number 5, Number 6]], vector [box $ vector [Number 3, Number 4], box $ vector [Number 7, Number 8]]])
+          afm P.onCells P.enclose (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [box $ vector [Number 1, Number 2], box $ vector [Number 3, Number 4]])
+          afd P.onCells P.pair (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (fmc [vector [Number 5, Number 6], vector [Number 7, Number 8]]) `shouldReturn` pure (fmc [vector [box $ vector [Number 1, Number 2], box $ vector [Number 5, Number 6]], vector [box $ vector [Number 3, Number 4], box $ vector [Number 7, Number 8]]])
         it "replaces major cells of an array with a value" $ do
-          aam P.onCells (scalar $ Number 3) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 3, Number 3])
+          aam P.onCells (scalar $ Number 3) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (vector [Number 3, Number 3])
 
     describe [G.cellsLeft] $ do
       describe "cells left" $ do
         it "applies a function to cells of an array and the whole other array" $ do
-          afd P.cellsLeft P.intersection (fromMajorCells [vector [Number 1, Number 2, Number 4], vector [Number 1, Number 3, Number 5]]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 1, Number 3]])
+          afd P.cellsLeft P.intersection (fmc [vector [Number 1, Number 2, Number 4], vector [Number 1, Number 3, Number 5]]) (vector [Number 1, Number 2, Number 3]) `shouldReturn` pure (fmc [vector [Number 1, Number 2], vector [Number 1, Number 3]])
 
     describe [G.cellsRight] $ do
       describe "cells left" $ do
         it "applies a function to cells of an array and the whole other array" $ do
-          afd P.cellsRight P.intersection (vector [Number 1, Number 2, Number 3]) (fromMajorCells [vector [Number 1, Number 2, Number 4], vector [Number 1, Number 3, Number 5]]) `shouldReturn` pure (fromMajorCells [vector [Number 1, Number 2], vector [Number 1, Number 3]])
+          afd P.cellsRight P.intersection (vector [Number 1, Number 2, Number 3]) (fmc [vector [Number 1, Number 2, Number 4], vector [Number 1, Number 3, Number 5]]) `shouldReturn` pure (fmc [vector [Number 1, Number 2], vector [Number 1, Number 3]])
     
     describe [G.onScalars] $ do
       describe "on scalars" $ do
         it "applies a function to scalars of arrays" $ do
-          afm P.onScalars P.pair (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (fromMajorCells [fromMajorCells [vector [Number 1], vector [Number 2]], fromMajorCells [vector [Number 3], vector [Number 4]]])
+          afm P.onScalars P.pair (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (fmc [fmc [vector [Number 1], vector [Number 2]], fmc [vector [Number 3], vector [Number 4]]])
         it "replaces scalars of an array with a value" $ do
-          aam P.onScalars (scalar $ Number 5) (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (fromMajorCells [vector [Number 5, Number 5], vector [Number 5, Number 5]])
+          aam P.onScalars (scalar $ Number 5) (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) `shouldReturn` pure (fmc [vector [Number 5, Number 5], vector [Number 5, Number 5]])
 
     describe [G.onSimpleScalars] $ do
       describe "on simple scalars" $ do
@@ -1058,9 +1061,9 @@ spec = do
       describe "table" $ do
         it "computes the outer product of two arrays" $ do
           Right dr <- cff P.atop P.first P.right
-          afd P.table P.pair (vector [Number 1, Number 2]) (vector [Number 3, Number 4]) `shouldReturn` pure (fromMajorCells [fromMajorCells [vector [Number 1, Number 3], vector [Number 1, Number 4]], fromMajorCells [vector [Number 2, Number 3], vector [Number 2, Number 4]]])
+          afd P.table P.pair (vector [Number 1, Number 2]) (vector [Number 3, Number 4]) `shouldReturn` pure (fmc [fmc [vector [Number 1, Number 3], vector [Number 1, Number 4]], fmc [vector [Number 2, Number 3], vector [Number 2, Number 4]]])
           afd P.table dr (vector [box $ vector [Number 1, Number 2], box $ vector [Number 3, Number 4]]) (vector [box $ vector [Number 5, Number 6], box $ vector [Number 7, Number 8]]) `shouldReturn`
-            pure (fromMajorCells [fromMajorCells [vector [Number 5, Number 6], vector [Number 7, Number 8]], fromMajorCells [vector [Number 5, Number 6], vector [Number 7, Number 8]]])
+            pure (fmc [fmc [vector [Number 5, Number 6], vector [Number 7, Number 8]], fmc [vector [Number 5, Number 6], vector [Number 7, Number 8]]])
 
     describe [G.ident] $ do
       describe "ident" $ do
@@ -1292,7 +1295,7 @@ spec = do
       describe "inner product" $ do
         it "computes the inner product of two arrays" $ do
           Right pr <- af P.reduce P.plus
-          cffd P.innerProduct pr P.times (fromMajorCells [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (fromMajorCells [vector [Number 5, Number 6], vector [Number 7, Number 8]]) `shouldReturn` pure (fromMajorCells [vector [Number 19, Number 22], vector [Number 43, Number 50]])
+          cffd P.innerProduct pr P.times (fmc [vector [Number 1, Number 2], vector [Number 3, Number 4]]) (fmc [vector [Number 5, Number 6], vector [Number 7, Number 8]]) `shouldReturn` pure (fmc [vector [Number 19, Number 22], vector [Number 43, Number 50]])
           
     describe [G.lev] $ do
       describe "lev" $ do
