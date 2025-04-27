@@ -233,10 +233,11 @@ data Context = Context
   , contextErr :: String -> St ()
   , contextIncrementalId :: IORef Integer
   , contextDirectory :: FilePath
-  , contextPrimitives :: Primitives }
+  , contextPrimitives :: Primitives
+  , contextPrefix :: String }
 
 instance NFData Context where
-  rnf (Context s q i o e d r p) = rnf s `seq` rnf q `seq` rwhnf i `seq` rnf o `seq` rnf e `seq` rnf d `seq` rnf r `seq` rnf p `seq` ()
+  rnf (Context s q i o e d r p pr) = rnf s `seq` rnf q `seq` rwhnf i `seq` rnf o `seq` rnf e `seq` rnf d `seq` rnf r `seq` rnf p `seq` rnf pr `seq`()
 
 assignId :: St Integer
 assignId = do

@@ -25,6 +25,9 @@ import System.Environment
 import Control.Monad (void, when)
 import System.IO
 import Data.IORef
+import Data.Foldable
+import Data.Maybe
+import Data.List
 import System.Info
 import Control.DeepSeq
 import Control.Exception (Exception(displayException))
@@ -33,6 +36,9 @@ import System.Directory
 import TinyAPL.Highlighter
 import qualified System.Console.Edited as E
 #endif
+
+defaultPrefixKey :: String
+defaultPrefixKey = "`"
 
 readImportFile :: FilePath -> St String
 readImportFile path = liftToSt $ readFile path
@@ -69,6 +75,8 @@ cli = do
   scope <- newIORef $ Scope [] [] [] [] Nothing True
 
   id <- newIORef 0
+
+  args <- getArgs
   let context = Context {
       contextScope = scope
     , contextQuads = core <> ffiQuads <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, file, TinyAPL.CLI.stdin ] [ makeImport readImportFile Nothing ] [] []
@@ -81,10 +89,10 @@ cli = do
       liftToSt $ hFlush stderr
     , contextIncrementalId = id
     , contextDirectory = cwd
-    , contextPrimitives = P.primitives }
+    , contextPrimitives = P.primitives
+    , contextPrefix = fromMaybe defaultPrefixKey (asum $ map (stripPrefix "-prefix") args) }
 
-  args <- getArgs
-  case args of
+  case filter (isNothing . stripPrefix "-") args of
     []     -> repl context
     [path] -> do
       code <- F.readUtf8 path
@@ -381,7 +389,7 @@ repl context = let
           Nothing -> do
             E.insertString el [ch]
             pure E.RefreshBeep
-    E.addBind el "`" "prefix"
+    E.addBind el (contextPrefix context) "prefix"
     E.setUseStyle el True
     E.setStyleFunc el $ \_ str -> pure $ (\case
       CNumber -> E.EditedStyle E.Red E.Unset False False False False
