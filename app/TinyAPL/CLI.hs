@@ -78,14 +78,14 @@ cli = do
   id <- newIORef 0
 
   args <- getArgs
-  let prefixKeyS = fromMaybe defaultPrefixKey (asum $ map (stripPrefix "-prefix") args)
+  let prefixKeyS = fromMaybe defaultPrefixKey $ asum $ map (stripPrefix "-prefix") args
   when (null prefixKeyS) (do
         hPutStrLn stderr "Usage:"
-        hPutStrLn stderr "-prefixX"
-        hPutStrLn stderr "where X is the prefix key (note, there's no space between '-prefix' and the key)"
-        die "Prefix key was empty")
+        hPutStrLn stderr "\t\"-prefixX\""
+        hPutStrLn stderr "\twhere X is the prefix key (note, there's no space between '-prefix' and the key)"
+        die "Prefix key was empty, exiting")
 
-  let prefixKey = head prefixKeyS
+  let [prefixKey] = prefixKeyS
 
   let context = Context {
       contextScope = scope
@@ -99,11 +99,10 @@ cli = do
       liftToSt $ hFlush stderr
     , contextIncrementalId = id
     , contextDirectory = cwd
-    , contextPrimitives = P.primitives
-    , contextPrefix = prefixKey }
+    , contextPrimitives = P.primitives }
 
   case filter (isNothing . stripPrefix "-") args of
-    []     -> repl context
+    []     -> repl context prefixKey
     [path] -> do
       code <- F.readUtf8 path
       void $ runCode False path code context
@@ -323,8 +322,8 @@ doubleCharacters =
   , ('?', '⍰')
   ]
 
-repl :: Context -> IO ()
-repl context = let
+repl :: Context -> Char -> IO ()
+repl context prefixKey = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
@@ -379,7 +378,7 @@ repl context = let
     E.setPrompt' el "      "
     E.addFunction el "prefix" "Prefix for entering TinyAPL glyphs" $ \_ _ -> do
       chM <- E.getOneChar el
-      case (chM, chM == (Just $ contextPrefix context)) of
+      case (chM, chM == Just prefixKey) of
         (Nothing, _) -> pure E.EOF
         (Just _, True) -> do
           ch2M <- E.getOneChar el
@@ -399,7 +398,7 @@ repl context = let
           Nothing -> do
             E.insertString el [ch]
             pure E.RefreshBeep
-    E.addBind el (singleton $ contextPrefix context) "prefix"
+    E.addBind el (singleton prefixKey) "prefix"
     E.setUseStyle el True
     E.setStyleFunc el $ \_ str -> pure $ (\case
       CNumber -> E.EditedStyle E.Red E.Unset False False False False
