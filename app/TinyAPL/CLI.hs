@@ -101,7 +101,7 @@ cli = do
     , contextDirectory = cwd
     , contextPrimitives = P.primitives }
 
-  case filter (isNothing . stripPrefix "-") args of
+  case filter (not . isPrefixOf "-") args of
     []     -> repl context prefixKey
     [path] -> do
       code <- F.readUtf8 path
