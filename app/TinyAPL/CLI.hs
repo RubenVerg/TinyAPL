@@ -29,6 +29,7 @@ import Data.Foldable
 import Data.Maybe
 import Data.List
 import System.Info
+import System.Exit
 import Control.DeepSeq
 import Control.Exception (Exception(displayException))
 import System.Directory
@@ -77,6 +78,15 @@ cli = do
   id <- newIORef 0
 
   args <- getArgs
+  let prefixKeyS = fromMaybe defaultPrefixKey (asum $ map (stripPrefix "-prefix") args)
+  when (null prefixKeyS) (do
+        hPutStrLn stderr "Usage:"
+        hPutStrLn stderr "-prefixX"
+        hPutStrLn stderr "where X is the prefix key (note, there's no space between '-prefix' and the key)"
+        die "Prefix key was empty")
+
+  let prefixKey = head prefixKeyS
+
   let context = Context {
       contextScope = scope
     , contextQuads = core <> ffiQuads <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, file, TinyAPL.CLI.stdin ] [ makeImport readImportFile Nothing ] [] []
@@ -90,7 +100,7 @@ cli = do
     , contextIncrementalId = id
     , contextDirectory = cwd
     , contextPrimitives = P.primitives
-    , contextPrefix = fromMaybe defaultPrefixKey (asum $ map (stripPrefix "-prefix") args) }
+    , contextPrefix = prefixKey }
 
   case filter (isNothing . stripPrefix "-") args of
     []     -> repl context
@@ -369,9 +379,9 @@ repl context = let
     E.setPrompt' el "      "
     E.addFunction el "prefix" "Prefix for entering TinyAPL glyphs" $ \_ _ -> do
       chM <- E.getOneChar el
-      case chM of
-        Nothing -> pure E.EOF
-        Just '`' -> do
+      case (chM, chM == (Just $ contextPrefix context)) of
+        (Nothing, _) -> pure E.EOF
+        (Just _, True) -> do
           ch2M <- E.getOneChar el
           case ch2M of
             Nothing -> pure E.EOF
@@ -382,14 +392,14 @@ repl context = let
               Nothing -> do
                 E.insertString el [ch2]
                 pure E.RefreshBeep
-        Just ch -> case lookup ch singleCharacters of
+        (Just ch, False) -> case lookup ch singleCharacters of
           Just replacement -> do
             E.insertString el [replacement]
             pure E.Refresh
           Nothing -> do
             E.insertString el [ch]
             pure E.RefreshBeep
-    E.addBind el (contextPrefix context) "prefix"
+    E.addBind el (singleton $ contextPrefix context) "prefix"
     E.setUseStyle el True
     E.setStyleFunc el $ \_ str -> pure $ (\case
       CNumber -> E.EditedStyle E.Red E.Unset False False False False
