@@ -236,7 +236,7 @@ data Context = Context
   , contextPrimitives :: Primitives }
 
 instance NFData Context where
-  rnf (Context s q i o e d r p) = rnf s `seq` rnf q `seq` rwhnf i `seq` rnf o `seq` rnf e `seq` rnf d `seq` rnf r `seq` rnf p `seq`()
+  rnf (Context s q i o e d r p) = rnf s `seq` rnf q `seq` rwhnf i `seq` rnf o `seq` rnf e `seq` rnf d `seq` rnf r `seq` rnf p `seq` ()
 
 assignId :: St Integer
 assignId = do
