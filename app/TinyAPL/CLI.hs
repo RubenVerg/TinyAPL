@@ -378,26 +378,27 @@ repl context prefixKey = let
     E.setPrompt' el "      "
     E.addFunction el "prefix" "Prefix for entering TinyAPL glyphs" $ \_ _ -> do
       chM <- E.getOneChar el
-      case (chM, chM == Just prefixKey) of
-        (Nothing, _) -> pure E.EOF
-        (Just _, True) -> do
-          ch2M <- E.getOneChar el
-          case ch2M of
-            Nothing -> pure E.EOF
-            Just ch2 -> case lookup ch2 doubleCharacters of
-              Just replacement -> do
-                E.insertString el [replacement]
-                pure E.Refresh
-              Nothing -> do
-                E.insertString el [ch2]
-                pure E.RefreshBeep
-        (Just ch, False) -> case lookup ch singleCharacters of
-          Just replacement -> do
-            E.insertString el [replacement]
-            pure E.Refresh
-          Nothing -> do
-            E.insertString el [ch]
-            pure E.RefreshBeep
+      case chM of
+        Nothing -> pure E.EOF
+        Just ch
+            | ch == prefixKey -> do
+               ch2M <- E.getOneChar el
+               case ch2M of
+                 Nothing -> pure E.EOF
+                 Just ch2 -> case lookup ch2 doubleCharacters of
+                   Just replacement -> do
+                     E.insertString el [replacement]
+                     pure E.Refresh
+                   Nothing -> do
+                     E.insertString el [ch2]
+                     pure E.RefreshBeep
+            | otherwise -> case lookup ch singleCharacters of
+               Just replacement -> do
+                 E.insertString el [replacement]
+                 pure E.Refresh
+               Nothing -> do
+                 E.insertString el [ch]
+                 pure E.RefreshBeep
     E.addBind el (singleton prefixKey) "prefix"
     E.setUseStyle el True
     E.setStyleFunc el $ \_ str -> pure $ (\case
