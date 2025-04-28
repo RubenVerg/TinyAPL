@@ -4,6 +4,8 @@ name: Trains
 
 Unlike in many other APLs, trains in TinyAPL are written using special syntax: <hl code="⦅" />, <hl code="⋄" /> and <hl code="⦆" />. They are a sequence of arrays, functions, adverbs and conjunctions that combine to create functions or modifiers.
 
+Note that, if a train has no diamonds, the contents are parsed with a special syntax where function application doesn't exist (but modifier application does), and then each tree becomes a tine. This means that, in most cases, you can omit diamonds in trains, making a Compact Train:&nbsp;<hl code="⦅+-×⦆" />&nbsp;for&nbsp;<hl code="⦅+⋄-⋄×⦆" /> .
+
 ## 1-trains
 
 The simplest train is the 1-train:
@@ -18,10 +20,10 @@ The simplest train is the 1-train:
 * <hl code="⦅x⋄y⦆" /> is <hl code="x⍨" />
 * <hl code="⦅x⋄G⦆" /> is <hl code="x∘G" />
 * <hl code="⦅F⋄y⦆" /> is <hl code="F∘y" />
-* <hl code="⦅F⋄G⦆" /> is <hl code="F⍤G" />
+* <hl code="⦅F⋄G⦆" /> is <hl code="F∘G" />
 * <hl code="⦅x⋄_A⦆" /> is <hl code="x _A" />
 * <hl code="⦅F⋄_A⦆" /> is <hl code="F _A" />
-* <hl code="u _⦅_A⋄G⦆" /> is <hl code="(u _A)⍤G" />
+* <hl code="u _⦅_A⋄G⦆" /> is <hl code="(u _A)∘G" />
 * <hl code="u _⦅_A⋄_B⦆" /> is <hl code="(u _A) _B" />
 * <hl code="u _⦅_A⋄_C_⦆" /> is <hl code="(u _A) _C_ u" /> *should this be changed to Over-like <hl code="(u _A) _C_ (v _A)" />?
 * <hl code="u _⦅x⋄_C_⦆" /> is <hl code="x _C_ u" />
@@ -29,7 +31,7 @@ The simplest train is the 1-train:
 * <hl code="u _⦅_C_⋄y⦆" /> is <hl code="u _C_ y" />
 * <hl code="u _⦅_C_⋄G⦆" /> is <hl code="u _C_ G" />
 * <hl code="u _⦅_C_⋄_A⦆_ v" /> is <hl code="(u _C_ v) _A" />
-* <hl code="u _⦅_C_⋄_D_⦆_ v" /> is <hl code="(u _C_ v)⍤(u _D_ v)" />
+* <hl code="u _⦅_C_⋄_D_⦆_ v" /> is <hl code="(u _C_ v)∘(u _D_ v)" />
 
 ## 3-trains
 
@@ -38,8 +40,8 @@ The simplest train is the 1-train:
 * <hl code="⦅F⋄y⋄x⦆" /> is <hl code="y⍨" />
 * <hl code="⦅F⋄y⋄H⦆" /> is <hl code="y⍨" />
 * <hl code="⦅F⋄G⋄H⦆" /> is <hl code="F«G»H" />
-* <hl code="⦅x⋄G⋄H⦆" /> is <hl code="(x∘G)⍤H" />
-* <hl code="⦅F⋄G⋄z⦆" /> is <hl code="(G∘z)⍤F" />
+* <hl code="⦅x⋄G⋄H⦆" /> is <hl code="(x∘G)∘H" />
+* <hl code="⦅F⋄G⋄z⦆" /> is <hl code="(G∘z)∘F" />
 * <hl code="⦅x⋄G⋄z⦆" /> is <hl code="(x G z)⍨" />
 * <hl code="⦅x⋄_C_⋄z⦆" /> is <hl code="x _C_ z" />
 * <hl code="⦅x⋄_C_⋄H⦆" /> is <hl code="x _C_ H" />
@@ -52,7 +54,7 @@ The simplest train is the 1-train:
 * <hl code="u _⦅_A⋄_C_⋄z⦆" /> is <hl code="(u _A) _C_ z" />
 * <hl code="u _⦅_A⋄_C_⋄H⦆" /> is <hl code="(u _A) _C_ H" />
 * <hl code="u _⦅F⋄G⋄_C_⦆_ v" /> is <hl code="F«G»(u _C_ v)" />
-* <hl code="u _⦅x⋄G⋄_C_⦆_ v" /> is <hl code="(x∘G)⍤(u _C_ v)" />
+* <hl code="u _⦅x⋄G⋄_C_⦆_ v" /> is <hl code="(x∘G)∘(u _C_ v)" />
 * <hl code="u _⦅_C_⋄G⋄H⦆_ v" /> is <hl code="(u _C_ v)«G»H" />
 * <hl code="u _⦅_C_⋄G⋄_D_⦆_ v" /> is <hl code="(u _C_ v)«G»(u _D_ v)" />
 * <hl code="u _⦅_A⋄_B⋄H⦆_ v" /> is <hl code="(u _A)«(v _B)»H" />
@@ -68,8 +70,4 @@ The simplest train is the 1-train:
 
 ## Longer trains
 
-Longer trains are parsed right-to-left, two tines at a time, creating 3-trains; the result of an evaluation becomes the rightmost tine of the next group. If only a tine is left it is used to create a 2-train. If the left tine of a 3-train is empty, it becomes a 2-train. This can be useful to force a chain of functions to be an Atop instead of a Fork.
-
-## Compact trains
-
-If a train has no diamonds, the contents are parsed with a special syntax where function application doesn't exist (but modifier application does), and then each tree becomes a tine. This means that in most cases, you can omit diamonds in trains:&nbsp;<hl code="⦅+-×⦆" />&nbsp;for&nbsp;<hl code="⦅+⋄-⋄×⦆" />. When you want to use an empty tine, you can use the special token `·` instead.
+Longer trains are parsed right-to-left, two tines at a time, creating 3-trains; the result of an evaluation becomes the rightmost tine of the next group. If only a tine is left it is used to create a 2-train. If the left tine of a 3-train is empty, it becomes a 2-train, which can be useful to force a chain of functions to be an Atop instead of a Fork. To use an empty tine in a compact train, you can use the special token `·` instead.
