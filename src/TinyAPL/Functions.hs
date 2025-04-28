@@ -31,6 +31,7 @@ import qualified Data.Matrix as M
 import qualified TinyAPL.Gamma.Gamma as Gamma
 import Data.Foldable (foldlM, foldrM)
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import Math.NumberTheory.Primes (unPrime, UniqueFactorisation(factorise))
 
 -- * Functions
@@ -2105,3 +2106,26 @@ multisets f x y = do
   y' <- each2 pair (vector $ box <$> majorCells y) $ vector $ Number . fromIntegral <$> occurrenceCount (majorCells y)
   res <- f x' y'
   onCells1 defaultCoreExtraArgs (first defaultCoreExtraArgs `compose` first defaultCoreExtraArgs) res
+
+at :: MonadError Error m => (Noun -> m Noun) -> Noun -> Noun -> m Noun
+at f m y = do
+  let ys = majorCells y
+  ms <-
+    if arrayRank m == arrayRank y then pure $ Set.fromList $ majorCells m
+    else if arrayRank m + 1 == arrayRank y then pure $ Set.singleton m
+    else throwError $ DomainError "At right operand must have the same shape as the right argument, or one less rank and same trailing shape"
+  mapM (\y -> if y `Set.member` ms then f y else pure y) ys >>= fromMajorCells
+
+atArr :: MonadError Error m => Noun -> Noun -> Noun -> m Noun
+atArr n m y = do
+  let ys = majorCells y
+  ms <-
+    if arrayRank m == arrayRank y then pure $ majorCells m
+    else if arrayRank m + 1 == arrayRank y then pure [m]
+    else throwError $ DomainError "At right operand must have the same shape as the right argument, or one less rank and same trailing shape"
+  ns <-
+    if arrayRank n == arrayRank y then pure $ majorCells n
+    else if arrayRank n + 1 == arrayRank y then pure [n]
+    else throwError $ DomainError "At left operand must have the same shape as the right argument, or one less rank and same trailing shape"
+  let map = Map.fromList $ zip ms ns
+  fromMajorCells $ (\y -> fromMaybe y $ Map.lookup y map) <$> ys

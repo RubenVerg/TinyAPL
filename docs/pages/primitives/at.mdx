@@ -2,9 +2,8 @@
 glyph: '@'
 pattern: 'r←[x]({Fn}@m)y'
 name: At
-planned: true
 ---
 
 If `x` is provided, the left operand must be a function.
 
-`r` is the result of substituting cells of `y` that appear in `m` with elements provided by `F` or `n`: if `n` is provided, it must have the same shape as `y` or one less rank and same trailing shape, and corresponding elements in `n` are used from `m`, or the whole of `n` if it is of lower rank; if `F` is provided, it is called with the cells of `y` matching `m` and optionally `x`, and the result is used like `n`.
+`r` is the result of substituting cells of `y` that appear in `m` with elements provided by `F` or `n`: if `n` is provided, it must have the same shape as `y` or one less rank and same trailing shape, and corresponding elements in `n` are used from `m`, or the whole of `n` if it is of lower rank; if `F` is provided, it is called with each cell of `y` matching `m` and optionally `x`.
