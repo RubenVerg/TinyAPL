@@ -557,6 +557,13 @@ catch = PrimitiveConjunction
   , conjOnNounFunction = Nothing
   , conjOnFunctionNoun = Just $ \_ f v -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.catch1 (callMonad f []) (F.constant1 v)) (Just $ const $ F.catch2 (callDyad f []) (F.constant2 v)) Nothing Nothing Nothing Nothing Nothing Nothing Nothing catch f v
   , conjOnFunctionFunction = Just $ \_ f g -> pure $ DerivedFunctionFunctionFunction (Just $ const $ F.catch1 (callMonad f []) (callMonad g [])) (Just $ const $ F.catch2 (callDyad f []) (callDyad g [])) Nothing Nothing Nothing Nothing Nothing Nothing Nothing catch f g }
+at = PrimitiveConjunction
+  { conjRepr = [G.at]
+  , conjContext = Nothing
+  , conjOnNounNoun = Just $ \_ u v -> pure $ DerivedFunctionNounNoun (Just $ const $ F.atArr u v) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing at u v
+  , conjOnNounFunction = Nothing
+  , conjOnFunctionNoun = Just $ \_ f v -> pure $ DerivedFunctionFunctionNoun (Just $ const $ F.at (callMonad f []) v) (Just $ const $ \x -> F.at (callDyad f [] x) v) Nothing Nothing Nothing Nothing Nothing Nothing Nothing at f v
+  , conjOnFunctionFunction = Nothing }
 
 conjunctions :: [(String, Conjunction)]
 conjunctions = (\x -> (conjRepr x, x)) <$>
@@ -581,7 +588,8 @@ conjunctions = (\x -> (conjRepr x, x)) <$>
   , TinyAPL.Primitives.forkB
   , TinyAPL.Primitives.approximate
   , TinyAPL.Primitives.fill
-  , TinyAPL.Primitives.catch ]
+  , TinyAPL.Primitives.catch
+  , TinyAPL.Primitives.at ]
 
 primitives :: Primitives
 primitives = (arrays, functions, adverbs, conjunctions)
