@@ -25,7 +25,6 @@ import System.Environment
 import Control.Monad (void, when)
 import System.IO
 import Data.IORef
-import Data.Foldable
 import Data.Maybe
 import Data.List
 import System.Info
@@ -78,7 +77,7 @@ cli = do
   id <- newIORef 0
 
   args <- getArgs
-  let prefixKeyS = fromMaybe defaultPrefixKey $ asum $ map (stripPrefix "-prefix") args
+  let prefixKeyS = fromMaybe defaultPrefixKey $ listToMaybe $ mapMaybe (stripPrefix "-prefix") args
   when (null prefixKeyS) (do
         hPutStrLn stderr "Usage:"
         hPutStrLn stderr "\t\"-prefixX\""
