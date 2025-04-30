@@ -78,13 +78,12 @@ cli = do
 
   args <- getArgs
   let prefixKeyS = fromMaybe defaultPrefixKey $ listToMaybe $ mapMaybe (stripPrefix "-prefix") args
-  when (null prefixKeyS) (do
+  when (length prefixKeyS /= 1) (do
         hPutStrLn stderr "Usage:"
         hPutStrLn stderr "\t\"-prefixX\""
         hPutStrLn stderr "\twhere X is the prefix key (note, there's no space between '-prefix' and the key)"
-        die "Prefix key was empty, exiting")
-
-  let [prefixKey] = prefixKeyS
+        die "Prefix key was not a singular key, bailing...")
+  let [prefixKey] = prefixKeyS -- SAFETY: We just checked its length is exactly 1
 
   let context = Context {
       contextScope = scope
