@@ -379,23 +379,23 @@ repl context prefixKey = let
       case chM of
         Nothing -> pure E.EOF
         Just ch | ch == prefixKey -> do
-            ch2M <- E.getOneChar el
-            case ch2M of
-                Nothing -> pure E.EOF
-                Just ch2 -> case lookup ch2 doubleCharacters of
-                    Just replacement -> do
-                        E.insertString el [replacement]
-                        pure E.Refresh
-                    Nothing -> do
-                        E.insertString el [ch2]
-                        pure E.RefreshBeep
-        Just ch -> case lookup ch singleCharacters of
-            Just replacement -> do
+          ch2M <- E.getOneChar el
+          case ch2M of
+            Nothing -> pure E.EOF
+            Just ch2 -> case lookup ch2 doubleCharacters of
+              Just replacement -> do
                 E.insertString el [replacement]
                 pure E.Refresh
-            Nothing -> do
-                E.insertString el [ch]
+              Nothing -> do
+                E.insertString el [ch2]
                 pure E.RefreshBeep
+        Just ch -> case lookup ch singleCharacters of
+          Just replacement -> do
+            E.insertString el [replacement]
+            pure E.Refresh
+          Nothing -> do
+            E.insertString el [ch]
+            pure E.RefreshBeep
     E.addBind el (singleton prefixKey) "prefix"
     E.setUseStyle el True
     E.setStyleFunc el $ \_ str -> pure $ (\case
