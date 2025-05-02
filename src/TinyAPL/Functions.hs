@@ -403,32 +403,68 @@ max x y = pure $ Prelude.max x y
 max' :: MonadError Error m => Noun -> Noun -> m Noun
 max' = scalarDyad TinyAPL.Functions.max
 
+numerator :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m ScalarValue
+numerator cea = TinyAPL.Functions.lcm cea $ Number 1
+
+numeratorS :: CoreExtraArgs -> ScalarValue -> St ScalarValue
+numeratorS = orStruct1EA "Numerator" numerator
+
+numerator' :: CoreExtraArgs -> Noun -> St Noun
+numerator' = scalarMonad . numeratorS
+
 lcm :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m ScalarValue
 lcm CoreExtraArgs{ coreExtraArgsTolerance = t } (Number x) (Number y) = pure $ Number $ complexLCM' t x y
 lcm _ _ _ = throwError expectedNumber
 
 lcmS :: CoreExtraArgs -> ScalarValue -> ScalarValue -> St ScalarValue
-lcmS = orStruct2EA "And" TinyAPL.Functions.lcm
+lcmS = orStruct2EA "LCM" TinyAPL.Functions.lcm
 
 lcm' :: CoreExtraArgs -> Noun -> Noun -> St Noun
 lcm' = scalarDyad . lcmS
+
+denominator :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m ScalarValue
+denominator cea y = do
+  num <- numerator cea y
+  divide num y
+
+denominatorS :: CoreExtraArgs -> ScalarValue -> St ScalarValue
+denominatorS = orStruct1EA "Denominator" denominator
+
+denominator' :: CoreExtraArgs -> Noun -> St Noun
+denominator' = scalarMonad . denominatorS
 
 gcd :: MonadError Error m => CoreExtraArgs -> ScalarValue -> ScalarValue -> m ScalarValue
 gcd CoreExtraArgs{ coreExtraArgsTolerance = t } (Number x) (Number y) = pure $ Number $ complexGCD' t x y
 gcd _ _ _ = throwError expectedNumber
 
 gcdS :: CoreExtraArgs -> ScalarValue -> ScalarValue -> St ScalarValue
-gcdS = orStruct2EA "Or" TinyAPL.Functions.gcd
+gcdS = orStruct2EA "GCD" TinyAPL.Functions.gcd
 
 gcd' :: CoreExtraArgs -> Noun -> Noun -> St Noun
 gcd' = scalarDyad . gcdS
 
+and :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
+and (Number x) (Number y) = pure $ Number $ x * y
+and _ _ = throwError expectedNumber
+
+andS :: ScalarValue -> ScalarValue -> St ScalarValue
+andS = orStruct2 "And" TinyAPL.Functions.and
+
+and' :: Noun -> Noun -> St Noun
+and' = scalarDyad andS
+
+or :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
+or (Number x) (Number y) = pure $ Number $ (x + y) - (x * y)
+or _ _ = throwError expectedNumber
+
+orS :: ScalarValue -> ScalarValue -> St ScalarValue
+orS = orStruct2 "Or" TinyAPL.Functions.or
+
+or' :: Noun -> Noun -> St Noun
+or' = scalarDyad orS
+
 nand :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
-nand (Number 0) (Number 0) = pure $ Number 1
-nand (Number 0) (Number 1) = pure $ Number 1
-nand (Number 1) (Number 0) = pure $ Number 1
-nand (Number 1) (Number 1) = pure $ Number 0
-nand _ _ = throwError expectedBool
+nand = TinyAPL.Functions.not `atop` TinyAPL.Functions.and
 
 nandS :: ScalarValue -> ScalarValue -> St ScalarValue
 nandS = orStruct2 "Nand" nand
@@ -437,11 +473,7 @@ nand' :: Noun -> Noun -> St Noun
 nand' = scalarDyad nandS
 
 nor :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
-nor (Number 0) (Number 0) = pure $ Number 1
-nor (Number 0) (Number 1) = pure $ Number 0
-nor (Number 1) (Number 0) = pure $ Number 0
-nor (Number 1) (Number 1) = pure $ Number 0
-nor _ _ = throwError expectedBool
+nor = TinyAPL.Functions.not `atop` TinyAPL.Functions.or
 
 norS :: ScalarValue -> ScalarValue -> St ScalarValue
 norS = orStruct2 "Nor" nor

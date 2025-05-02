@@ -330,9 +330,14 @@ spec = do
       describe "and" $ do
         it "combines boolean values with the and logical operation" $ do
           d P.and (vector [Number 0, Number 0, Number 1, Number 1]) (vector [Number 0, Number 1, Number 0, Number 1]) `shouldReturn` pure (vector [Number 0, Number 0, Number 0, Number 1])
+
+    describe [G.lcm] $ do
+      describe "numerator" $ do
+        it "extracts the numerator of a number" $ do
+          m P.lcm (scalar $ Number $ -4 / 3) `shouldReturn` pure (scalar $ Number (-4))
       describe "lcm" $ do
         it "applies the LCM function to numbers" $ do
-          d P.and (vector [Number 2, Number 0.5]) (vector [Number 3, Number 4.5]) `shouldReturn` pure (vector [Number 6, Number 4.5])
+          d P.lcm (vector [Number 2, Number 0.5]) (vector [Number 3, Number 4.5]) `shouldReturn` pure (vector [Number 6, Number 4.5])
     
     describe [G.or] $ do
       describe "demote" $ do
@@ -345,9 +350,14 @@ spec = do
       describe "or" $ do
         it "combines boolean values with the or logical operation" $ do
           d P.or (vector [Number 0, Number 0, Number 1, Number 1]) (vector [Number 0, Number 1, Number 0, Number 1]) `shouldReturn` pure (vector [Number 0, Number 1, Number 1, Number 1])
+
+    describe [G.gcd] $ do
+      describe "denominator" $ do
+        it "extracts the denominator of a number" $ do
+          m P.gcd (scalar $ Number $ -4 / 3) `shouldReturn` pure (scalar $ Number 3)
       describe "gcd" $ do
         it "applies the GCD function to numbers" $ do
-          d P.or (vector [Number 2, Number 0.5]) (vector [Number 3, Number 4.5]) `shouldReturn` pure (vector [Number 1, Number 0.5])
+          d P.gcd (vector [Number 2, Number 0.5]) (vector [Number 3, Number 4.5]) `shouldReturn` pure (vector [Number 1, Number 0.5])
 
     describe [G.nand] $ do
       describe "nand" $ do

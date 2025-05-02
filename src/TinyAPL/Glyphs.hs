@@ -199,6 +199,8 @@ format = '⍕'
 find = '⍷'
 mask = '⋷'
 raises = '↗'
+lcm = '⩓'
+gcd = '⩔'
 
 functions =
   [ TinyAPL.Glyphs.plus
@@ -278,7 +280,9 @@ functions =
   , TinyAPL.Glyphs.format
   , TinyAPL.Glyphs.find
   , TinyAPL.Glyphs.mask
-  , TinyAPL.Glyphs.raises ]
+  , TinyAPL.Glyphs.raises
+  , TinyAPL.Glyphs.lcm
+  , TinyAPL.Glyphs.gcd ]
 
 -- * Adverbs
 
