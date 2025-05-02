@@ -25,7 +25,10 @@ import System.Environment
 import Control.Monad (void, when)
 import System.IO
 import Data.IORef
+import Data.Maybe
+import Data.List
 import System.Info
+import System.Exit
 import Control.DeepSeq
 import Control.Exception (Exception(displayException))
 import System.Directory
@@ -33,6 +36,9 @@ import System.Directory
 import TinyAPL.Highlighter
 import qualified System.Console.Edited as E
 #endif
+
+defaultPrefixKey :: String
+defaultPrefixKey = "`"
 
 readImportFile :: FilePath -> St String
 readImportFile path = liftToSt $ readFile path
@@ -69,6 +75,16 @@ cli = do
   scope <- newIORef $ Scope [] [] [] [] Nothing True
 
   id <- newIORef 0
+
+  args <- getArgs
+  let prefixKeyS = fromMaybe defaultPrefixKey $ listToMaybe $ mapMaybe (stripPrefix "-prefix") args
+  when (length prefixKeyS /= 1) (do
+        hPutStrLn stderr "Usage:"
+        hPutStrLn stderr "\t\"-prefixX\""
+        hPutStrLn stderr "\twhere X is the prefix key (note, there's no space between '-prefix' and the key)"
+        die "Prefix key was not a singular key, bailing...")
+  let [prefixKey] = prefixKeyS -- SAFETY: We just checked its length is exactly 1
+
   let context = Context {
       contextScope = scope
     , contextQuads = core <> ffiQuads <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, file, TinyAPL.CLI.stdin ] [ makeImport readImportFile Nothing ] [] []
@@ -83,9 +99,8 @@ cli = do
     , contextDirectory = cwd
     , contextPrimitives = P.primitives }
 
-  args <- getArgs
-  case args of
-    []     -> repl context
+  case filter (not . isPrefixOf "-") args of
+    []     -> repl context prefixKey
     [path] -> do
       code <- F.readUtf8 path
       void $ runCode False path code context
@@ -305,8 +320,8 @@ doubleCharacters =
   , ('?', '⍰')
   ]
 
-repl :: Context -> IO ()
-repl context = let
+repl :: Context -> Char -> IO ()
+repl context prefixKey = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
@@ -363,7 +378,7 @@ repl context = let
       chM <- E.getOneChar el
       case chM of
         Nothing -> pure E.EOF
-        Just '`' -> do
+        Just ch | ch == prefixKey -> do
           ch2M <- E.getOneChar el
           case ch2M of
             Nothing -> pure E.EOF
@@ -381,7 +396,7 @@ repl context = let
           Nothing -> do
             E.insertString el [ch]
             pure E.RefreshBeep
-    E.addBind el "`" "prefix"
+    E.addBind el (singleton prefixKey) "prefix"
     E.setUseStyle el True
     E.setStyleFunc el $ \_ str -> pure $ (\case
       CNumber -> E.EditedStyle E.Red E.Unset False False False False
