@@ -111,8 +111,10 @@ Marked features are supported, unmarked features are planned
 		* [x] `!` binomial
 		* [x] `|` magnitude
 		* [x] `|` remainder
-		* [x] `∨` greatest common divisor
-		* [x] `∧` least common multiple
+		* [x] `⩓` least common multiple
+		* [x] `⩓` numerator
+		* [x] `⩔` denominator
+		* [x] `⩔` greatest common divisor
 		* [x] `⊕` cartesian (`x⊕y` is $x + iy$)
 		* [x] `⊕` pure imaginary (`⊕y` is $iy$)
 		* [x] `⊗` polar (`x⊗y` is $xe^{iy}$)

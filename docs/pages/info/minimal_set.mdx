@@ -20,6 +20,8 @@ Some of the primitives are pretty much simple applications of other primitives:
 * <primitive key="last" />&nbsp;is `⊃∘⌽∘,`
 * <primitive key="major_cells" />&nbsp;is `⊂⍤¯1`
 * <primitive key="mix" />&nbsp;is `⊃⍤0`
+* <primitive key="and" />&nbsp;is `×`
+* <primitive key="or" />&nbsp;is `+«=»×`
 * <primitive key="nand" />&nbsp;is `~∘∧`
 * <primitive key="nor" />&nbsp;is `~∘∨`
 * <primitive key="not" />&nbsp;is `1∘-`
@@ -145,8 +147,8 @@ Reductions are special cases of folds where the initial value is the first/last 
 ## Remainder, GCD and LCM
 
 * <primitive key="remainder" />&nbsp;is `{ ⍺=0: ■⍵ ⋄ ⍵-⍺×⌊⍵÷⍺ }⌓`
-* <primitive key="gcd" />&nbsp;is `{ 0=⍺|⍵: ⍺ ⋄ ⍵ ∇⍨ ⍺|⍵ }⌓`
-* <primitive key="lcm" />&nbsp;is `×«÷»∨`
+* <primitive key="greatest_common_divisor" />&nbsp;is `{ 0=⍺|⍵: ⍺ ⋄ ⍵ ∇⍨ ⍺|⍵ }⌓`
+* <primitive key="least_common_multiple" />&nbsp;is `×«÷»⩔`
 
 ## Inner Product and Table
 

@@ -1,0 +1,14 @@
+---
+glyph: '⩔'
+pattern: 'r←x⩔y'
+name: Greatest Common Divisor
+---
+
+`r` is the result of the scalar application of the GCD function, $\mathop{\text{gcd}}(x, y)$.
+
+It is defined using the Euclidean algorithm:
+
+* if `y` is divisible by `x` (`0=x|y`), `r` is `x`
+* otherwise, `r` is `(x|y)⩔x`.
+
+Supports the `tolerance` extra argument for the comparisons.

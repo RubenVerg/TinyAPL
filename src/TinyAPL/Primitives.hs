@@ -50,8 +50,8 @@ equal = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.equal') Nothing N
 greaterEqual = PrimitiveFunction (Just $ withCoreExtraArgs1 F.lastCell) (Just $ withCoreExtraArgs2 F.greaterEqual') (Just $ const F.promote) Nothing Nothing Nothing Nothing Nothing [G.greaterEqual] Nothing
 greater = PrimitiveFunction (Just $ withCoreExtraArgs1 F.firstCell) (Just $ withCoreExtraArgs2 F.greater') (Just $ const F.promote) Nothing Nothing Nothing Nothing Nothing [G.greater] Nothing
 notEqual = PrimitiveFunction (Just $ withCoreExtraArgs1 F.nubSieve') (Just $ withCoreExtraArgs2 F.notEqual') Nothing Nothing Nothing Nothing Nothing Nothing [G.notEqual] Nothing
-and = PrimitiveFunction (Just $ const F.promote) (Just $ withCoreExtraArgs2 F.lcm') (Just $ const F.demote) Nothing Nothing Nothing Nothing Nothing [G.and] Nothing
-or = PrimitiveFunction (Just $ const F.demote) (Just $ withCoreExtraArgs2 F.gcd') (Just $ const F.promote) Nothing Nothing Nothing Nothing Nothing [G.or] Nothing
+and = PrimitiveFunction (Just $ const F.promote) (Just $ const F.and') (Just $ const F.demote) Nothing Nothing Nothing Nothing Nothing [G.and] Nothing
+or = PrimitiveFunction (Just $ const F.demote) (Just $ const F.or') (Just $ const F.promote) Nothing Nothing Nothing Nothing Nothing [G.or] Nothing
 nand = PrimitiveFunction Nothing (Just $ const F.nand') Nothing Nothing Nothing Nothing Nothing Nothing [G.nand] Nothing
 nor = PrimitiveFunction Nothing (Just $ const F.nor') Nothing Nothing Nothing Nothing Nothing Nothing [G.nor] Nothing
 cartesian = PrimitiveFunction (Just $ const F.imaginary') (Just $ const F.cartesian') Nothing Nothing Nothing (Just $ const F.realAndImag') Nothing Nothing [G.cartesian] Nothing
@@ -112,6 +112,8 @@ format = PrimitiveFunction (Just $ const F.format') Nothing Nothing Nothing Noth
 find = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.find') Nothing Nothing Nothing Nothing Nothing Nothing [G.find] Nothing
 mask = PrimitiveFunction Nothing (Just $ withCoreExtraArgs2 F.mask') Nothing Nothing Nothing Nothing Nothing Nothing [G.mask] Nothing
 raises = PrimitiveFunction (Just $ const F.square') (Just $ const F.raises') (Just $ const F.squareRoot') (Just $ const F.root') (Just $ const $ F.commute F.log') Nothing Nothing Nothing [G.raises] Nothing
+lcm = PrimitiveFunction (Just $ withCoreExtraArgs1 F.numerator') (Just $ withCoreExtraArgs2 F.lcm') Nothing Nothing Nothing Nothing Nothing Nothing [G.lcm] Nothing
+gcd = PrimitiveFunction (Just $ withCoreExtraArgs1 F.denominator') (Just $ withCoreExtraArgs2 F.gcd') Nothing Nothing Nothing Nothing Nothing Nothing [G.gcd] Nothing
 
 functions :: [(String, Function)]
 functions = (\x -> (functionRepr x, x)) <$>
@@ -192,7 +194,9 @@ functions = (\x -> (functionRepr x, x)) <$>
   , TinyAPL.Primitives.format
   , TinyAPL.Primitives.find
   , TinyAPL.Primitives.mask
-  , TinyAPL.Primitives.raises ]
+  , TinyAPL.Primitives.raises
+  , TinyAPL.Primitives.lcm
+  , TinyAPL.Primitives.gcd ]
 
 -- * Primitive adverbs
 
