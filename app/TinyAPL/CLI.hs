@@ -16,6 +16,7 @@ import qualified TinyAPL.Files as F
 import qualified TinyAPL.Glyphs as G
 import qualified TinyAPL.Primitives as P
 import TinyAPL.Interpreter
+import TinyApl.Keymaps
 import TinyAPL.Quads.File (file)
 #ifndef wasm32_HOST_ARCH
 import TinyAPL.Quads.FFI (ffi, ffiStruct)
@@ -39,6 +40,9 @@ import qualified System.Console.Edited as E
 
 defaultPrefixKey :: String
 defaultPrefixKey = "`"
+
+defaultKeymap :: String
+defaultKeymap = "us-intl"
 
 readImportFile :: FilePath -> St String
 readImportFile path = liftToSt $ readFile path
@@ -85,6 +89,14 @@ cli = do
         die "Prefix key was not a singular key, bailing...")
   let [prefixKey] = prefixKeyS -- SAFETY: We just checked its length is exactly 1
 
+  let maybeKeymap = fromMaybe defaultKeymap $ listToMaybe $ mapMaybe (stripPrefix "-keymap") args
+  when (isNothing keymapIndex keymap) (do
+        hPutStrLn stderr "Usage:"
+        hPutStrLn stderr "\t\"-keymapX\""
+        hPutStrLn stderr "\twhere X is the keymap (note, there's no space between '-keymap' and the keymap)"
+        die "Unrecognized keymap, bailing...")
+  let keymap = fromJust maybeKeymap -- SAFETY: We just asserted it's not Nothing
+
   let context = Context {
       contextScope = scope
     , contextQuads = core <> ffiQuads <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, file, TinyAPL.CLI.stdin ] [ makeImport readImportFile Nothing ] [] []
@@ -100,7 +112,7 @@ cli = do
     , contextPrimitives = P.primitives }
 
   case filter (not . isPrefixOf "-") args of
-    []     -> repl context prefixKey
+    []     -> repl context prefixKey keymap
     [path] -> do
       code <- F.readUtf8 path
       void $ runCode False path code context
@@ -121,207 +133,9 @@ runCode output file code context = do
         liftToSt $ putStrLn str
   pure context'
 
-singleCharacters :: [(Char, Char)]
-singleCharacters =
-  [ ('1', '¨')
-  , ('2', '¯')
-  , ('4', '≤')
-  , ('3', '˝')
-  , ('5', '⬚')
-  , ('6', '≥')
-  , ('7', '⌽')
-  , ('8', '≠')
-  , ('9', '∨')
-  , ('0', '∧')
-  , ('-', '×')
-  , ('=', '÷')
-  , ('q', '↗')
-  , ('w', '⍵')
-  , ('e', '∊')
-  , ('r', '⍴')
-  , ('t', '⊞')
-  , ('y', '↑')
-  , ('u', '↓')
-  , ('i', '⍳')
-  , ('o', '○')
-  , ('p', '◡')
-  , ('[', '←')
-  , (']', '→')
-  , ('a', '⍺')
-  , ('s', '⌈')
-  , ('d', '⌊')
-  , ('f', '⍛')
-  , ('g', '∇')
-  , ('h', '∆')
-  , ('j', '∘')
-  , ('k', '⎊')
-  , ('l', '⎕')
-  , (';', '⍎')
-  , ('\'', '⍕')
-  , ('\\', '⊢')
-  , ('z', '⊂')
-  , ('x', '⊃')
-  , ('c', '∩')
-  , ('v', '∪')
-  , ('b', '⊥')
-  , ('n', '⊤')
-  , ('m', '«')
-  , (',', '⍪')
-  , ('.', '∙')
-  , ('/', '⌿')
-  , (' ', '‿')
-  
-  , ('~', '⍨')
-  , ('!', '⨳')
---, ('@', ' ')
-  , ('#', '⍒')
-  , ('$', '⍋')
-  , ('%', '≈')
-  , ('^', '⍉')
---, ('&', ' ')
-  , ('*', '⍣')
-  , ('(', '⍱')
-  , (')', '⍲')
-  , ('_', '⊗')
-  , ('+', '⊕')
---, ('Q', ' ')
-  , ('W', '⍹')
-  , ('E', '⍷')
-  , ('R', '√')
-  , ('T', '⍨')
-  , ('Y', '↟')
-  , ('U', '↡')
-  , ('I', '⍸')
-  , ('O', '⍥')
-  , ('P', '◠')
-  , ('{', '⟨')
-  , ('}', '⟩')
-  , ('A', '⍶')
-  , ('S', '§')
-  , ('D', '⸠')
-  , ('F', '∡')
-  , ('G', '⍢')
-  , ('H', '⍙')
-  , ('J', '⍤')
-  , ('K', '⌸')
-  , ('L', '⌷')
-  , (':', '≡')
-  , ('"', '≢')
-  , ('|', '⊣')
-  , ('Z', '⊆')
-  , ('X', '⊇')
-  , ('C', '⍝')
-  , ('V', '⁖')
-  , ('B', '∵')
-  , ('N', '·')
-  , ('M', '»')
-  , ('<', 'ᑈ')
-  , ('>', 'ᐵ')
---, ('?', ' ')
-  ]
-
-doubleCharacters :: [(Char, Char)]
-doubleCharacters =
-  [ ('`', '⋄')
---, ('1', ' ')
---, ('2', ' ')
---, ('3', ' ')
-  , ('4', '⊴')
-  , ('5', '⤺')
-  , ('6', '⊵')
---, ('7', ' ')
-  , ('8', '⍟')
-  , ('9', '∻')
-  , ('0', '⍬')
-  , ('-', '⸚')
-  , ('=', '⌹')
-  , ('q', '⇾')
---, ('w', ' ')
-  , ('e', '⋵')
-  , ('r', 'ϼ')
-  , ('t', '߹')
-  , ('y', 'ᓚ')
-  , ('u', 'ᓗ')
-  , ('i', '…')
-  , ('o', '⍜')
-  , ('p', '⏨')
-  , ('[', '⦅')
-  , (']', '⦆')
-  , ('a', 'ɛ')
-  , ('s', '↾')
-  , ('d', '⇂')
-  , ('f', '∠')
-  , ('g', '⫇')
-  , ('h', '⊸')
-  , ('j', 'ᴊ')
---, ('k', ' ')
---, ('l', ' ')
-  , (';', '⍮')
-  , ('\'', '⍘')
-  , ('\\', '⊩')
-  , ('z', '⊏')
-  , ('x', '⊐')
-  , ('c', '⟃')
-  , ('v', '⫤')
-  , ('b', '⇇')
-  , ('n', '↚')
-  , ('m', '↩')
-  , (',', '⊲')
-  , ('.', '⊳')
---, ('/', ' ')
-  , (' ', '`')
-  
-  , ('~', '⌺')
-  , ('!', '⑴')
---, ('@', ' ')
---, ('#', ' ')
---, ('$', ' ')
---, ('%', ' ')
---, ('^', ' ')
---, ('&', ' ')
-  , ('*', '∞')
-  , ('(', '⦋')
-  , (')', '⦌')
-  , ('_', 'ⵧ')
-  , ('+', '⧺')
-  , ('Q', '⇽')
---, ('W', ' ')
-  , ('E', '⋷')
-  , ('R', 'ℜ')
-  , ('T', '‥')
-  , ('Y', '⥽')
-  , ('U', '⥼')
-  , ('I', 'ℑ')
---, ('O', ' ')
-  , ('P', '⌓')
-  , ('{', '⦃')
-  , ('}', '⦄')
---, ('A', ' ')
---, ('S', ' ')
-  , ('D', '⩔')
---, ('F', ' ')
---, ('G', ' ')
-  , ('H', '⟜')
---, ('J', ' ')
---, ('K', ' ')
---, ('L', ' ')
-  , (':', '⍠')
-  , ('"', '⍞')
-  , ('|', '⫣')
-  , ('Z', 'ᑣ')
-  , ('X', 'ᑒ')
-  , ('C', '⟄')
---, ('V', ' ')
---, ('B', ' ')
-  , ('N', '⩓')
-  , ('M', '⍦')
---, ('<', ' ')
-  , ('>', '■')
-  , ('?', '⍰')
-  ]
 
 repl :: Context -> Char -> IO ()
-repl context prefixKey = let
+repl context prefixKey keymap = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
@@ -382,14 +196,14 @@ repl context prefixKey = let
           ch2M <- E.getOneChar el
           case ch2M of
             Nothing -> pure E.EOF
-            Just ch2 -> case lookup ch2 doubleCharacters of
+            Just ch2 -> case lookup ch2 (doubleChars keymap) of
               Just replacement -> do
                 E.insertString el [replacement]
                 pure E.Refresh
               Nothing -> do
                 E.insertString el [ch2]
                 pure E.RefreshBeep
-        Just ch -> case lookup ch singleCharacters of
+        Just ch -> case lookup ch (singleChars keymap) of
           Just replacement -> do
             E.insertString el [replacement]
             pure E.Refresh
