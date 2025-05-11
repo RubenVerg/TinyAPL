@@ -2,8 +2,8 @@ module TinyAPL.Keymaps where
 
 import Data.List
 
-keymapIndex :: String -> Maybe Int
-keymapIndex keymap = elemIndex keymap existingKeymaps
+keymapIndexOf :: String -> Maybe Int
+keymapIndexOf keymap = elemIndex keymap existingKeymaps
 
 singleChars :: Int -> [(Char, Char)]
 singleChars keymapIndex = map (\line -> (line !! (1+keymapIndex), head line)) singleCharacters
@@ -15,7 +15,7 @@ existingKeymaps :: [String]
 existingKeymaps = ["us-intl", "es-ca"]
 
 n :: Char -- For when the character isn't needed in the keymap
-n = '�'
+n = '�'   -- Untypable key
 
 singleCharacters :: [[Char]]
 singleCharacters =

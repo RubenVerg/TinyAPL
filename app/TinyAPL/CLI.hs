@@ -90,12 +90,13 @@ cli = do
   let [prefixKey] = prefixKeyS -- SAFETY: We just checked its length is exactly 1
 
   let keymapS = fromMaybe defaultKeymap $ listToMaybe $ mapMaybe (stripPrefix "-keymap=") args
-  when (isNothing $ keymapIndex keymapS) (do
+  when (isNothing $ keymapIndexOf keymapS) (do
         hPutStrLn stderr "Usage:"
         hPutStrLn stderr "\t\"-keymap=X\""
         hPutStrLn stderr "\twhere X is the keymap (note, there's no space between '-keymap=' and the keymap)"
+        hPutStrLn stderr $ "\tavailable keymaps are: [" ++ unwords existingKeymaps ++ "]"
         die "Unrecognized keymap, bailing...")
-  let keymap = fromJust $ keymapIndex keymapS -- SAFETY: We just asserted it's not Nothing
+  let keymap = fromJust $ keymapIndexOf keymapS -- SAFETY: We just asserted it's not Nothing
 
   let context = Context {
       contextScope = scope
