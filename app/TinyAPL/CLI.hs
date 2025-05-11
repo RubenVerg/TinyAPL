@@ -16,7 +16,7 @@ import qualified TinyAPL.Files as F
 import qualified TinyAPL.Glyphs as G
 import qualified TinyAPL.Primitives as P
 import TinyAPL.Interpreter
-import TinyApl.Keymaps
+import TinyAPL.Keymaps
 import TinyAPL.Quads.File (file)
 #ifndef wasm32_HOST_ARCH
 import TinyAPL.Quads.FFI (ffi, ffiStruct)
@@ -81,21 +81,21 @@ cli = do
   id <- newIORef 0
 
   args <- getArgs
-  let prefixKeyS = fromMaybe defaultPrefixKey $ listToMaybe $ mapMaybe (stripPrefix "-prefix") args
+  let prefixKeyS = fromMaybe defaultPrefixKey $ listToMaybe $ mapMaybe (stripPrefix "-prefix=") args
   when (length prefixKeyS /= 1) (do
         hPutStrLn stderr "Usage:"
-        hPutStrLn stderr "\t\"-prefixX\""
-        hPutStrLn stderr "\twhere X is the prefix key (note, there's no space between '-prefix' and the key)"
+        hPutStrLn stderr "\t\"-prefix=X\""
+        hPutStrLn stderr "\twhere X is the prefix key (note, there's no space between '-prefix=' and the key)"
         die "Prefix key was not a singular key, bailing...")
   let [prefixKey] = prefixKeyS -- SAFETY: We just checked its length is exactly 1
 
-  let maybeKeymap = fromMaybe defaultKeymap $ listToMaybe $ mapMaybe (stripPrefix "-keymap") args
-  when (isNothing keymapIndex keymap) (do
+  let keymapS = fromMaybe defaultKeymap $ listToMaybe $ mapMaybe (stripPrefix "-keymap=") args
+  when (isNothing $ keymapIndex keymapS) (do
         hPutStrLn stderr "Usage:"
-        hPutStrLn stderr "\t\"-keymapX\""
-        hPutStrLn stderr "\twhere X is the keymap (note, there's no space between '-keymap' and the keymap)"
+        hPutStrLn stderr "\t\"-keymap=X\""
+        hPutStrLn stderr "\twhere X is the keymap (note, there's no space between '-keymap=' and the keymap)"
         die "Unrecognized keymap, bailing...")
-  let keymap = fromJust maybeKeymap -- SAFETY: We just asserted it's not Nothing
+  let keymap = fromJust $ keymapIndex keymapS -- SAFETY: We just asserted it's not Nothing
 
   let context = Context {
       contextScope = scope
@@ -134,7 +134,7 @@ runCode output file code context = do
   pure context'
 
 
-repl :: Context -> Char -> IO ()
+repl :: Context -> Char -> Int -> IO ()
 repl context prefixKey keymap = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
