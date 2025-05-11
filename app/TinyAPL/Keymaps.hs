@@ -14,12 +14,12 @@ doubleChars keymapIndex = map (\line -> (line !! (1+keymapIndex), head line)) do
 existingKeymaps :: [String]
 existingKeymaps = ["us-intl", "es-ca"]
 
-n :: Char -- For when the character isn't needed in the keymap
-n = '�'   -- Untypable key
+nop :: Char -- For when the character isn't needed in the keymap
+nop = '�'   -- Untypable key
 
 singleCharacters :: [[Char]]
 singleCharacters =
-  [ ['¨', '1', n]
+  [ ['¨', '1', nop]
   , ['¯', '2', '2']
   , ['˝', '3', '3']
   , ['≤', '4', '4']
@@ -165,7 +165,7 @@ doubleCharacters =
   , ['⊲', ',', ',']
   , ['⊳', '.', '.']
 --, [' ', '/', '-']
-  , ['`', ' ', n]
+  , ['`', ' ', nop]
  
   , ['⌺', '~', 'ª']
   , ['⑴', '!', '!']
