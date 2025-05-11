@@ -30,6 +30,7 @@ import Data.Maybe
 import Data.List
 import System.Info
 import System.Exit
+import Text.Read
 import Control.DeepSeq
 import Control.Exception (Exception(displayException))
 import System.Directory
@@ -42,7 +43,7 @@ defaultPrefixKey :: String
 defaultPrefixKey = "`"
 
 defaultKeymap :: String
-defaultKeymap = "us-intl"
+defaultKeymap = "UsIntl"
 
 readImportFile :: FilePath -> St String
 readImportFile path = liftToSt $ readFile path
@@ -90,13 +91,14 @@ cli = do
   let [prefixKey] = prefixKeyS -- SAFETY: We just checked its length is exactly 1
 
   let keymapS = fromMaybe defaultKeymap $ listToMaybe $ mapMaybe (stripPrefix "-keymap=") args
-  when (isNothing $ keymapIndexOf keymapS) (do
+  keymap <- case readMaybe keymapS of
+    Just keymap -> pure keymap
+    Nothing -> (do
         hPutStrLn stderr "Usage:"
         hPutStrLn stderr "\t\"-keymap=X\""
         hPutStrLn stderr "\twhere X is the keymap (note, there's no space between '-keymap=' and the keymap)"
-        hPutStrLn stderr $ "\tavailable keymaps are: [" ++ unwords existingKeymaps ++ "] (not '" ++ keymapS ++ "')"
+        hPutStrLn stderr $ "\tavailable keymaps are: [" ++ unwords (map show existingKeymaps) ++ "] (not '" ++ keymapS ++ "')"
         die "Unrecognized keymap, bailing...")
-  let keymap = fromJust $ keymapIndexOf keymapS -- SAFETY: We just asserted it's not Nothing
 
   let context = Context {
       contextScope = scope
@@ -135,7 +137,7 @@ runCode output file code context = do
   pure context'
 
 
-repl :: Context -> Char -> Int -> IO ()
+repl :: Context -> Char -> Keymap -> IO ()
 repl context prefixKey keymap = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
@@ -186,6 +188,16 @@ repl context prefixKey keymap = let
     putStrLn $ "* comments: " ++ [G.comment] ++ " until end of line, " ++ [fst G.inlineComment, snd G.inlineComment] ++ " inline"
     
 #ifdef is_linux
+    singleCharacters <- case singleChars keymap of
+                             Just c -> pure c
+                             Nothing -> (do
+                                hPutStrLn stderr "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
+                                die "Keymap exists but is not implemented")
+    doubleCharacters <- case doubleChars keymap of
+                             Just c -> pure c
+                             Nothing -> (do
+                                 hPutStrLn stderr "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
+                                 die "Keymap exists but is not implemented")
     el <- E.edited "TinyAPL"
     E.setEditor el E.Emacs
     E.setPrompt' el "      "
@@ -197,14 +209,14 @@ repl context prefixKey keymap = let
           ch2M <- E.getOneChar el
           case ch2M of
             Nothing -> pure E.EOF
-            Just ch2 -> case lookup ch2 (doubleChars keymap) of
+            Just ch2 -> case lookup ch2 doubleCharacters of
               Just replacement -> do
                 E.insertString el [replacement]
                 pure E.Refresh
               Nothing -> do
                 E.insertString el [ch2]
                 pure E.RefreshBeep
-        Just ch -> case lookup ch (singleChars keymap) of
+        Just ch -> case lookup ch singleCharacters of
           Just replacement -> do
             E.insertString el [replacement]
             pure E.Refresh

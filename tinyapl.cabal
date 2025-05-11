@@ -101,6 +101,7 @@ executable tinyapl
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:    base ^>=4.20.0.0
+                    , containers
                     , deepseq
                     , exceptions
                     , mtl
