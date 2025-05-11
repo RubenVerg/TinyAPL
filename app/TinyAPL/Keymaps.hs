@@ -1,15 +1,16 @@
 module TinyAPL.Keymaps where
 
 import Data.List
+import Data.Maybe
 
 keymapIndexOf :: String -> Maybe Int
 keymapIndexOf keymap = elemIndex keymap existingKeymaps
 
 singleChars :: Int -> [(Char, Char)]
-singleChars keymapIndex = map (\line -> (line !! (1+keymapIndex), head line)) singleCharacters
+singleChars keymapIndex = map (\line -> (line !! (1+keymapIndex), fromJust $ listToMaybe line)) singleCharacters
 
 doubleChars :: Int -> [(Char, Char)]
-doubleChars keymapIndex = map (\line -> (line !! (1+keymapIndex), head line)) doubleCharacters
+doubleChars keymapIndex = map (\line -> (line !! (1+keymapIndex), fromJust $ listToMaybe line)) doubleCharacters
   
 existingKeymaps :: [String]
 existingKeymaps = ["us-intl", "es-ca"]
