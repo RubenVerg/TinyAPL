@@ -94,7 +94,7 @@ cli = do
         hPutStrLn stderr "Usage:"
         hPutStrLn stderr "\t\"-keymap=X\""
         hPutStrLn stderr "\twhere X is the keymap (note, there's no space between '-keymap=' and the keymap)"
-        hPutStrLn stderr $ "\tavailable keymaps are: [" ++ unwords existingKeymaps ++ "]"
+        hPutStrLn stderr $ "\tavailable keymaps are: [" ++ unwords existingKeymaps ++ "] (not '" ++ keymapS ++ "')"
         die "Unrecognized keymap, bailing...")
   let keymap = fromJust $ keymapIndexOf keymapS -- SAFETY: We just asserted it's not Nothing
 
