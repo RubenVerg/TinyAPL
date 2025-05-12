@@ -94,12 +94,14 @@ executable tinyapl
     -- Modules included in this executable, other than Main.
     other-modules:    TinyAPL.CLI
                     , TinyAPL.Files
+                    , TinyAPL.Keymaps
                     , TinyAPL.Quads.FFI
                     , TinyAPL.Quads.File
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:    base ^>=4.20.0.0
+                    , containers
                     , deepseq
                     , exceptions
                     , mtl

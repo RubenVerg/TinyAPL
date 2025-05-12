@@ -16,6 +16,7 @@ import qualified TinyAPL.Files as F
 import qualified TinyAPL.Glyphs as G
 import qualified TinyAPL.Primitives as P
 import TinyAPL.Interpreter
+import TinyAPL.Keymaps
 import TinyAPL.Quads.File (file)
 #ifndef wasm32_HOST_ARCH
 import TinyAPL.Quads.FFI (ffi, ffiStruct)
@@ -29,6 +30,7 @@ import Data.Maybe
 import Data.List
 import System.Info
 import System.Exit
+import Text.Read
 import Control.DeepSeq
 import Control.Exception (Exception(displayException))
 import System.Directory
@@ -39,6 +41,9 @@ import qualified System.Console.Edited as E
 
 defaultPrefixKey :: String
 defaultPrefixKey = "`"
+
+defaultKeymap :: String
+defaultKeymap = "UsIntl"
 
 readImportFile :: FilePath -> St String
 readImportFile path = liftToSt $ readFile path
@@ -77,13 +82,23 @@ cli = do
   id <- newIORef 0
 
   args <- getArgs
-  let prefixKeyS = fromMaybe defaultPrefixKey $ listToMaybe $ mapMaybe (stripPrefix "-prefix") args
+  let prefixKeyS = fromMaybe defaultPrefixKey $ listToMaybe $ mapMaybe (stripPrefix "-prefix=") args
   when (length prefixKeyS /= 1) (do
         hPutStrLn stderr "Usage:"
-        hPutStrLn stderr "\t\"-prefixX\""
-        hPutStrLn stderr "\twhere X is the prefix key (note, there's no space between '-prefix' and the key)"
+        hPutStrLn stderr "\t\"-prefix=X\""
+        hPutStrLn stderr "\twhere X is the prefix key (note, there's no space between '-prefix=' and the key)"
         die "Prefix key was not a singular key, bailing...")
   let [prefixKey] = prefixKeyS -- SAFETY: We just checked its length is exactly 1
+
+  let keymapS = fromMaybe defaultKeymap $ listToMaybe $ mapMaybe (stripPrefix "-keymap=") args
+  keymap <- case readMaybe keymapS of
+    Just keymap -> pure keymap
+    Nothing -> (do
+        hPutStrLn stderr "Usage:"
+        hPutStrLn stderr "\t\"-keymap=X\""
+        hPutStrLn stderr "\twhere X is the keymap (note, there's no space between '-keymap=' and the keymap)"
+        hPutStrLn stderr $ "\tavailable keymaps are: [" ++ unwords (map show existingKeymaps) ++ "] (not '" ++ keymapS ++ "')"
+        die "Unrecognized keymap, bailing...")
 
   let context = Context {
       contextScope = scope
@@ -100,7 +115,7 @@ cli = do
     , contextPrimitives = P.primitives }
 
   case filter (not . isPrefixOf "-") args of
-    []     -> repl context prefixKey
+    []     -> repl context prefixKey keymap
     [path] -> do
       code <- F.readUtf8 path
       void $ runCode False path code context
@@ -121,207 +136,9 @@ runCode output file code context = do
         liftToSt $ putStrLn str
   pure context'
 
-singleCharacters :: [(Char, Char)]
-singleCharacters =
-  [ ('1', '¨')
-  , ('2', '¯')
-  , ('4', '≤')
-  , ('3', '˝')
-  , ('5', '⬚')
-  , ('6', '≥')
-  , ('7', '⌽')
-  , ('8', '≠')
-  , ('9', '∨')
-  , ('0', '∧')
-  , ('-', '×')
-  , ('=', '÷')
-  , ('q', '↗')
-  , ('w', '⍵')
-  , ('e', '∊')
-  , ('r', '⍴')
-  , ('t', '⊞')
-  , ('y', '↑')
-  , ('u', '↓')
-  , ('i', '⍳')
-  , ('o', '○')
-  , ('p', '◡')
-  , ('[', '←')
-  , (']', '→')
-  , ('a', '⍺')
-  , ('s', '⌈')
-  , ('d', '⌊')
-  , ('f', '⍛')
-  , ('g', '∇')
-  , ('h', '∆')
-  , ('j', '∘')
-  , ('k', '⎊')
-  , ('l', '⎕')
-  , (';', '⍎')
-  , ('\'', '⍕')
-  , ('\\', '⊢')
-  , ('z', '⊂')
-  , ('x', '⊃')
-  , ('c', '∩')
-  , ('v', '∪')
-  , ('b', '⊥')
-  , ('n', '⊤')
-  , ('m', '«')
-  , (',', '⍪')
-  , ('.', '∙')
-  , ('/', '⌿')
-  , (' ', '‿')
-  
-  , ('~', '⍨')
-  , ('!', '⨳')
---, ('@', ' ')
-  , ('#', '⍒')
-  , ('$', '⍋')
-  , ('%', '≈')
-  , ('^', '⍉')
---, ('&', ' ')
-  , ('*', '⍣')
-  , ('(', '⍱')
-  , (')', '⍲')
-  , ('_', '⊗')
-  , ('+', '⊕')
---, ('Q', ' ')
-  , ('W', '⍹')
-  , ('E', '⍷')
-  , ('R', '√')
-  , ('T', '⍨')
-  , ('Y', '↟')
-  , ('U', '↡')
-  , ('I', '⍸')
-  , ('O', '⍥')
-  , ('P', '◠')
-  , ('{', '⟨')
-  , ('}', '⟩')
-  , ('A', '⍶')
-  , ('S', '§')
-  , ('D', '⸠')
-  , ('F', '∡')
-  , ('G', '⍢')
-  , ('H', '⍙')
-  , ('J', '⍤')
-  , ('K', '⌸')
-  , ('L', '⌷')
-  , (':', '≡')
-  , ('"', '≢')
-  , ('|', '⊣')
-  , ('Z', '⊆')
-  , ('X', '⊇')
-  , ('C', '⍝')
-  , ('V', '⁖')
-  , ('B', '∵')
-  , ('N', '·')
-  , ('M', '»')
-  , ('<', 'ᑈ')
-  , ('>', 'ᐵ')
---, ('?', ' ')
-  ]
 
-doubleCharacters :: [(Char, Char)]
-doubleCharacters =
-  [ ('`', '⋄')
---, ('1', ' ')
---, ('2', ' ')
---, ('3', ' ')
-  , ('4', '⊴')
-  , ('5', '⤺')
-  , ('6', '⊵')
---, ('7', ' ')
-  , ('8', '⍟')
-  , ('9', '∻')
-  , ('0', '⍬')
-  , ('-', '⸚')
-  , ('=', '⌹')
-  , ('q', '⇾')
---, ('w', ' ')
-  , ('e', '⋵')
-  , ('r', 'ϼ')
-  , ('t', '߹')
-  , ('y', 'ᓚ')
-  , ('u', 'ᓗ')
-  , ('i', '…')
-  , ('o', '⍜')
-  , ('p', '⏨')
-  , ('[', '⦅')
-  , (']', '⦆')
-  , ('a', 'ɛ')
-  , ('s', '↾')
-  , ('d', '⇂')
-  , ('f', '∠')
-  , ('g', '⫇')
-  , ('h', '⊸')
-  , ('j', 'ᴊ')
---, ('k', ' ')
---, ('l', ' ')
-  , (';', '⍮')
-  , ('\'', '⍘')
-  , ('\\', '⊩')
-  , ('z', '⊏')
-  , ('x', '⊐')
-  , ('c', '⟃')
-  , ('v', '⫤')
-  , ('b', '⇇')
-  , ('n', '↚')
-  , ('m', '↩')
-  , (',', '⊲')
-  , ('.', '⊳')
---, ('/', ' ')
-  , (' ', '`')
-  
-  , ('~', '⌺')
-  , ('!', '⑴')
---, ('@', ' ')
---, ('#', ' ')
---, ('$', ' ')
---, ('%', ' ')
---, ('^', ' ')
---, ('&', ' ')
-  , ('*', '∞')
-  , ('(', '⦋')
-  , (')', '⦌')
-  , ('_', 'ⵧ')
-  , ('+', '⧺')
-  , ('Q', '⇽')
---, ('W', ' ')
-  , ('E', '⋷')
-  , ('R', 'ℜ')
-  , ('T', '‥')
-  , ('Y', '⥽')
-  , ('U', '⥼')
-  , ('I', 'ℑ')
---, ('O', ' ')
-  , ('P', '⌓')
-  , ('{', '⦃')
-  , ('}', '⦄')
---, ('A', ' ')
---, ('S', ' ')
-  , ('D', '⩔')
---, ('F', ' ')
---, ('G', ' ')
-  , ('H', '⟜')
---, ('J', ' ')
---, ('K', ' ')
---, ('L', ' ')
-  , (':', '⍠')
-  , ('"', '⍞')
-  , ('|', '⫣')
-  , ('Z', 'ᑣ')
-  , ('X', 'ᑒ')
-  , ('C', '⟄')
---, ('V', ' ')
---, ('B', ' ')
-  , ('N', '⩓')
-  , ('M', '⍦')
---, ('<', ' ')
-  , ('>', '■')
-  , ('?', '⍰')
-  ]
-
-repl :: Context -> Char -> IO ()
-repl context prefixKey = let
+repl :: Context -> Char -> Keymap -> IO ()
+repl context prefixKey keymap = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
@@ -371,6 +188,16 @@ repl context prefixKey = let
     putStrLn $ "* comments: " ++ [G.comment] ++ " until end of line, " ++ [fst G.inlineComment, snd G.inlineComment] ++ " inline"
     
 #ifdef is_linux
+    singleCharacters <- case singleChars keymap of
+                             Just c -> pure c
+                             Nothing -> (do
+                                hPutStrLn stderr "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
+                                die "Keymap exists but is not implemented")
+    doubleCharacters <- case doubleChars keymap of
+                             Just c -> pure c
+                             Nothing -> (do
+                                 hPutStrLn stderr "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
+                                 die "Keymap exists but is not implemented")
     el <- E.edited "TinyAPL"
     E.setEditor el E.Emacs
     E.setPrompt' el "      "
