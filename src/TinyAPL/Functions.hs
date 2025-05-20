@@ -1876,9 +1876,10 @@ until :: MonadError Error m => (a -> m a) -> (a -> a -> m Bool) -> a -> m a
 until f p x = let
   go :: Monad m => (a -> m a) -> (a -> a -> m Bool) -> a -> a -> m a
   go f p prev x = do
-    r <- f x
-    t <- p r prev
-    if t then pure r else go f p x r
+    t <- p x prev
+    if t then pure x else do
+      next <- f x
+      go f p x next
   in f x >>= go f p x
 
 repeat1 :: MonadError Error m => (Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> Noun -> m Noun
