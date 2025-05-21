@@ -42,23 +42,33 @@ data Allowed
     , allowedFFI :: Bool
     , allowedFileSystem :: Bool }
 
-data Options = Options
-  { optPrefixKey :: Char
-  , optAllowed :: Allowed
-  , optFile :: Maybe FilePath }
+data InnerOptions
+  = ReplOptions
+    { replPrefixKey :: Char }
+  | FileOptions
+    { fileEchoLast :: Bool
+    , filePath :: FilePath }
+
+data Options = Options Allowed InnerOptions
 
 instance IsString Char where
   fromString = headPromise
 
 options :: Opts.Parser Options
 options = Options
-  <$> Opts.strOption
-    (  Opts.long "prefix"
-    <> Opts.help "Prefix key for entering glyphs"
-    <> Opts.metavar "PREFIX"
-    <> Opts.value defaultPrefixKey )
-  <*> allowed
-  <*> Opts.optional (Opts.argument Opts.str (Opts.metavar "FILE"))
+  <$> allowed 
+  <*> (ReplOptions
+    <$> Opts.strOption
+      (  Opts.long "prefix"
+      <> Opts.help "Prefix key for entering glyphs"
+      <> Opts.metavar "PREFIX"
+      <> Opts.value defaultPrefixKey )
+    Opts.<|> FileOptions
+    <$> Opts.switch
+      (  Opts.long "echo-last"
+      <> Opts.short 'E'
+      <> Opts.help "Echo the result of the last expression" )
+    <*> Opts.argument Opts.str (Opts.metavar "FILE"))
   where
     allowed = Opts.flag' (Allowed True True True)
       (  Opts.long "allow-all"
@@ -114,7 +124,7 @@ cli = do
 
   id <- newIORef 0
 
-  (Options prefixKey allowed path) <- Opts.execParser $ Opts.info (Opts.helper <*> options) Opts.fullDesc
+  Options allowed inner <- Opts.execParser $ Opts.info (Opts.helper <*> options) Opts.fullDesc
   
   let context = Context {
       contextScope = scope
@@ -134,11 +144,11 @@ cli = do
     , contextDirectory = cwd
     , contextPrimitives = P.primitives }
 
-  case path of
-    Nothing    -> repl context prefixKey
-    Just path' -> do
-      code <- F.readUtf8 path'
-      void $ runCode False path' code context
+  case inner of
+    ReplOptions prefixKey -> repl context prefixKey
+    FileOptions echo path -> do
+      code <- F.readUtf8 path
+      void $ runCode echo path code context
 
 runCode :: Bool -> String -> String -> Context -> IO Context
 runCode output file code context = do
