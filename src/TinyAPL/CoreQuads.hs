@@ -146,7 +146,7 @@ measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction
 
 core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, {- this, -}math, regex, inspectNamespace ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF, primes ] [ measure ] []
 
-makeImport :: (FilePath -> St String) -> Maybe ([String] -> St String) -> Function
+makeImport :: Maybe (FilePath -> St String) -> Maybe ([String] -> St String) -> Function
 makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
   let err = DomainError "Import argument must be a character vector"
   currentDir <- getsContext contextDirectory
@@ -162,7 +162,9 @@ makeImport read readStd = PrimitiveFunction (Just $ \_ x -> do
       Nothing -> case lookup (splitOn "/" $ drop (length "std:") absolutePath) standardLibrary of
         Just source -> pure source
         Nothing -> throwError $ DomainError $ "Standard library module " ++ absolutePath ++ " not found"
-    else read absolutePath
+    else case read of
+      Just read' -> read' absolutePath
+      Nothing -> throwError $ DomainError "Importing files is not supported in this context"
   runWithContext ctx' $ run' absolutePath source
   pure $ scalar $ Struct ctx') Nothing Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "Import") Nothing
 
