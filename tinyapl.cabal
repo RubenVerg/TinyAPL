@@ -87,33 +87,44 @@ library
                     , gamma
     default-language: Haskell2010
 
-executable tinyapl
+library tinyapl-native-helpers
     import:           warnings
-    main-is:          Main.hs
-
-    -- Modules included in this executable, other than Main.
-    other-modules:    TinyAPL.CLI
-                    , TinyAPL.Files
+    exposed-modules:  TinyAPL.Files
                     , TinyAPL.Quads.FFI
                     , TinyAPL.Quads.File
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
     build-depends:    base ^>=4.20.0.0
-                    , optparse-applicative ^>=0.18.1.0
                     , deepseq
                     , exceptions
                     , mtl
                     , directory
                     , tinyapl
-    if os(linux) || os(darwin)
-        build-depends:edited
     if !os(wasi)
         build-depends:libffi ^>=0.2.1
     if os(linux) || os(darwin)
         build-depends:unix ^>=2.8.5.1
     if os(windows)
         build-depends:Win32 ^>=2.14.0.0
+    hs-source-dirs:   native
+    default-language: Haskell2010
+
+executable tinyapl
+    import:           warnings
+    main-is:          Main.hs
+
+    -- Modules included in this executable, other than Main.
+    other-modules:    TinyAPL.CLI
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    base ^>=4.20.0.0
+                    , optparse-applicative ^>=0.18.1.0
+                    , mtl
+                    , deepseq
+                    , directory
+                    , tinyapl
+                    , tinyapl-native-helpers
+    if os(linux) || os(darwin)
+        build-depends:edited
 
     hs-source-dirs:   app
     default-language: Haskell2010
