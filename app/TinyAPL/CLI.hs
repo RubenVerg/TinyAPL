@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE CPP, LambdaCase, OverloadedStrings, ScopedTypeVariables #-}
 
 #if defined(unix_HOST_OS) || defined(__unix___HOST_OS) || defined(__unix_HOST_OS) || defined(linux_HOST_OS) || defined(__linux___HOST_OS) || defined(__linux_HOST_OS) || defined(darwin_HOST_OS)
 #define is_linux 1
@@ -27,7 +27,7 @@ import Data.IORef
 import Data.List
 import System.Info
 import Control.DeepSeq
-import Control.Exception (Exception(displayException))
+import Control.Exception (displayException, SomeException, catch)
 import System.Directory
 import qualified Options.Applicative as Opts
 import Data.String
@@ -44,7 +44,8 @@ data Allowed
 
 data InnerOptions
   = ReplOptions
-    { replPrefixKey :: Char }
+    { replPrefixKey :: Char
+    , replPlain :: Bool }
   | FileOptions
     { fileEchoLast :: Bool
     , filePath :: FilePath }
@@ -63,6 +64,10 @@ options = Options
       <> Opts.help "Prefix key for entering glyphs"
       <> Opts.metavar "PREFIX"
       <> Opts.value defaultPrefixKey )
+    <*> Opts.switch
+      (  Opts.long "plain"
+      <> Opts.short 'Z'
+      <> Opts.help "Disable all fancy I/O")
     Opts.<|> FileOptions
     <$> Opts.switch
       (  Opts.long "echo-last"
@@ -145,7 +150,7 @@ cli = do
     , contextPrimitives = P.primitives }
 
   case inner of
-    ReplOptions prefixKey -> repl context prefixKey
+    ReplOptions prefixKey plain -> repl context prefixKey plain
     FileOptions echo path -> do
       code <- F.readUtf8 path
       void $ runCode echo path code context
@@ -361,8 +366,15 @@ doubleCharacters =
   , ('?', '⍰')
   ]
 
-repl :: Context -> Char -> IO ()
-repl context prefixKey = let
+repl :: Context -> Char -> Bool -> IO ()
+repl context _ True = let
+  go context = do
+    line <- (Just <$> getLine) `catch` (\(_ :: SomeException) -> pure Nothing)
+    case line of
+      Nothing -> pure ()
+      Just line' -> runCode True "<repl>" line' context >>= go
+  in go context
+repl context prefixKey False = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
