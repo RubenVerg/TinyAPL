@@ -311,50 +311,51 @@ instance IsJSSt Function where
       pure $ DefinedFunction {
         functionRepr = repr,
         functionContext = Nothing,
-        functionMonad = if jsIsUndefined monad then Nothing else Just $ (\ea x -> do
-          ea' <- toJSValSt ea
-          x' <- toJSValSt x
-          res <- liftToSt (jsCall2 monad ea' x') >>= fromJSValSt
-          liftEither res),
-        functionDyad = if jsIsUndefined dyad then Nothing else Just $ (\ea x y -> do
-          ea' <- toJSValSt ea
-          x' <- toJSValSt x
-          y' <- toJSValSt y
-          res <- liftToSt (jsCall3 dyad ea' x' y') >>= fromJSValSt
-          liftEither res),
-        functionUn = if jsIsUndefined un then Nothing else Just $ (\ea x -> do
-          ea' <- toJSValSt ea
-          x' <- toJSValSt x
-          res <- liftToSt (jsCall2 un ea' x') >>= fromJSValSt
-          liftEither res),
-        functionAnti = if jsIsUndefined anti then Nothing else Just $ (\ea x y -> do
-          ea' <- toJSValSt ea
-          x' <- toJSValSt x
-          y' <- toJSValSt y
-          res <- liftToSt (jsCall3 anti ea' x' y') >>= fromJSValSt
-          liftEither res),
-        functionContra = if jsIsUndefined contra then Nothing else Just $ (\ea x y -> do
-          ea' <- toJSValSt ea
-          x' <- toJSValSt x
-          y' <- toJSValSt y
-          res <- liftToSt (jsCall3 contra ea' x' y') >>= fromJSValSt
-          liftEither res),
-        functionDis = if jsIsUndefined dis then Nothing else Just $ (\ea x -> do
-          ea' <- toJSValSt ea
-          x' <- toJSValSt x
-          res <- liftToSt (jsCall2 dis ea' x') >>= fromJSValSt
-          liftEither res),
-        functionBi = if jsIsUndefined bi then Nothing else Just $ (\ea x -> do
-          ea' <- toJSValSt ea
-          x' <- toJSValSt x
-          res <- liftToSt (jsCall2 bi ea' x') >>= fromJSValSt
-          liftEither res),
-        functionAna = if jsIsUndefined ana then Nothing else Just $ (\ea x y -> do
-          ea' <- toJSValSt ea
-          x' <- toJSValSt x
-          y' <- toJSValSt y
-          res <- liftToSt (jsCall3 ana ea' x' y') >>= fromJSValSt
-          liftEither res),
+        functionCalls = FunctionCalls 
+          { functionMonad = if jsIsUndefined monad then Nothing else Just $ (\ea x -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            res <- liftToSt (jsCall2 monad ea' x') >>= fromJSValSt
+            liftEither res),
+          functionDyad = if jsIsUndefined dyad then Nothing else Just $ (\ea x y -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            y' <- toJSValSt y
+            res <- liftToSt (jsCall3 dyad ea' x' y') >>= fromJSValSt
+            liftEither res),
+          functionUn = if jsIsUndefined un then Nothing else Just $ (\ea x -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            res <- liftToSt (jsCall2 un ea' x') >>= fromJSValSt
+            liftEither res),
+          functionAnti = if jsIsUndefined anti then Nothing else Just $ (\ea x y -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            y' <- toJSValSt y
+            res <- liftToSt (jsCall3 anti ea' x' y') >>= fromJSValSt
+            liftEither res),
+          functionContra = if jsIsUndefined contra then Nothing else Just $ (\ea x y -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            y' <- toJSValSt y
+            res <- liftToSt (jsCall3 contra ea' x' y') >>= fromJSValSt
+            liftEither res),
+          functionDis = if jsIsUndefined dis then Nothing else Just $ (\ea x -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            res <- liftToSt (jsCall2 dis ea' x') >>= fromJSValSt
+            liftEither res),
+          functionBi = if jsIsUndefined bi then Nothing else Just $ (\ea x -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            res <- liftToSt (jsCall2 bi ea' x') >>= fromJSValSt
+            liftEither res),
+          functionAna = if jsIsUndefined ana then Nothing else Just $ (\ea x y -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            y' <- toJSValSt y
+            res <- liftToSt (jsCall3 ana ea' x' y') >>= fromJSValSt
+            liftEither res) },
         definedFunctionId = id }
     | otherwise = throwError $ DomainError "fromJSValSt Function: not a function"
   toJSValSt f = do

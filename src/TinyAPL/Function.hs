@@ -2,6 +2,7 @@
 
 module TinyAPL.Function
   ( ExtraArgs
+  , FunctionCalls(..)
   , Function(..)
   , showTine
   , callMonad
@@ -29,149 +30,76 @@ import Data.List (intercalate)
 
 type ExtraArgs = [(ScalarValue, ScalarValue)]
 
+data FunctionCalls = FunctionCalls
+  { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
+  , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+  , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
+  , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+  , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
+  , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+  , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
+  , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun]) }
+  deriving (Generic, NFData)
+
 data Function
   = DefinedFunction
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionRepr  :: String
     , functionContext :: Maybe Context
     , definedFunctionId :: Integer }
   | PrimitiveFunction
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionRepr  :: String
     , functionContext :: Maybe Context }
   | PartialFunction
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , partialFunctionFunction :: Function
     , partialFunctionLeft :: Noun }
   | DerivedFunctionNoun
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , derivedFunctionAdverb :: Adverb
     , derivedFunctionNounLeft :: Noun }
   | DerivedFunctionFunction
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , derivedFunctionAdverb :: Adverb
     , derivedFunctionFunctionLeft :: Function }
   | DerivedFunctionNounNoun
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionNounLeft :: Noun
     , derivedFunctionNounRight :: Noun }
   | DerivedFunctionNounFunction
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionNounLeft :: Noun
     , derivedFunctionFunctionRight :: Function }
   | DerivedFunctionFunctionNoun
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionFunctionLeft :: Function
     , derivedFunctionNounRight :: Noun }
   | DerivedFunctionFunctionFunction
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , derivedFunctionConjunction :: Conjunction
     , derivedFunctionFunctionLeft :: Function
     , derivedFunctionFunctionRight :: Function }
   | UnwrapArrayFunction
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , unwrapFunctionArray :: Noun }
   | TrainFunction
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , trainFunctionTines :: [Maybe Value] }
   | ExtraArgsFunction
-    { functionMonad :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionDyad  :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionUn :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAnti :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
-    , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
-    , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-    , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+    { functionCalls :: FunctionCalls
     , functionContext :: Maybe Context
     , extraArgsFunctionExtraArgs :: ExtraArgs
     , extraArgsFunctionFunction :: Function }
@@ -306,56 +234,56 @@ instance (Monad m, MonadShow m ScalarValue) => MonadShow m Function where
   showM (ExtraArgsFunction { extraArgsFunctionExtraArgs = args, extraArgsFunctionFunction = fn }) = liftA2 (\fn' args' -> [fst G.parens] ++ fn' ++ [snd G.parens, fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] args' ++ [snd G.extraArgs]) (showM fn) (mapM (\(k1, v1) -> liftA2 (\k v -> k ++ [' ', G.guard, ' '] ++ v) (showM k1) (showM v1)) args)
 
 callMonad :: Function -> ExtraArgs -> Noun -> St Noun
-callMonad f ea x = case functionMonad f of
+callMonad f ea x = case functionMonad $ functionCalls f of
   Just m -> case functionContext f of
     Just ctx -> runWithContext ctx $ m ea x
     Nothing -> m ea x
   Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " cannot be called monadically")
 
 callDyad :: Function -> ExtraArgs -> Noun -> Noun -> St Noun
-callDyad f ea a b = case functionDyad f of
+callDyad f ea a b = case functionDyad $ functionCalls f of
   Just d -> case functionContext f of
     Just ctx -> runWithContext ctx $ d ea a b
     Nothing -> d ea a b
   Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " cannot be called dyadically")
 
 callUn :: Function -> ExtraArgs -> Noun -> St Noun
-callUn f ea x = case functionUn f of
+callUn f ea x = case functionUn $ functionCalls f of
   Just u -> case functionContext f of
     Just ctx -> runWithContext ctx $ u ea x
     Nothing -> u ea x
   Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no un-inverse")
 
 callAnti :: Function -> ExtraArgs -> Noun -> Noun -> St Noun
-callAnti f ea a b = case functionAnti f of
+callAnti f ea a b = case functionAnti $ functionCalls f of
   Just t -> case functionContext f of
     Just ctx -> runWithContext ctx $ t ea a b
     Nothing -> t ea a b
   Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no anti-inverse")
 
 callContra :: Function -> ExtraArgs -> Noun -> Noun -> St Noun
-callContra f ea a b = case functionContra f of
+callContra f ea a b = case functionContra $ functionCalls f of
   Just c -> case functionContext f of
     Just ctx -> runWithContext ctx $ c ea a b
     Nothing -> c ea a b
   Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no contra-inverse")
 
 callDis :: Function -> ExtraArgs -> Noun -> St (Noun, Noun)
-callDis f ea x = case functionDis f of
+callDis f ea x = case functionDis $ functionCalls f of
   Just d -> case functionContext f of
     Just ctx -> runWithContext ctx $ d ea x
     Nothing -> d ea x
   Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no dis-inverse")
 
 callBi :: Function -> ExtraArgs -> Noun -> St Noun
-callBi f ea x = case functionBi f of
+callBi f ea x = case functionBi $ functionCalls f of
   Just i -> case functionContext f of
     Just ctx -> runWithContext ctx $ i ea x
     Nothing -> i ea x
   Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no bi-inverse")
 
 callAna :: Function -> ExtraArgs -> Noun -> Noun -> St [Noun]
-callAna f ea a b = case functionAna f of
+callAna f ea a b = case functionAna $ functionCalls f of
   Just n -> case functionContext f of
     Just ctx -> runWithContext ctx $ n ea a b
     Nothing -> n ea a b
