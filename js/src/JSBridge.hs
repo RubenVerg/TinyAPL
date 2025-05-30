@@ -307,6 +307,8 @@ instance IsJSSt Function where
       let dis = jsLookup v $ toJSString "dis"
       let bi = jsLookup v $ toJSString "bi"
       let ana = jsLookup v $ toJSString "ana"
+      let underForward = jsLookup v $ toJSString "underForward"
+      let underBack = jsLookup v $ toJSString "underBack"
       id <- assignId
       pure $ DefinedFunction {
         functionRepr = repr,
@@ -355,6 +357,17 @@ instance IsJSSt Function where
             x' <- toJSValSt x
             y' <- toJSValSt y
             res <- liftToSt (jsCall3 ana ea' x' y') >>= fromJSValSt
+            liftEither res),
+          functionUnderForward = if jsIsUndefined underForward then Nothing else Just $ (\ea x -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            res <- liftToSt (jsCall2 underForward ea' x') >>= fromJSValSt
+            liftEither res),
+          functionUnderBack = if jsIsUndefined underBack then Nothing else Just $ (\ea x y -> do
+            ea' <- toJSValSt ea
+            x' <- toJSValSt x
+            y' <- toJSValSt y
+            res <- liftToSt (jsCall3 underBack ea' x' y') >>= fromJSValSt
             liftEither res) },
         definedFunctionId = id }
     | otherwise = throwError $ DomainError "fromJSValSt Function: not a function"

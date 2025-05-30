@@ -362,6 +362,7 @@ approximate = '≈'
 fill = '⬚'
 catch = '⎊'
 at = '@'
+contextualUnder = '⍫'
 
 conjunctions =
   [ TinyAPL.Glyphs.atop
@@ -386,4 +387,5 @@ conjunctions =
   , TinyAPL.Glyphs.approximate
   , TinyAPL.Glyphs.fill
   , TinyAPL.Glyphs.catch
-  , TinyAPL.Glyphs.at ]
+  , TinyAPL.Glyphs.at
+  , TinyAPL.Glyphs.contextualUnder ]

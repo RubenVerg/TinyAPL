@@ -12,7 +12,9 @@ module TinyAPL.Function
   , callContra
   , callDis
   , callBi
-  , callAna ) where
+  , callAna
+  , callUnderForward
+  , callUnderBack ) where
 
 import TinyAPL.Context
 import TinyAPL.Error
@@ -38,7 +40,9 @@ data FunctionCalls = FunctionCalls
   , functionContra :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun)
   , functionDis :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
   , functionBi :: Maybe (ExtraArgs -> Noun -> St Noun)
-  , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun]) }
+  , functionAna :: Maybe (ExtraArgs -> Noun -> Noun -> St [Noun])
+  , functionUnderForward :: Maybe (ExtraArgs -> Noun -> St (Noun, Noun))
+  , functionUnderBack :: Maybe (ExtraArgs -> Noun -> Noun -> St Noun) }
   deriving (Generic, NFData)
 
 data Function
@@ -288,3 +292,17 @@ callAna f ea a b = case functionAna $ functionCalls f of
     Just ctx -> runWithContext ctx $ n ea a b
     Nothing -> n ea a b
   Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no ana-inverse")
+
+callUnderForward :: Function -> ExtraArgs -> Noun -> St (Noun, Noun)
+callUnderForward f ea x = case functionUnderForward $ functionCalls f of
+  Just w -> case functionContext f of
+    Just ctx -> runWithContext ctx $ w ea x
+    Nothing -> w ea x
+  Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no contextual under")
+
+callUnderBack :: Function -> ExtraArgs -> Noun -> Noun -> St Noun
+callUnderBack f ea a b = case functionUnderBack $ functionCalls f of
+  Just k -> case functionContext f of
+    Just ctx -> runWithContext ctx $ k ea a b
+    Nothing -> k ea a b
+  Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no contextual under")
