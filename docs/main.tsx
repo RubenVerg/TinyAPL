@@ -47,7 +47,7 @@ const sharedOptions: Partial<HtmlOptions> = {
 	meta: {
 		viewport: 'width=device-width, initial-scale=1',
 	},
-	classes: { body: ['apl387'] },
+	classes: { body: ['tinyapl386'] },
 }
 
 validatePages();
