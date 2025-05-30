@@ -361,6 +361,15 @@ floorAndFracS cea y = liftA2 (,) (floorS cea y) (remainderS cea (Number 1) y)
 floorAndFrac' :: CoreExtraArgs -> Noun -> St (Noun, Noun)
 floorAndFrac' cea y = liftA2 (,) (floor' cea y) (remainder' cea (scalar $ Number 1) y)
 
+underFloorForward :: CoreExtraArgs -> Noun -> St (Noun, Noun)
+underFloorForward cea y = do
+  fl <- floor' cea y
+  fr <- remainder' cea (scalar $ Number 1) y
+  pure (fr, fl)
+
+underFloorBack :: Noun -> Noun -> St Noun
+underFloorBack = add'
+
 ceil :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m ScalarValue
 ceil CoreExtraArgs{ coreExtraArgsTolerance = t } (Number y) = pure $ Number $ complexCeiling' t y
 ceil _ (Character y) = pure $ Character $ toUpper y
@@ -1928,6 +1937,18 @@ under2 f g x = under (f x) g
 
 underK :: MonadError Error m => Noun -> (Noun -> m Noun) -> Noun -> m Noun
 underK arr = under (\_ -> pure arr)
+
+contextualUnder :: MonadError Error m => (Noun -> m (Noun, Noun)) -> (Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
+contextualUnder w f k x = do
+  (context, arr) <- w x
+  res <- f arr
+  k context res
+
+contextualUnder2 :: MonadError Error m => (Noun -> m (Noun, Noun)) -> (Noun -> Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+contextualUnder2 w f k x y = contextualUnder w (f x) k y
+
+contextualUnderK :: MonadError Error m => (Noun -> m (Noun, Noun)) -> Noun -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
+contextualUnderK w arr k x = contextualUnder w (\_ -> pure arr) k x
 
 table :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 table f = atRank2 defaultCoreExtraArgs (onScalars2 defaultCoreExtraArgs f) (0, likePositiveInfinity)

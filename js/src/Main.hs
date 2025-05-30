@@ -99,7 +99,7 @@ lastQuads l = let readLast = (!! l) <$> (liftToSt $ readIORef lasts) in
     case l of
       Just (VNoun arr) -> return arr
       _ -> throwError noLast
-  ) Nothing (quad : "last") Nothing] [PrimitiveFunction (Just $ \ea y -> do
+  ) Nothing (quad : "last") Nothing] [PrimitiveFunction (FunctionCalls (Just $ \ea y -> do
     l <- readLast
     case l of
       Just (VFunction f) -> callMonad f ea y
@@ -109,7 +109,7 @@ lastQuads l = let readLast = (!! l) <$> (liftToSt $ readIORef lasts) in
     case l of
       Just (VFunction f) -> callDyad f ea x y
       _ -> throwError noLast
-  ) Nothing Nothing Nothing Nothing Nothing Nothing (quad : "Last") Nothing] [PrimitiveAdverb (Just $ \ea u -> do
+  ) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing) (quad : "Last") Nothing] [PrimitiveAdverb (Just $ \ea u -> do
     l <- readLast
     case l of
       Just (VAdverb adv) -> callOnNoun adv ea u
