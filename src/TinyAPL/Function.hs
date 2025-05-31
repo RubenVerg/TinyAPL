@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, UndecidableInstances #-}
+{-# LANGUAGE TupleSections #-}
 
 module TinyAPL.Function
   ( ExtraArgs
@@ -14,7 +15,9 @@ module TinyAPL.Function
   , callBi
   , callAna
   , callUnderForward
-  , callUnderBack ) where
+  , callUnderBack
+  , callUnderForwardOrMonad
+  , callUnderBackOrUn ) where
 
 import TinyAPL.Context
 import TinyAPL.Error
@@ -306,3 +309,25 @@ callUnderBack f ea a b = case functionUnderBack $ functionCalls f of
     Just ctx -> runWithContext ctx $ k ea a b
     Nothing -> k ea a b
   Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no contextual under")
+
+callUnderForwardOrMonad :: Function -> ExtraArgs -> Noun -> St (Noun, Noun)
+callUnderForwardOrMonad f ea x = case functionUnderForward $ functionCalls f of
+  Just w -> case functionContext f of
+    Just ctx -> runWithContext ctx $ w ea x
+    Nothing -> w ea x
+  Nothing -> case functionMonad $ functionCalls f of
+    Just m -> case functionContext f of
+      Just ctx -> runWithContext ctx $ (vector [], ) <$> m ea x
+      Nothing -> (vector [], ) <$> m ea x
+    Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no contextual under")
+
+callUnderBackOrUn :: Function -> ExtraArgs -> Noun -> Noun -> St Noun
+callUnderBackOrUn f ea a b = case functionUnderBack $ functionCalls f of
+  Just k -> case functionContext f of
+    Just ctx -> runWithContext ctx $ k ea a b
+    Nothing -> k ea a b
+  Nothing -> case functionUn $ functionCalls f of
+    Just u -> case functionContext f of
+      Just ctx -> runWithContext ctx $ u ea b
+      Nothing -> u ea b
+    Nothing -> showM f >>= (\str -> throwError $ DomainError $ "Function " ++ str ++ " has no contextual under")
