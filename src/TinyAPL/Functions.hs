@@ -815,6 +815,15 @@ unShape' cea arr = do
   shape <- asVector err arr >>= mapM (asNumber err >=> asNat err)
   unShape cea shape
 
+underShapeForward :: MonadError Error m => Noun -> m (Noun, Noun)
+underShapeForward arr = do
+  r <- ravel' arr
+  sh <- shape' arr
+  pure (r, sh)
+
+underShapeBack :: MonadError Error m => Noun -> Noun -> m Noun
+underShapeBack = flip reshape'
+
 rank :: MonadError Error m => Noun -> m Natural
 rank = pure . arrayRank
 
