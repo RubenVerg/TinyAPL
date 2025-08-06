@@ -1900,19 +1900,19 @@ until f p x = let
       go f p x next
   in f x >>= go f p x
 
-repeat1 :: MonadError Error m => (Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> Noun -> m Noun
-repeat1 f fI t y = do
-  let err = DomainError "Repeat right operand must be an integer scalar"
-  n <- asScalar err t >>= asNumber err >>= asInt err
+repeat1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> Noun -> m Noun
+repeat1 cea f fI t y = onScalars1 cea (\t' -> do
+  let err = DomainError "Repeat right operand must be an integer array"
+  n <- asScalar err t' >>= asNumber err >>= asInt err
   if n < 0 then TinyAPL.Functions.repeat fI (fromInteger $ negate n) y
-  else TinyAPL.Functions.repeat f (fromInteger n) y
+  else TinyAPL.Functions.repeat f (fromInteger n) y) t
 
-repeat2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> Noun -> m Noun
-repeat2 f fI t x y = do
-  let err = DomainError "Repeat right operand must be an integer scalar"
-  n <- asScalar err t >>= asNumber err >>= asInt err
+repeat2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> Noun -> m Noun
+repeat2 cea f fI t x y = onScalars1 cea (\t' -> do
+  let err = DomainError "Repeat right operand must be an integer array"
+  n <- asScalar err t' >>= asNumber err >>= asInt err
   if n < 0 then TinyAPL.Functions.repeat (fI x) (fromInteger $ negate n) y
-  else TinyAPL.Functions.repeat (f x) (fromInteger n) y
+  else TinyAPL.Functions.repeat (f x) (fromInteger n) y) t
 
 until1 :: MonadError Error m => (Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
 until1 f p y = let
