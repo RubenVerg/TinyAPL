@@ -48,7 +48,8 @@ data Allowed
 data InnerOptions
   = ReplOptions
     { replPrefixKey :: Char
-    , replPlain :: Bool }
+    , replPlain :: Bool
+    , replKeymap :: Keymap }
   | FileOptions
     { fileEchoLast :: Bool
     , filePath :: FilePath }
