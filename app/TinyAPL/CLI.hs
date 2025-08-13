@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE CPP, LambdaCase, OverloadedStrings, ScopedTypeVariables #-}
 
 #if defined(unix_HOST_OS) || defined(__unix___HOST_OS) || defined(__unix_HOST_OS) || defined(linux_HOST_OS) || defined(__linux___HOST_OS) || defined(__linux_HOST_OS) || defined(darwin_HOST_OS)
 #define is_linux 1
@@ -22,25 +22,79 @@ import TinyAPL.Quads.File (file)
 import TinyAPL.Quads.FFI (ffi, ffiStruct)
 #endif
 
-import System.Environment
 import Control.Monad (void, when)
 import System.IO
 import Data.IORef
-import Data.Maybe
 import Data.List
 import System.Info
 import System.Exit
 import Text.Read
 import Control.DeepSeq
-import Control.Exception (Exception(displayException))
+import Control.Exception (displayException, SomeException, catch)
 import System.Directory
+import qualified Options.Applicative as Opts
+import Data.String
 #ifdef is_linux
 import TinyAPL.Highlighter
 import qualified System.Console.Edited as E
 #endif
 
-defaultPrefixKey :: String
-defaultPrefixKey = "`"
+data Allowed
+  = Allowed
+    { allowedFileImport :: Bool
+    , allowedFFI :: Bool
+    , allowedFileSystem :: Bool }
+
+data InnerOptions
+  = ReplOptions
+    { replPrefixKey :: Char
+    , replPlain :: Bool }
+  | FileOptions
+    { fileEchoLast :: Bool
+    , filePath :: FilePath }
+
+data Options = Options Allowed InnerOptions
+
+instance IsString Char where
+  fromString = headPromise
+
+options :: Opts.Parser Options
+options = Options
+  <$> allowed 
+  <*> (ReplOptions
+    <$> Opts.strOption
+      (  Opts.long "prefix"
+      <> Opts.help "Prefix key for entering glyphs"
+      <> Opts.metavar "PREFIX"
+      <> Opts.value defaultPrefixKey )
+    <*> Opts.switch
+      (  Opts.long "plain"
+      <> Opts.short 'Z'
+      <> Opts.help "Disable all fancy I/O")
+    Opts.<|> FileOptions
+    <$> Opts.switch
+      (  Opts.long "echo-last"
+      <> Opts.short 'E'
+      <> Opts.help "Echo the result of the last expression" )
+    <*> Opts.argument Opts.str (Opts.metavar "FILE"))
+  where
+    allowed = Opts.flag' (Allowed True True True)
+      (  Opts.long "allow-all"
+      <> Opts.short 'A'
+      <> Opts.help "Allow all features" )
+      Opts.<|> Allowed
+        <$> Opts.switch
+          (  Opts.long "allow-import"
+          <> Opts.help "Allow importing from the filesystem" )
+        <*> Opts.switch
+          (  Opts.long "allow-ffi"
+          <> Opts.help "Allow using the foreign function interface" )
+        <*> Opts.switch
+          (  Opts.long "allow-fs"
+          <> Opts.help "Allow reading and writing to the filesystem" )
+
+defaultPrefixKey :: Char
+defaultPrefixKey = '`'
 
 defaultKeymap :: String
 defaultKeymap = "UsIntl"
@@ -81,28 +135,14 @@ cli = do
 
   id <- newIORef 0
 
-  args <- getArgs
-  let prefixKeyS = fromMaybe defaultPrefixKey $ listToMaybe $ mapMaybe (stripPrefix "-prefix=") args
-  when (length prefixKeyS /= 1) (do
-        hPutStrLn stderr "Usage:"
-        hPutStrLn stderr "\t\"-prefix=X\""
-        hPutStrLn stderr "\twhere X is the prefix key (note, there's no space between '-prefix=' and the key)"
-        die "Prefix key was not a singular key, bailing...")
-  let [prefixKey] = prefixKeyS -- SAFETY: We just checked its length is exactly 1
-
-  let keymapS = fromMaybe defaultKeymap $ listToMaybe $ mapMaybe (stripPrefix "-keymap=") args
-  keymap <- case readMaybe keymapS of
-    Just keymap -> pure keymap
-    Nothing -> (do
-        hPutStrLn stderr "Usage:"
-        hPutStrLn stderr "\t\"-keymap=X\""
-        hPutStrLn stderr "\twhere X is the keymap (note, there's no space between '-keymap=' and the keymap)"
-        hPutStrLn stderr $ "\tavailable keymaps are: [" ++ unwords (map show existingKeymaps) ++ "] (not '" ++ keymapS ++ "')"
-        die "Unrecognized keymap, bailing...")
-
+  Options allowed inner <- Opts.execParser $ Opts.info (Opts.helper <*> options) Opts.fullDesc
   let context = Context {
       contextScope = scope
-    , contextQuads = core <> ffiQuads <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, file, TinyAPL.CLI.stdin ] [ makeImport readImportFile Nothing ] [] []
+    , contextQuads = core 
+      <> (if allowedFFI allowed then ffiQuads else mempty)
+      <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, TinyAPL.CLI.stdin ] [] [] []
+      <> (if allowedFileSystem allowed then quadsFromReprs [ file ] [] [] [] else mempty)
+      <> quadsFromReprs [] [ makeImport (if allowedFileImport allowed then Just readImportFile else Nothing) Nothing ] [] []
     , contextIn = liftToSt getLine
     , contextOut = \str -> do
       liftToSt $ putStr str
@@ -114,15 +154,11 @@ cli = do
     , contextDirectory = cwd
     , contextPrimitives = P.primitives }
 
-  case filter (not . isPrefixOf "-") args of
-    []     -> repl context prefixKey keymap
-    [path] -> do
+  case inner of
+    ReplOptions prefixKey plain keymap -> repl context prefixKey keymap plain
+    FileOptions echo path -> do
       code <- F.readUtf8 path
-      void $ runCode False path code context
-    _      -> do
-      hPutStrLn stderr "Usage:"
-      hPutStrLn stderr "tinyapl         Start a REPL"
-      hPutStrLn stderr "tinyapl path    Run a file"
+      void $ runCode echo path code context
 
 runCode :: Bool -> String -> String -> Context -> IO Context
 runCode output file code context = do
@@ -137,8 +173,15 @@ runCode output file code context = do
   pure context'
 
 
-repl :: Context -> Char -> Keymap -> IO ()
-repl context prefixKey keymap = let
+repl :: Context -> Char -> Keymap -> Bool -> IO ()
+repl context _ _ True = let
+  go context = do
+    line <- (Just <$> getLine) `catch` (\(_ :: SomeException) -> pure Nothing)
+    case line of
+      Nothing -> pure ()
+      Just line' -> runCode True "<repl>" line' context >>= go
+  in go context
+repl context prefixKey keymap False = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
@@ -158,35 +201,6 @@ repl context prefixKey keymap = let
       Just line' -> runCode True "<repl>" line' context >>= go el
   in do
     putStrLn "TinyAPL REPL, empty line to exit"
-    putStrLn "Supported primitives:"
-    putStrLn $ "  " ++ unwords (fst <$> P.arrays)
-    putStrLn $ "  " ++ unwords (fst <$> P.functions)
-    putStrLn $ "  " ++ unwords (fst <$> P.adverbs)
-    putStrLn $ "  " ++ unwords (fst <$> P.conjunctions)
-    putStrLn "Supported quad names:"
-    putStrLn $ "  " ++ unwords (fst <$> quadArrays (contextQuads context))
-    putStrLn $ "  " ++ unwords (fst <$> quadFunctions (contextQuads context))
-    putStrLn $ "  " ++ unwords (fst <$> quadAdverbs (contextQuads context))
-    putStrLn $ "  " ++ unwords (fst <$> quadConjunctions (contextQuads context))
-    putStrLn "Supported features:"
-    putStrLn $ "* dfns " ++ [fst G.braces] ++ "code" ++ [snd G.braces] ++ ", d-monadic-ops " ++ [G.underscore, fst G.braces] ++ "code" ++ [snd G.braces] ++ ", d-dyadic-ops " ++ [G.underscore, fst G.braces] ++ "code" ++ [snd G.braces, G.underscore]
-    putStrLn $ "  " ++ [G.alpha] ++ " left argument, " ++ [G.omega] ++ " right argument,"
-    putStrLn $ "  " ++ [G.alpha, G.alpha] ++ " left array operand, " ++ [G.alphaBar, G.alphaBar] ++ " left function operand, " ++ [G.omega, G.omega] ++ " right array operand, " ++ [G.omegaBar, G.omegaBar] ++ " right function operand,"
-    putStrLn $ "  " ++ [G.del] ++ " recurse function, " ++ [G.underscore, G.del] ++ " recurse monadic op, " ++ [G.underscore, G.del, G.underscore] ++ " recurse dyadic op"
-    putStrLn $ "  " ++ [G.exit] ++ " early exit, " ++ [G.guard] ++ " guard"
-    putStrLn $ "  " ++ [G.separator] ++ " multiple statements"
-    putStrLn $ "* numbers: " ++ [G.decimal] ++ " decimal separator, " ++ [G.negative] ++ " negative sign, " ++ [G.exponent] ++ " exponent notation, " ++ [G.imaginary] ++ " complex separator"
-    putStrLn $ "* character literals: " ++ [G.charDelimiter] ++ "abc" ++ [G.charDelimiter]
-    putStrLn $ "* string literals: " ++ [G.stringDelimiter] ++ "abc" ++ [G.stringDelimiter] ++ " with escapes using " ++ [G.stringEscape]
-    putStrLn $ "* names: abc array, Abc function, _Abc monadic op, _Abc_ dyadic op"
-    putStrLn $ "* get " ++ [G.quad] ++ " read evaluated input, get " ++ [G.quadQuote] ++ " read string input, set " ++ [G.quad] ++ " print with newline, set " ++ [G.quadQuote] ++ " print without newline"
-    putStrLn $ "* array notation: " ++ [fst G.vector, G.separator, snd G.vector] ++ " vector, " ++ [fst G.highRank, G.separator, snd G.highRank] ++ " higher rank array (combine major cells), " ++ [G.tie] ++ " tie (like vector notation)"
-    putStrLn $ "* trains: " ++ [fst G.train, snd G.train] ++ " deriving function, " ++ [G.underscore, fst G.train, snd G.train] ++ " deriving adverb, " ++ [G.underscore, fst G.train, snd G.train, G.underscore] ++ " deriving conjunction"
-    putStrLn $ "* structs: " ++ [fst G.struct] ++ "statements" ++ [snd G.struct] ++ ", qualified access " ++ [G.access]
-    putStrLn $ "* assignment with " ++ [G.assign] ++ ", modify assignment with " ++ [G.assignModify] ++ ", constant assignment with " ++ [G.assignConstant] ++ ", private assignment with " ++ [G.assignPrivate]
-    putStrLn $ "* array assignment with array notation of names"
-    putStrLn $ "* comments: " ++ [G.comment] ++ " until end of line, " ++ [fst G.inlineComment, snd G.inlineComment] ++ " inline"
-    
 #ifdef is_linux
     singleCharacters <- case singleChars keymap of
                              Just c -> pure c

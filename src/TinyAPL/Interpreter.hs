@@ -31,14 +31,17 @@ asWraps :: MonadError Error m => Error -> Noun -> m Function
 asWraps err arr = do
   if null $ arrayShape arr then asWrap err (headPromise $ arrayContents arr)
   else pure $ UnwrapArrayFunction
-    { functionMonad = Just $ \ea x -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callMonad f ea x)) arr
-    , functionDyad = Just $ \ea x y -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callDyad f ea x y)) arr
-    , functionUn = Just $ \ea x -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callUn f ea x)) arr
-    , functionAnti = Just $ \ea x y -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callAnti f ea x y)) arr
-    , functionContra = Just $ \ea x y -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callContra f ea x y)) arr
-    , functionDis = Nothing
-    , functionBi = Just $ \ea x -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callBi f ea x)) arr
-    , functionAna = Nothing
+    { functionCalls = FunctionCalls
+      { functionMonad = Just $ \ea x -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callMonad f ea x)) arr
+      , functionDyad = Just $ \ea x y -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callDyad f ea x y)) arr
+      , functionUn = Just $ \ea x -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callUn f ea x)) arr
+      , functionAnti = Just $ \ea x y -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callAnti f ea x y)) arr
+      , functionContra = Just $ \ea x y -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callContra f ea x y)) arr
+      , functionDis = Nothing
+      , functionBi = Just $ \ea x -> F.onScalars1 defaultCoreExtraArgs (\w -> asScalar err w >>= asWrap err >>= (\f -> callBi f ea x)) arr
+      , functionAna = Nothing
+      , functionUnderForward = Nothing
+      , functionUnderBack = Nothing }
     , functionContext = Nothing
     , unwrapFunctionArray = arr }
 
@@ -283,7 +286,7 @@ evalMonadCall _ _                        = throwError $ DomainError "Invalid arg
 
 evalDyadCall :: Value -> Value -> St Value
 evalDyadCall (VNoun arr) (VFunction f) =
-  return $ VFunction $ PartialFunction { functionMonad = Just $ \ea -> callDyad f ea arr, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionContext = functionContext f, partialFunctionFunction = f, partialFunctionLeft = arr }
+  return $ VFunction $ PartialFunction { functionCalls = (FunctionCalls { functionMonad = Just $ \ea -> callDyad f ea arr, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }), functionContext = functionContext f, partialFunctionFunction = f, partialFunctionLeft = arr }
 evalDyadCall _ _                       = throwError $ DomainError "Invalid arguments to dyad call evaluation"
 
 evalAdverbCall :: Value -> Value -> St Value
@@ -408,21 +411,24 @@ evalDefined p statements cat = let
         let dfn = DefinedFunction {
             functionRepr = "{...}"
           , functionContext = Just $ sc
-          , functionMonad = Just $ \ea x -> run
-            [ ([G.epsilon], (VariableConstant, VNoun $ dictionary ea))
-            , ([G.omega], (VariableConstant, VNoun x))
-            , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-          , functionDyad = Just $ \ea x y -> run
-            [ ([G.epsilon], (VariableConstant, VNoun $ dictionary ea))
-            , ([G.alpha], (VariableConstant, VNoun x))
-            , ([G.omega], (VariableConstant, VNoun y))
-            , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-          , functionUn = Nothing
-          , functionAnti = Nothing
-          , functionContra = Nothing
-          , functionDis = Nothing
-          , functionBi = Nothing
-          , functionAna = Nothing
+          , functionCalls = FunctionCalls
+            { functionMonad = Just $ \ea x -> run
+              [ ([G.epsilon], (VariableConstant, VNoun $ dictionary ea))
+              , ([G.omega], (VariableConstant, VNoun x))
+              , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+            , functionDyad = Just $ \ea x y -> run
+              [ ([G.epsilon], (VariableConstant, VNoun $ dictionary ea))
+              , ([G.alpha], (VariableConstant, VNoun x))
+              , ([G.omega], (VariableConstant, VNoun y))
+              , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+            , functionUn = Nothing
+            , functionAnti = Nothing
+            , functionContra = Nothing
+            , functionDis = Nothing
+            , functionBi = Nothing
+            , functionAna = Nothing
+            , functionUnderForward = Nothing
+            , functionUnderBack = Nothing }
           , definedFunctionId = id }
         pure $ VFunction dfn
       CatAdverb -> do
@@ -436,25 +442,28 @@ evalDefined p statements cat = let
             let dfn = DefinedFunction {
                 functionRepr = "(" ++ aS ++ ")_{...}"
               , functionContext = Just $ sc
-              , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
-                , ([G.omega], (VariableConstant, VNoun x))
-                , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
-                , ([G.alpha], (VariableConstant, VNoun x))
-                , ([G.omega], (VariableConstant, VNoun y))
-                , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionUn = Nothing
-              , functionAnti = Nothing
-              , functionContra = Nothing
-              , functionDis = Nothing
-              , functionBi = Nothing
-              , functionAna = Nothing
+              , functionCalls = FunctionCalls
+                { functionMonad = Just $ \ea x -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
+                  , ([G.omega], (VariableConstant, VNoun x))
+                  , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionDyad = Just $ \ea x y -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
+                  , ([G.alpha], (VariableConstant, VNoun x))
+                  , ([G.omega], (VariableConstant, VNoun y))
+                  , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionUn = Nothing
+                , functionAnti = Nothing
+                , functionContra = Nothing
+                , functionDis = Nothing
+                , functionBi = Nothing
+                , functionAna = Nothing
+                , functionUnderForward = Nothing
+                , functionUnderBack = Nothing }
               , definedFunctionId = id }
             pure dfn
           , adverbOnFunction = Just $ \ea' a -> do
@@ -463,25 +472,28 @@ evalDefined p statements cat = let
             let dfn = DefinedFunction {
                 functionRepr = "(" ++ aS ++ ")_{...}"
               , functionContext = Just $ sc
-              , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
-                , ([G.omega], (VariableConstant, VNoun x))
-                , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
-                , ([G.alpha], (VariableConstant, VNoun x))
-                , ([G.omega], (VariableConstant, VNoun y))
-                , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionUn = Nothing
-              , functionAnti = Nothing
-              , functionContra = Nothing
-              , functionDis = Nothing
-              , functionBi = Nothing
-              , functionAna = Nothing
+              , functionCalls = FunctionCalls {
+                functionMonad = Just $ \ea x -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
+                  , ([G.omega], (VariableConstant, VNoun x))
+                  , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionDyad = Just $ \ea x y -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
+                  , ([G.alpha], (VariableConstant, VNoun x))
+                  , ([G.omega], (VariableConstant, VNoun y))
+                  , ([G.underscore, G.del], (VariableConstant, VAdverb dadv))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionUn = Nothing
+                , functionAnti = Nothing
+                , functionContra = Nothing
+                , functionDis = Nothing
+                , functionBi = Nothing
+                , functionAna = Nothing
+                , functionUnderForward = Nothing
+                , functionUnderBack = Nothing }
               , definedFunctionId = id }
             pure dfn
           , definedAdverbId = id }
@@ -498,27 +510,30 @@ evalDefined p statements cat = let
             let dfn = DefinedFunction {
                 functionRepr = "(" ++ aS ++ ")_{...}_(" ++ bS ++ ")"
               , functionContext = Just $ sc
-              , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
-                , ([G.omega, G.omega], (VariableConstant, VNoun b))
-                , ([G.omega], (VariableConstant, VNoun x))
-                , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
-                , ([G.omega, G.omega], (VariableConstant, VNoun b))
-                , ([G.alpha], (VariableConstant, VNoun x))
-                , ([G.omega], (VariableConstant, VNoun y))
-                , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionUn = Nothing
-              , functionAnti = Nothing
-              , functionContra = Nothing
-              , functionDis = Nothing
-              , functionBi = Nothing
-              , functionAna = Nothing
+              , functionCalls = FunctionCalls 
+                { functionMonad = Just $ \ea x -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
+                  , ([G.omega, G.omega], (VariableConstant, VNoun b))
+                  , ([G.omega], (VariableConstant, VNoun x))
+                  , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionDyad = Just $ \ea x y -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
+                  , ([G.omega, G.omega], (VariableConstant, VNoun b))
+                  , ([G.alpha], (VariableConstant, VNoun x))
+                  , ([G.omega], (VariableConstant, VNoun y))
+                  , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionUn = Nothing
+                , functionAnti = Nothing
+                , functionContra = Nothing
+                , functionDis = Nothing
+                , functionBi = Nothing
+                , functionAna = Nothing
+                , functionUnderForward = Nothing
+                , functionUnderBack = Nothing }
               , definedFunctionId = id }
             pure dfn
           , conjOnNounFunction = Just $ \ea' a b -> do
@@ -528,27 +543,30 @@ evalDefined p statements cat = let
             let dfn = DefinedFunction {
                 functionRepr = "(" ++ aS ++ ")_{...}_(" ++ bS ++ ")"
               , functionContext = Just $ sc
-              , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
-                , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
-                , ([G.omega], (VariableConstant, VNoun x))
-                , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
-                , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
-                , ([G.alpha], (VariableConstant, VNoun x))
-                , ([G.omega], (VariableConstant, VNoun y))
-                , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionUn = Nothing
-              , functionAnti = Nothing
-              , functionContra = Nothing
-              , functionDis = Nothing
-              , functionBi = Nothing
-              , functionAna = Nothing
+              , functionCalls = FunctionCalls
+                { functionMonad = Just $ \ea x -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
+                  , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
+                  , ([G.omega], (VariableConstant, VNoun x))
+                  , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionDyad = Just $ \ea x y -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alpha, G.alpha], (VariableConstant, VNoun a))
+                  , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
+                  , ([G.alpha], (VariableConstant, VNoun x))
+                  , ([G.omega], (VariableConstant, VNoun y))
+                  , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionUn = Nothing
+                , functionAnti = Nothing
+                , functionContra = Nothing
+                , functionDis = Nothing
+                , functionBi = Nothing
+                , functionAna = Nothing
+                , functionUnderForward = Nothing
+                , functionUnderBack = Nothing }
               , definedFunctionId = id }
             pure dfn
           , conjOnFunctionNoun = Just $ \ea' a b -> do
@@ -558,27 +576,30 @@ evalDefined p statements cat = let
             let dfn = DefinedFunction {
                 functionRepr = "(" ++ aS ++ ")_{...}_(" ++ bS ++ ")"
               , functionContext = Just $ sc
-              , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
-                , ([G.omega, G.omega], (VariableConstant, VNoun b))
-                , ([G.omega], (VariableConstant, VNoun x))
-                , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
-                , ([G.omega, G.omega], (VariableConstant, VNoun b))
-                , ([G.alpha], (VariableConstant, VNoun x))
-                , ([G.omega], (VariableConstant, VNoun y))
-                , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionUn = Nothing
-              , functionAnti = Nothing
-              , functionContra = Nothing
-              , functionDis = Nothing
-              , functionBi = Nothing
-              , functionAna = Nothing
+              , functionCalls = FunctionCalls
+                { functionMonad = Just $ \ea x -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
+                  , ([G.omega, G.omega], (VariableConstant, VNoun b))
+                  , ([G.omega], (VariableConstant, VNoun x))
+                  , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionDyad = Just $ \ea x y -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
+                  , ([G.omega, G.omega], (VariableConstant, VNoun b))
+                  , ([G.alpha], (VariableConstant, VNoun x))
+                  , ([G.omega], (VariableConstant, VNoun y))
+                  , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionUn = Nothing
+                , functionAnti = Nothing
+                , functionContra = Nothing
+                , functionDis = Nothing
+                , functionBi = Nothing
+                , functionAna = Nothing
+                , functionUnderForward = Nothing
+                , functionUnderBack = Nothing }
               , definedFunctionId = id }
             pure dfn
           , conjOnFunctionFunction = Just $ \ea' a b -> do
@@ -588,27 +609,30 @@ evalDefined p statements cat = let
             let dfn = DefinedFunction {
                 functionRepr = "(" ++ aS ++ ")_{...}_(" ++ bS ++ ")"
               , functionContext = Just $ sc
-              , functionMonad = Just $ \ea x -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
-                , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
-                , ([G.omega], (VariableConstant, VNoun x))
-                , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionDyad = Just $ \ea x y -> run
-                [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
-                , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
-                , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
-                , ([G.alpha], (VariableConstant, VNoun x))
-                , ([G.omega], (VariableConstant, VNoun y))
-                , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
-                , ([G.del], (VariableConstant, VFunction dfn)) ] sc
-              , functionUn = Nothing
-              , functionAnti = Nothing
-              , functionContra = Nothing
-              , functionDis = Nothing
-              , functionBi = Nothing
-              , functionAna = Nothing
+              , functionCalls = FunctionCalls 
+                { functionMonad = Just $ \ea x -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
+                  , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
+                  , ([G.omega], (VariableConstant, VNoun x))
+                  , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionDyad = Just $ \ea x y -> run
+                  [ ([G.epsilon], (VariableConstant, VNoun $ dictionary $ ea ++ ea'))
+                  , ([G.alphaBar, G.alphaBar], (VariableConstant, VFunction a))
+                  , ([G.omegaBar, G.omegaBar], (VariableConstant, VFunction b))
+                  , ([G.alpha], (VariableConstant, VNoun x))
+                  , ([G.omega], (VariableConstant, VNoun y))
+                  , ([G.underscore, G.del, G.underscore], (VariableConstant, VConjunction dconj))
+                  , ([G.del], (VariableConstant, VFunction dfn)) ] sc
+                , functionUn = Nothing
+                , functionAnti = Nothing
+                , functionContra = Nothing
+                , functionDis = Nothing
+                , functionBi = Nothing
+                , functionAna = Nothing
+                , functionUnderForward = Nothing
+                , functionUnderBack = Nothing }
               , definedFunctionId = id }
             pure dfn
           , definedConjunctionId = id }
@@ -617,30 +641,37 @@ evalDefined p statements cat = let
 
 bindExtraArgsFunction :: ExtraArgs -> Function -> Function
 bindExtraArgsFunction ea f = ExtraArgsFunction
-  { functionMonad = case functionMonad f of
-    Nothing -> Nothing
-    Just _ -> Just $ \ea' y -> callMonad f (nubBy ((==) `on` fst) $ ea' ++ ea) y
-  , functionDyad = case functionDyad f of
-    Nothing -> Nothing
-    Just _ -> Just $ \ea' x y -> callDyad f (nubBy ((==) `on` fst) $ ea' ++ ea) x y
-  , functionUn = case functionUn f of
-    Nothing -> Nothing
-    Just _ -> Just $ \ea' y -> callUn f (nubBy ((==) `on` fst) $ ea' ++ ea) y
-  , functionAnti = case functionAnti f of
-    Nothing -> Nothing
-    Just _ -> Just $ \ea' x y -> callAnti f (nubBy ((==) `on` fst) $ ea' ++ ea) x y
-  , functionContra = case functionContra f of
-    Nothing -> Nothing
-    Just _ -> Just $ \ea' x y -> callContra f (nubBy ((==) `on` fst) $ ea' ++ ea) x y
-  , functionDis = case functionDis f of
-    Nothing -> Nothing
-    Just _ -> Just $ \ea' y -> callDis f (nubBy ((==) `on` fst) $ ea' ++ ea) y
-  , functionBi = case functionBi f of
-    Nothing -> Nothing
-    Just _ -> Just $ \ea' y -> callBi f (nubBy ((==) `on` fst) $ ea' ++ ea) y
-  , functionAna = case functionAna f of
-    Nothing -> Nothing
-    Just _ -> Just $ \ea' x y -> callAna f (nubBy ((==) `on` fst) $ ea' ++ ea) x y
+  { functionCalls = FunctionCalls
+    { functionMonad = case functionMonad $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' y -> callMonad f (nubBy ((==) `on` fst) $ ea' ++ ea) y
+    , functionDyad = case functionDyad $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' x y -> callDyad f (nubBy ((==) `on` fst) $ ea' ++ ea) x y
+    , functionUn = case functionUn $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' y -> callUn f (nubBy ((==) `on` fst) $ ea' ++ ea) y
+    , functionAnti = case functionAnti $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' x y -> callAnti f (nubBy ((==) `on` fst) $ ea' ++ ea) x y
+    , functionContra = case functionContra $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' x y -> callContra f (nubBy ((==) `on` fst) $ ea' ++ ea) x y
+    , functionDis = case functionDis $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' y -> callDis f (nubBy ((==) `on` fst) $ ea' ++ ea) y
+    , functionBi = case functionBi $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' y -> callBi f (nubBy ((==) `on` fst) $ ea' ++ ea) y
+    , functionAna = case functionAna $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' x y -> callAna f (nubBy ((==) `on` fst) $ ea' ++ ea) x y
+    , functionUnderForward = case functionUnderForward $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' y -> callUnderForward f (nubBy ((==) `on` fst) $ ea' ++ ea) y
+    , functionUnderBack = case functionUnderBack $ functionCalls f of
+      Nothing -> Nothing
+      Just _ -> Just $ \ea' x y -> callUnderBack f (nubBy ((==) `on` fst) $ ea' ++ ea) x y }
   , functionContext = functionContext f
   , extraArgsFunctionExtraArgs = ea
   , extraArgsFunctionFunction = f }
@@ -694,25 +725,25 @@ evalTrain p cat es = let
     , conjContext = Nothing }
 
   atop :: Function -> Function -> Function
-  atop f g = PrimitiveFunction { functionMonad = Just $ \ea -> F.compose (callMonad f ea) (callMonad g ea), functionDyad = Just $ \ea -> F.atop (callMonad f ea) (callDyad g ea), functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
+  atop f g = PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ \ea -> F.compose (callMonad f ea) (callMonad g ea), functionDyad = Just $ \ea -> F.atop (callMonad f ea) (callDyad g ea), functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
 
   fork :: Function -> Function -> Function -> Function
-  fork f g h = PrimitiveFunction { functionMonad = Just $ \ea -> F.fork1 (callMonad f ea) (callDyad g ea) (callMonad h ea), functionDyad = Just $ \ea -> F.fork2 (callDyad f ea) (callDyad g ea) (callDyad h ea), functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
+  fork f g h = PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ \ea -> F.fork1 (callMonad f ea) (callDyad g ea) (callMonad h ea), functionDyad = Just $ \ea -> F.fork2 (callDyad f ea) (callDyad g ea) (callDyad h ea), functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
 
   bindLeft :: Function -> Noun -> Function
-  bindLeft f x = PrimitiveFunction { functionMonad = Just $ \ea y -> callDyad f ea x y, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
+  bindLeft f x = PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ \ea y -> callDyad f ea x y, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
 
   bindRight :: Function -> Noun -> Function
-  bindRight f y = PrimitiveFunction { functionMonad = Just $ \ea x -> callDyad f ea x y, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
+  bindRight f y = PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ \ea x -> callDyad f ea x y, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
 
   train1 :: Value -> St Value
-  train1 (VNoun x) = pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ const $ F.constant1 x, functionDyad = Just $ const $ F.constant2 x, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
+  train1 (VNoun x) = pure $ VFunction $ PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ const $ F.constant1 x, functionDyad = Just $ const $ F.constant2 x, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
   train1 o = pure $ o
 
   train2 :: Value -> Value -> St Value
-  train2 (VNoun x) (VNoun _) = pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ const $ F.constant1 x, functionDyad = Just $ const $ F.constant2 x, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
-  train2 (VNoun x) (VFunction g) = pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ \ea y -> callDyad g ea x y, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
-  train2 (VFunction f) (VNoun y) = pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ \ea x -> callDyad f ea x y, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
+  train2 (VNoun x) (VNoun _) = pure $ VFunction $ PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ const $ F.constant1 x, functionDyad = Just $ const $ F.constant2 x, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
+  train2 (VNoun x) (VFunction g) = pure $ VFunction $ PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ \ea y -> callDyad g ea x y, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
+  train2 (VFunction f) (VNoun y) = pure $ VFunction $ PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ \ea x -> callDyad f ea x y, functionDyad = Nothing, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
   train2 (VFunction f) (VFunction g) = pure $ VFunction $ atop f g
   train2 (VNoun x) (VAdverb a) = VFunction <$> callOnNoun a [] x 
   train2 (VFunction f) (VAdverb a) = VFunction <$> callOnFunction a [] f
@@ -734,16 +765,16 @@ evalTrain p cat es = let
     throwError $ DomainError $ "2-train with " ++ xS ++ " and " ++ yS ++ "?"
 
   train3 :: Value -> Value -> Value -> St Value
-  train3 (VNoun _) (VNoun y) (VNoun _) = pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ const $ F.constant1 y, functionDyad = Just $ const $ F.constant2 y, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
-  train3 (VNoun _) (VNoun y) (VFunction _) = pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ const $ F.constant1 y, functionDyad = Just $ const $ F.constant2 y, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
-  train3 (VFunction _) (VNoun y) (VNoun _) = pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ const $ F.constant1 y, functionDyad = Just $ const $ F.constant2 y, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
-  train3 (VFunction _) (VNoun y) (VFunction _) = pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ const $ F.constant1 y, functionDyad = Just $ const $ F.constant2 y, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
+  train3 (VNoun _) (VNoun y) (VNoun _) = pure $ VFunction $ PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ const $ F.constant1 y, functionDyad = Just $ const $ F.constant2 y, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
+  train3 (VNoun _) (VNoun y) (VFunction _) = pure $ VFunction $ PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ const $ F.constant1 y, functionDyad = Just $ const $ F.constant2 y, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
+  train3 (VFunction _) (VNoun y) (VNoun _) = pure $ VFunction $ PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ const $ F.constant1 y, functionDyad = Just $ const $ F.constant2 y, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
+  train3 (VFunction _) (VNoun y) (VFunction _) = pure $ VFunction $ PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ const $ F.constant1 y, functionDyad = Just $ const $ F.constant2 y, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
   train3 (VFunction f) (VFunction g) (VFunction h) = pure $ VFunction $ fork f g h
   train3 (VNoun x) (VFunction g) (VFunction h) = pure $ VFunction $ atop (bindLeft g x) h
   train3 (VFunction f) (VFunction g) (VNoun z) = pure $ VFunction $ atop (bindRight g z) f
   train3 (VNoun x) (VFunction g) (VNoun z) = do
     r <- callDyad g [] x z
-    pure $ VFunction $ PrimitiveFunction { functionMonad = Just $ const $ F.constant1 r, functionDyad = Just $ const $ F.constant2 r, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionRepr = "", functionContext = Nothing }
+    pure $ VFunction $ PrimitiveFunction { functionCalls = FunctionCalls { functionMonad = Just $ const $ F.constant1 r, functionDyad = Just $ const $ F.constant2 r, functionUn = Nothing, functionAnti = Nothing, functionContra = Nothing, functionDis = Nothing, functionBi = Nothing, functionAna = Nothing, functionUnderForward = Nothing, functionUnderBack = Nothing }, functionRepr = "", functionContext = Nothing }
   train3 (VNoun x) (VConjunction c) (VNoun z) = VFunction <$> callOnNounAndNoun c [] x z
   train3 (VNoun x) (VConjunction c) (VFunction h) = VFunction <$> callOnNounAndFunction c [] x h
   train3 (VFunction f) (VConjunction c) (VNoun z) = VFunction <$> callOnFunctionAndNoun c [] f z
@@ -834,18 +865,18 @@ evalTrain p cat es = let
 
   withTrainRepr :: [Maybe Value] -> Value -> St Value
   withTrainRepr _ (VNoun _) = throwError $ DomainError "Array train?"
-  withTrainRepr us (VFunction f) = pure $ VFunction $ TrainFunction { functionMonad = functionMonad f, functionDyad = functionDyad f, functionUn = functionUn f, functionAnti = functionAnti f, functionContra = functionContra f, functionDis = functionDis f, functionBi = functionBi f, functionAna = functionAna f, functionContext = functionContext f, trainFunctionTines = us }
+  withTrainRepr us (VFunction f) = pure $ VFunction $ TrainFunction { functionCalls = functionCalls f, functionContext = functionContext f, trainFunctionTines = us }
   withTrainRepr us (VAdverb a) = let a'' = TrainAdverb {
-      adverbOnNoun = (\a' _ x -> (\fn -> DerivedFunctionNoun { functionMonad = functionMonad fn, functionDyad = functionDyad fn, functionUn = functionUn fn, functionAnti = functionAnti fn, functionContra = functionContra fn, functionDis = functionDis fn, functionBi = functionBi fn, functionAna = functionAna fn, functionContext = functionContext fn, derivedFunctionAdverb = a'', derivedFunctionNounLeft = x }) <$> a' [] x) <$> adverbOnNoun a
-    , adverbOnFunction = (\a' _ f -> (\fn -> DerivedFunctionFunction { functionMonad = functionMonad fn, functionDyad = functionDyad fn, functionUn = functionUn fn, functionAnti = functionAnti fn, functionContra = functionContra fn, functionDis = functionDis fn, functionBi = functionBi fn, functionAna = functionAna fn, functionContext = functionContext fn, derivedFunctionAdverb = a'', derivedFunctionFunctionLeft = f }) <$> a' [] f) <$> adverbOnFunction a
+      adverbOnNoun = (\a' _ x -> (\fn -> DerivedFunctionNoun { functionCalls = functionCalls fn, functionContext = functionContext fn, derivedFunctionAdverb = a'', derivedFunctionNounLeft = x }) <$> a' [] x) <$> adverbOnNoun a
+    , adverbOnFunction = (\a' _ f -> (\fn -> DerivedFunctionFunction { functionCalls = functionCalls fn, functionContext = functionContext fn, derivedFunctionAdverb = a'', derivedFunctionFunctionLeft = f }) <$> a' [] f) <$> adverbOnFunction a
     , adverbContext = adverbContext a
     , trainAdverbTines = us }
     in pure $ VAdverb a''
   withTrainRepr us (VConjunction c) = let c'' = TrainConjunction {
-      conjOnNounNoun = (\c' _ x y -> (\fn -> DerivedFunctionNounNoun { functionMonad = functionMonad fn, functionDyad = functionDyad fn, functionUn = functionUn fn, functionAnti = functionAnti fn, functionContra = functionContra fn, functionDis = functionDis fn, functionBi = functionBi fn, functionAna = functionAna fn, functionContext = functionContext fn, derivedFunctionConjunction = c'', derivedFunctionNounLeft = x, derivedFunctionNounRight = y }) <$> c' [] x y) <$> conjOnNounNoun c
-    , conjOnNounFunction = (\c' _ x y -> (\fn -> DerivedFunctionNounFunction { functionMonad = functionMonad fn, functionDyad = functionDyad fn, functionUn = functionUn fn, functionAnti = functionAnti fn, functionContra = functionContra fn, functionDis = functionDis fn, functionBi = functionBi fn, functionAna = functionAna fn, functionContext = functionContext fn, derivedFunctionConjunction = c'', derivedFunctionNounLeft = x, derivedFunctionFunctionRight = y }) <$> c' [] x y) <$> conjOnNounFunction c
-    , conjOnFunctionNoun = (\c' _ f y -> (\fn -> DerivedFunctionFunctionNoun { functionMonad = functionMonad fn, functionDyad = functionDyad fn, functionUn = functionUn fn, functionAnti = functionAnti fn, functionContra = functionContra fn, functionDis = functionDis fn, functionBi = functionBi fn, functionAna = functionAna fn, functionContext = functionContext fn, derivedFunctionConjunction = c'', derivedFunctionFunctionLeft = f, derivedFunctionNounRight = y }) <$> c' [] f y) <$> conjOnFunctionNoun c
-    , conjOnFunctionFunction = (\c' _ f g -> (\fn -> DerivedFunctionFunctionFunction { functionMonad = functionMonad fn, functionDyad = functionDyad fn, functionUn = functionUn fn, functionAnti = functionAnti fn, functionContra = functionContra fn, functionDis = functionDis fn, functionBi = functionBi fn, functionAna = functionAna fn, functionContext = functionContext fn, derivedFunctionConjunction = c'', derivedFunctionFunctionLeft = f, derivedFunctionFunctionRight = g }) <$> c' [] f g) <$> conjOnFunctionFunction c
+      conjOnNounNoun = (\c' _ x y -> (\fn -> DerivedFunctionNounNoun { functionCalls = functionCalls fn, functionContext = functionContext fn, derivedFunctionConjunction = c'', derivedFunctionNounLeft = x, derivedFunctionNounRight = y }) <$> c' [] x y) <$> conjOnNounNoun c
+    , conjOnNounFunction = (\c' _ x y -> (\fn -> DerivedFunctionNounFunction { functionCalls = functionCalls fn, functionContext = functionContext fn, derivedFunctionConjunction = c'', derivedFunctionNounLeft = x, derivedFunctionFunctionRight = y }) <$> c' [] x y) <$> conjOnNounFunction c
+    , conjOnFunctionNoun = (\c' _ f y -> (\fn -> DerivedFunctionFunctionNoun { functionCalls = functionCalls fn, functionContext = functionContext fn, derivedFunctionConjunction = c'', derivedFunctionFunctionLeft = f, derivedFunctionNounRight = y }) <$> c' [] f y) <$> conjOnFunctionNoun c
+    , conjOnFunctionFunction = (\c' _ f g -> (\fn -> DerivedFunctionFunctionFunction { functionCalls = functionCalls fn, functionContext = functionContext fn, derivedFunctionConjunction = c'', derivedFunctionFunctionLeft = f, derivedFunctionFunctionRight = g }) <$> c' [] f g) <$> conjOnFunctionFunction c
     , conjContext = conjContext c
     , trainConjunctionTines = us }
     in pure $ VConjunction c''

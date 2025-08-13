@@ -1,6 +1,9 @@
 {
   "version": "4",
   "specifiers": {
+    "npm:@types/hast@2.3.10": "2.3.10",
+    "npm:@types/mdast@4.0.0": "4.0.0",
+    "npm:@types/node@*": "22.12.0",
     "npm:@types/unist@3.0.2": "3.0.2",
     "npm:acorn@8.12.1": "8.12.1",
     "npm:eval-estree-expression@2.0.0": "2.0.0",
@@ -77,6 +80,12 @@
         "@types/unist@2.0.11"
       ]
     },
+    "@types/mdast@4.0.0": {
+      "integrity": "sha512-YLeG8CujC9adtj/kuDzq1N4tCDYKoZ5l/bnjq8d74+t/3q/tHquJOJKUQXJrLCflOHpKjXgcI/a929gpmLOEng==",
+      "dependencies": [
+        "@types/unist@3.0.2"
+      ]
+    },
     "@types/mdast@4.0.4": {
       "integrity": "sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==",
       "dependencies": [
@@ -85,6 +94,12 @@
     },
     "@types/ms@2.1.0": {
       "integrity": "sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA=="
+    },
+    "@types/node@22.12.0": {
+      "integrity": "sha512-Fll2FZ1riMjNmlmJOdAyY5pUbkftXslB5DgEzlIuNaiWhXd00FhWxVC/r4yV/4wBb9JfImTu+jiSvXTkJ7F/gA==",
+      "dependencies": [
+        "undici-types"
+      ]
     },
     "@types/unist@2.0.11": {
       "integrity": "sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA=="
@@ -388,12 +403,12 @@
         "@types/unist@2.0.11",
         "decode-named-character-reference",
         "mdast-util-to-string@3.2.0",
-        "micromark@3.2.0",
         "micromark-util-decode-numeric-character-reference@1.1.0",
         "micromark-util-decode-string@1.1.0",
         "micromark-util-normalize-identifier@1.1.0",
         "micromark-util-symbol@1.1.0",
         "micromark-util-types@1.1.0",
+        "micromark@3.2.0",
         "unist-util-stringify-position@3.0.3",
         "uvu"
       ]
@@ -406,12 +421,12 @@
         "decode-named-character-reference",
         "devlop",
         "mdast-util-to-string@4.0.0",
-        "micromark@4.0.2",
         "micromark-util-decode-numeric-character-reference@2.0.2",
         "micromark-util-decode-string@2.0.1",
         "micromark-util-normalize-identifier@2.0.1",
         "micromark-util-symbol@2.0.1",
         "micromark-util-types@2.0.2",
+        "micromark@4.0.2",
         "unist-util-stringify-position@4.0.0"
       ]
     },
@@ -1344,6 +1359,9 @@
     },
     "trough@2.2.0": {
       "integrity": "sha512-tmMpK00BjZiUyVyvrBK7knerNgmgvcV/KLVyuma/SC+TQN167GrMRciANTz09+k3zW8L8t60jWO1GpfkZdjTaw=="
+    },
+    "undici-types@6.20.0": {
+      "integrity": "sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg=="
     },
     "unified@10.1.2": {
       "integrity": "sha512-pUSWAi/RAnVy1Pif2kAoeWNBa3JVrx0MId2LASj8G+7AiHWoKZNTomq6LG326T68U7/e263X6fTdcXIy7XnF7Q==",

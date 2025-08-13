@@ -65,8 +65,8 @@ function Header({ pages }: HeaderProps) {
 				<div class='collapse navbar-collapse'>
 					<ul class='navbar-nav ms-auto'>
 						<select id='font'>
-							<option value='apl387' selected>APL387</option>
-							<option value='tinyapl386'>TinyAPL386</option>
+							<option value='tinyapl386' selected>TinyAPL386</option>
+							<option value='apl387'>APL387</option>
 						</select>
 						<li class='nav-item d-inline-flex align-items-baseline'>
 							<a class='nav-link pe-1' href='/run/latest'>Run</a>

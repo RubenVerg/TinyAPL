@@ -361,6 +361,15 @@ floorAndFracS cea y = liftA2 (,) (floorS cea y) (remainderS cea (Number 1) y)
 floorAndFrac' :: CoreExtraArgs -> Noun -> St (Noun, Noun)
 floorAndFrac' cea y = liftA2 (,) (floor' cea y) (remainder' cea (scalar $ Number 1) y)
 
+underFloorForward :: CoreExtraArgs -> Noun -> St (Noun, Noun)
+underFloorForward cea y = do
+  fl <- floor' cea y
+  fr <- remainder' cea (scalar $ Number 1) y
+  pure (fr, fl)
+
+underFloorBack :: Noun -> Noun -> St Noun
+underFloorBack = add'
+
 ceil :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m ScalarValue
 ceil CoreExtraArgs{ coreExtraArgsTolerance = t } (Number y) = pure $ Number $ complexCeiling' t y
 ceil _ (Character y) = pure $ Character $ toUpper y
@@ -805,6 +814,15 @@ unShape' cea arr = do
   let err = DomainError "Un Shape shape must be a natural vector"
   shape <- asVector err arr >>= mapM (asNumber err >=> asNat err)
   unShape cea shape
+
+underShapeForward :: MonadError Error m => Noun -> m (Noun, Noun)
+underShapeForward arr = do
+  r <- ravel' arr
+  sh <- shape' arr
+  pure (r, sh)
+
+underShapeBack :: MonadError Error m => Noun -> Noun -> m Noun
+underShapeBack = flip reshape'
 
 rank :: MonadError Error m => Noun -> m Natural
 rank = pure . arrayRank
@@ -1876,24 +1894,25 @@ until :: MonadError Error m => (a -> m a) -> (a -> a -> m Bool) -> a -> m a
 until f p x = let
   go :: Monad m => (a -> m a) -> (a -> a -> m Bool) -> a -> a -> m a
   go f p prev x = do
-    r <- f x
-    t <- p r prev
-    if t then pure r else go f p x r
+    t <- p x prev
+    if t then pure x else do
+      next <- f x
+      go f p x next
   in f x >>= go f p x
 
-repeat1 :: MonadError Error m => (Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> Noun -> m Noun
-repeat1 f fI t y = do
-  let err = DomainError "Repeat right operand must be an integer scalar"
-  n <- asScalar err t >>= asNumber err >>= asInt err
+repeat1 :: MonadError Error m => CoreExtraArgs -> (Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> Noun -> m Noun
+repeat1 cea f fI t y = onScalars1 cea (\t' -> do
+  let err = DomainError "Repeat right operand must be an integer array"
+  n <- asScalar err t' >>= asNumber err >>= asInt err
   if n < 0 then TinyAPL.Functions.repeat fI (fromInteger $ negate n) y
-  else TinyAPL.Functions.repeat f (fromInteger n) y
+  else TinyAPL.Functions.repeat f (fromInteger n) y) t
 
-repeat2 :: MonadError Error m => (Noun -> Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> Noun -> m Noun
-repeat2 f fI t x y = do
-  let err = DomainError "Repeat right operand must be an integer scalar"
-  n <- asScalar err t >>= asNumber err >>= asInt err
+repeat2 :: MonadError Error m => CoreExtraArgs -> (Noun -> Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> Noun -> m Noun
+repeat2 cea f fI t x y = onScalars1 cea (\t' -> do
+  let err = DomainError "Repeat right operand must be an integer array"
+  n <- asScalar err t' >>= asNumber err >>= asInt err
   if n < 0 then TinyAPL.Functions.repeat (fI x) (fromInteger $ negate n) y
-  else TinyAPL.Functions.repeat (f x) (fromInteger n) y
+  else TinyAPL.Functions.repeat (f x) (fromInteger n) y) t
 
 until1 :: MonadError Error m => (Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
 until1 f p y = let
@@ -1927,6 +1946,18 @@ under2 f g x = under (f x) g
 
 underK :: MonadError Error m => Noun -> (Noun -> m Noun) -> Noun -> m Noun
 underK arr = under (\_ -> pure arr)
+
+contextualUnder :: MonadError Error m => (Noun -> m (Noun, Noun)) -> (Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
+contextualUnder w f k x = do
+  (context, arr) <- w x
+  res <- f arr
+  k context res
+
+contextualUnder2 :: MonadError Error m => (Noun -> m (Noun, Noun)) -> (Noun -> Noun -> m Noun) -> (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
+contextualUnder2 w f k x y = contextualUnder w (f x) k y
+
+contextualUnderK :: MonadError Error m => (Noun -> m (Noun, Noun)) -> Noun -> (Noun -> Noun -> m Noun) -> Noun -> m Noun
+contextualUnderK w arr k x = contextualUnder w (\_ -> pure arr) k x
 
 table :: MonadError Error m => (Noun -> Noun -> m Noun) -> Noun -> Noun -> m Noun
 table f = atRank2 defaultCoreExtraArgs (onScalars2 defaultCoreExtraArgs f) (0, likePositiveInfinity)

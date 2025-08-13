@@ -1,5 +1,5 @@
 :root {
-	--font-mono-r: 'TinyAPL 386 Unicode', 'APL387 Unicode', 'APL386 Unicode', 'BQN386 Unicode', APL385, APL333, 'Fira Code', monospace !important; 
+	--font-mono-r: TinyAPL386, 'TinyAPL386 Unicode', 'APL387 Unicode', 'APL386 Unicode', 'BQN386 Unicode', APL385, APL333, 'Fira Code', monospace !important; 
 	--font-mono: var(--font-mono-r);
 }
 

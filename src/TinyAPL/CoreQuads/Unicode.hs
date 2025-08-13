@@ -115,4 +115,4 @@ encodeDecode t arr = do
     vector . fmap (Number . (:+ 0) . fromInteger . toInteger) <$> encode ed chars
   else throwError derr
 
-unicode = PrimitiveFunction (Just $ const $ scalarMonad unicodeS) (Just $ const encodeDecode) Nothing Nothing Nothing Nothing Nothing Nothing (G.quad : "Unicode") Nothing
+unicode = PrimitiveFunction (FunctionCalls (Just $ const $ scalarMonad unicodeS) (Just $ const encodeDecode) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing) (G.quad : "Unicode") Nothing
