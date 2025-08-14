@@ -89,9 +89,6 @@ library
 
 library tinyapl-native-helpers
     import:           warnings
-
-    -- Modules included in this executable, other than Main.
-    other-modules:
     exposed-modules:  TinyAPL.Files
                     , TinyAPL.Quads.FFI
                     , TinyAPL.Quads.File
