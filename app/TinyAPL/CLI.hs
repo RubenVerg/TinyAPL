@@ -67,11 +67,16 @@ options = Options
       (  Opts.long "prefix"
       <> Opts.help "Prefix key for entering glyphs"
       <> Opts.metavar "PREFIX"
-      <> Opts.value defaultPrefixKey )
+      <> Opts.value '`')
     <*> Opts.switch
       (  Opts.long "plain"
       <> Opts.short 'Z'
       <> Opts.help "Disable all fancy I/O")
+    <*> Opts.option Opts.auto
+      (  Opts.long "keymap"
+      <> Opts.help "Selected keymap for entering glyphs"
+      <> Opts.metavar "KEYMAP"
+      <> Opts.value UsIntl)
     Opts.<|> FileOptions
     <$> Opts.switch
       (  Opts.long "echo-last"
@@ -93,12 +98,6 @@ options = Options
         <*> Opts.switch
           (  Opts.long "allow-fs"
           <> Opts.help "Allow reading and writing to the filesystem" )
-
-defaultPrefixKey :: Char
-defaultPrefixKey = '`'
-
-defaultKeymap :: String
-defaultKeymap = "UsIntl"
 
 readImportFile :: FilePath -> St String
 readImportFile path = liftToSt $ readFile path
