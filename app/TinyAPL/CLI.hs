@@ -202,16 +202,11 @@ repl context prefixKey keymap False = let
   in do
     putStrLn "TinyAPL REPL, empty line to exit"
 #ifdef is_linux
-    singleCharacters <- case singleChars keymap of
+    (singleCharacters, doubleCharacters) <- case liftA2 (,) (singleChars keymap) (doubleChars keymap) of
                              Just c -> pure c
                              Nothing -> (do
                                 hPutStrLn stderr "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
                                 die "Keymap exists but is not implemented")
-    doubleCharacters <- case doubleChars keymap of
-                             Just c -> pure c
-                             Nothing -> (do
-                                 hPutStrLn stderr "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
-                                 die "Keymap exists but is not implemented")
     el <- E.edited "TinyAPL"
     E.setEditor el E.Emacs
     E.setPrompt' el "      "
