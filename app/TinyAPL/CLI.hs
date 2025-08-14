@@ -16,6 +16,7 @@ import qualified TinyAPL.Files as F
 import qualified TinyAPL.Glyphs as G
 import qualified TinyAPL.Primitives as P
 import TinyAPL.Interpreter
+import TinyAPL.Keymaps
 import TinyAPL.Quads.File (file)
 #ifndef wasm32_HOST_ARCH
 import TinyAPL.Quads.FFI (ffi, ffiStruct)
@@ -26,6 +27,8 @@ import System.IO
 import Data.IORef
 import Data.List
 import System.Info
+import System.Exit
+import Text.Read
 import Control.DeepSeq
 import Control.Exception (displayException, SomeException, catch)
 import System.Directory
@@ -45,7 +48,8 @@ data Allowed
 data InnerOptions
   = ReplOptions
     { replPrefixKey :: Char
-    , replPlain :: Bool }
+    , replPlain :: Bool
+    , replKeymap :: Keymap }
   | FileOptions
     { fileEchoLast :: Bool
     , filePath :: FilePath }
@@ -63,11 +67,16 @@ options = Options
       (  Opts.long "prefix"
       <> Opts.help "Prefix key for entering glyphs"
       <> Opts.metavar "PREFIX"
-      <> Opts.value defaultPrefixKey )
+      <> Opts.value '`')
     <*> Opts.switch
       (  Opts.long "plain"
       <> Opts.short 'Z'
       <> Opts.help "Disable all fancy I/O")
+    <*> Opts.option Opts.auto
+      (  Opts.long "keymap"
+      <> Opts.help "Selected keymap for entering glyphs"
+      <> Opts.metavar "KEYMAP"
+      <> Opts.value UsIntl)
     Opts.<|> FileOptions
     <$> Opts.switch
       (  Opts.long "echo-last"
@@ -89,9 +98,6 @@ options = Options
         <*> Opts.switch
           (  Opts.long "allow-fs"
           <> Opts.help "Allow reading and writing to the filesystem" )
-
-defaultPrefixKey :: Char
-defaultPrefixKey = '`'
 
 readImportFile :: FilePath -> St String
 readImportFile path = liftToSt $ readFile path
@@ -130,7 +136,6 @@ cli = do
   id <- newIORef 0
 
   Options allowed inner <- Opts.execParser $ Opts.info (Opts.helper <*> options) Opts.fullDesc
-  
   let context = Context {
       contextScope = scope
     , contextQuads = core 
@@ -150,7 +155,7 @@ cli = do
     , contextPrimitives = P.primitives }
 
   case inner of
-    ReplOptions prefixKey plain -> repl context prefixKey plain
+    ReplOptions prefixKey plain keymap -> repl context prefixKey keymap plain
     FileOptions echo path -> do
       code <- F.readUtf8 path
       void $ runCode echo path code context
@@ -167,214 +172,16 @@ runCode output file code context = do
         liftToSt $ putStrLn str
   pure context'
 
-singleCharacters :: [(Char, Char)]
-singleCharacters =
-  [ ('1', '¨')
-  , ('2', '¯')
-  , ('4', '≤')
-  , ('3', '˝')
-  , ('5', '⬚')
-  , ('6', '≥')
-  , ('7', '⌽')
-  , ('8', '≠')
-  , ('9', '∨')
-  , ('0', '∧')
-  , ('-', '×')
-  , ('=', '÷')
-  , ('q', '↗')
-  , ('w', '⍵')
-  , ('e', '∊')
-  , ('r', '⍴')
-  , ('t', '⊞')
-  , ('y', '↑')
-  , ('u', '↓')
-  , ('i', '⍳')
-  , ('o', '○')
-  , ('p', '◡')
-  , ('[', '←')
-  , (']', '→')
-  , ('a', '⍺')
-  , ('s', '⌈')
-  , ('d', '⌊')
-  , ('f', '⍛')
-  , ('g', '∇')
-  , ('h', '∆')
-  , ('j', '∘')
-  , ('k', '⎊')
-  , ('l', '⎕')
-  , (';', '⍎')
-  , ('\'', '⍕')
-  , ('\\', '⊢')
-  , ('z', '⊂')
-  , ('x', '⊃')
-  , ('c', '∩')
-  , ('v', '∪')
-  , ('b', '⊥')
-  , ('n', '⊤')
-  , ('m', '«')
-  , (',', '⍪')
-  , ('.', '∙')
-  , ('/', '⌿')
-  , (' ', '‿')
-  
-  , ('~', '⍨')
-  , ('!', '⨳')
---, ('@', ' ')
-  , ('#', '⍒')
-  , ('$', '⍋')
-  , ('%', '≈')
-  , ('^', '⍉')
---, ('&', ' ')
-  , ('*', '⍣')
-  , ('(', '⍱')
-  , (')', '⍲')
-  , ('_', '⊗')
-  , ('+', '⊕')
---, ('Q', ' ')
-  , ('W', '⍹')
-  , ('E', '⍷')
-  , ('R', '√')
-  , ('T', '⍨')
-  , ('Y', '↟')
-  , ('U', '↡')
-  , ('I', '⍸')
-  , ('O', '⍥')
-  , ('P', '◠')
-  , ('{', '⟨')
-  , ('}', '⟩')
-  , ('A', '⍶')
-  , ('S', '§')
-  , ('D', '⸠')
-  , ('F', '∡')
-  , ('G', '⍢')
-  , ('H', '⍙')
-  , ('J', '⍤')
-  , ('K', '⌸')
-  , ('L', '⌷')
-  , (':', '≡')
-  , ('"', '≢')
-  , ('|', '⊣')
-  , ('Z', '⊆')
-  , ('X', '⊇')
-  , ('C', '⍝')
-  , ('V', '⁖')
-  , ('B', '∵')
-  , ('N', '·')
-  , ('M', '»')
-  , ('<', 'ᑈ')
-  , ('>', 'ᐵ')
---, ('?', ' ')
-  ]
 
-doubleCharacters :: [(Char, Char)]
-doubleCharacters =
-  [ ('`', '⋄')
---, ('1', ' ')
---, ('2', ' ')
-  , ('3', '⍫')
-  , ('4', '⊴')
-  , ('5', '⤺')
-  , ('6', '⊵')
---, ('7', ' ')
-  , ('8', '⍟')
-  , ('9', '∻')
-  , ('0', '⍬')
-  , ('-', '⸚')
-  , ('=', '⌹')
-  , ('q', '⇾')
---, ('w', ' ')
-  , ('e', '⋵')
-  , ('r', 'ϼ')
-  , ('t', '߹')
-  , ('y', 'ᓚ')
-  , ('u', 'ᓗ')
-  , ('i', '…')
-  , ('o', '⍜')
-  , ('p', '⏨')
-  , ('[', '⦅')
-  , (']', '⦆')
-  , ('a', 'ɛ')
-  , ('s', '↾')
-  , ('d', '⇂')
-  , ('f', '∠')
-  , ('g', '⫇')
-  , ('h', '⊸')
-  , ('j', 'ᴊ')
---, ('k', ' ')
---, ('l', ' ')
-  , (';', '⍮')
-  , ('\'', '⍘')
-  , ('\\', '⊩')
-  , ('z', '⊏')
-  , ('x', '⊐')
-  , ('c', '⟃')
-  , ('v', '⫤')
-  , ('b', '⇇')
-  , ('n', '↚')
-  , ('m', '↩')
-  , (',', '⊲')
-  , ('.', '⊳')
---, ('/', ' ')
-  , (' ', '`')
-  
-  , ('~', '⌺')
-  , ('!', '⑴')
---, ('@', ' ')
---, ('#', ' ')
---, ('$', ' ')
---, ('%', ' ')
---, ('^', ' ')
---, ('&', ' ')
-  , ('*', '∞')
-  , ('(', '⦋')
-  , (')', '⦌')
-  , ('_', 'ⵧ')
-  , ('+', '⧺')
-  , ('Q', '⇽')
---, ('W', ' ')
-  , ('E', '⋷')
-  , ('R', 'ℜ')
-  , ('T', '‥')
-  , ('Y', '⥽')
-  , ('U', '⥼')
-  , ('I', 'ℑ')
---, ('O', ' ')
-  , ('P', '⌓')
-  , ('{', '⦃')
-  , ('}', '⦄')
---, ('A', ' ')
---, ('S', ' ')
-  , ('D', '⩔')
---, ('F', ' ')
---, ('G', ' ')
-  , ('H', '⟜')
---, ('J', ' ')
---, ('K', ' ')
---, ('L', ' ')
-  , (':', '⍠')
-  , ('"', '⍞')
-  , ('|', '⫣')
-  , ('Z', 'ᑣ')
-  , ('X', 'ᑒ')
-  , ('C', '⟄')
---, ('V', ' ')
---, ('B', ' ')
-  , ('N', '⩓')
-  , ('M', '⍦')
---, ('<', ' ')
-  , ('>', '■')
-  , ('?', '⍰')
-  ]
-
-repl :: Context -> Char -> Bool -> IO ()
-repl context _ True = let
+repl :: Context -> Char -> Keymap -> Bool -> IO ()
+repl context _ _ True = let
   go context = do
     line <- (Just <$> getLine) `catch` (\(_ :: SomeException) -> pure Nothing)
     case line of
       Nothing -> pure ()
       Just line' -> runCode True "<repl>" line' context >>= go
   in go context
-repl context prefixKey False = let
+repl context prefixKey keymap False = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
@@ -395,6 +202,11 @@ repl context prefixKey False = let
   in do
     putStrLn "TinyAPL REPL, empty line to exit"
 #ifdef is_linux
+    (singleCharacters, doubleCharacters) <- case liftA2 (,) (singleChars keymap) (doubleChars keymap) of
+                             Just c -> pure c
+                             Nothing -> (do
+                                hPutStrLn stderr "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
+                                die "Keymap exists but is not implemented")
     el <- E.edited "TinyAPL"
     E.setEditor el E.Emacs
     E.setPrompt' el "      "
