@@ -776,6 +776,9 @@ nubSieve' CoreExtraArgs{ coreExtraArgsTolerance = t } arr@(Array _ _) = do
   pure $ vector $ boolToScalar <$> nub
 nubSieve' CoreExtraArgs{ coreExtraArgsTolerance = t } (Dictionary _ vs) = vector . fmap boolToScalar <$> nubSieve (TolerantL t <$> vs)
 
+classify' :: MonadError Error m => CoreExtraArgs -> Noun -> m Noun
+classify' cea = leftHook (unique' cea) (indexOf cea)
+
 shape :: MonadError Error m => Noun -> m [Natural]
 shape (Array sh _) = pure sh
 shape (Dictionary ks _) = pure [genericLength ks]
