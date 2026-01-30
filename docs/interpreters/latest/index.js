@@ -218,7 +218,7 @@ async function fancyShow(result, depth = 0) {
             return fancyShow(v, depth + 1);
         return fancyShow({ type: 'array', shape: [], contents: [v] }, depth + 1);
     };
-    if (depth >= 5)
+    if (depth >= 8)
         return document.createTextNode(await tinyapl.show(result));
     if (result.type === 'array' && result.shape.length === 1 && result.contents.length !== 0 && !result.contents.every(x => typeof x === 'string')) {
         const table = document.createElement('table');
@@ -319,7 +319,7 @@ async function fancyShow(result, depth = 0) {
     else if (result.type === 'array' && result.shape.length === 0 && typeof result.contents[0] === 'object' && !Array.isArray(result.contents[0]) && result.contents[0].type === 'struct') {
         const struct = result.contents[0];
         if ('∆show' in struct.entries)
-            return fancyShow(struct.entries['∆show'][1]);
+            return fancyShow(struct.entries['∆show'][1], depth + 1);
         const details = document.createElement('details');
         details.open = depth === 0;
         const summary = document.createElement('summary');
@@ -345,6 +345,21 @@ async function fancyShow(result, depth = 0) {
         }
         details.appendChild(table);
         return details;
+    }
+    else if (result.type === 'array' && result.shape.length === 0 && typeof result.contents[0] === 'object' && !Array.isArray(result.contents[0]) && ['array', 'dictionary'].includes(result.contents[0].type)) {
+        const table = document.createElement('table');
+        table.className = 'enclosure';
+        const enclosureMarker = document.createElement('div');
+        enclosureMarker.className = 'marker enclosure-marker';
+        table.appendChild(enclosureMarker);
+        const tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+        const tr = document.createElement('tr');
+        tbody.appendChild(tr);
+        const td = document.createElement('td');
+        tr.appendChild(td);
+        td.appendChild(await fancyShow(result.contents[0], depth + 1));
+        return table;
     }
     else if (result.type === 'dictionary' && result.entries.length !== 0) {
         const table = document.createElement('table');
