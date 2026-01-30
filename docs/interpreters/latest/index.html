@@ -160,12 +160,16 @@
 			vertical-align: top;
 		}
 
-		table.vector, table.matrix, table.cube, table.dictionary {
+		table.vector, table.matrix, table.cube, table.dictionary, table.enclosure {
 			border-collapse: collapse;
 		}
 
-		table.vector td, table.matrix td, table.cube td:not(.filler), table.dictionary {
+		table.vector td, table.matrix td, table.cube td:not(.filler), table.dictionary, table.enclosure td {
 			border: 2px solid black;
+		}
+
+		table table {
+			margin: 3px;
 		}
 
 		.marker {
@@ -193,6 +197,11 @@
 			content: ':';
 			position: absolute;
 			top: -0.7em;
+		}
+		.enclosure-marker::before {
+			content: '⊂';
+			position: absolute;
+			top: -0.55em;
 		}
 
 		.dictionary td:first-child {
