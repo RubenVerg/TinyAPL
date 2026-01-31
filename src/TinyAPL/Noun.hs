@@ -55,7 +55,8 @@ module TinyAPL.Noun
   , complexLCM'
   , asAnIntegerIfItIs
   , scalarMonad
-  , scalarDyad ) where
+  , scalarDyad
+  , showComplex ) where
 
 import TinyAPL.Complex
 import TinyAPL.Error

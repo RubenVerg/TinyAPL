@@ -12,6 +12,7 @@ import TinyAPL.Quads
 import TinyAPL.CoreQuads
 import TinyAPL.Error
 import TinyAPL.Util
+import TinyAPL.Pretty
 import qualified TinyAPL.Files as F
 import qualified TinyAPL.Glyphs as G
 import qualified TinyAPL.Primitives as P
@@ -28,7 +29,6 @@ import Data.IORef
 import Data.List
 import System.Info
 import System.Exit
-import Text.Read
 import Control.DeepSeq
 import Control.Exception (displayException, SomeException, catch)
 import System.Directory
@@ -45,6 +45,10 @@ data Allowed
     , allowedFFI :: Bool
     , allowedFileSystem :: Bool }
 
+data CommonOptions
+  = CommonOptions
+    { noPretty :: Bool }
+
 data InnerOptions
   = ReplOptions
     { replPrefixKey :: Char
@@ -54,7 +58,7 @@ data InnerOptions
     { fileEchoLast :: Bool
     , filePath :: FilePath }
 
-data Options = Options Allowed InnerOptions
+data Options = Options Allowed CommonOptions InnerOptions
 
 instance IsString Char where
   fromString = headPromise
@@ -62,6 +66,10 @@ instance IsString Char where
 options :: Opts.Parser Options
 options = Options
   <$> allowed 
+  <*> (CommonOptions
+    <$> Opts.switch
+      (  Opts.long "no-pretty"
+      <> Opts.help "Disable pretty-printing"))
   <*> (ReplOptions
     <$> Opts.strOption
       (  Opts.long "prefix"
@@ -135,7 +143,7 @@ cli = do
 
   id <- newIORef 0
 
-  Options allowed inner <- Opts.execParser $ Opts.info (Opts.helper <*> options) Opts.fullDesc
+  Options allowed (CommonOptions ugly) inner <- Opts.execParser $ Opts.info (Opts.helper <*> options) Opts.fullDesc
   let context = Context {
       contextScope = scope
     , contextQuads = core 
@@ -155,33 +163,32 @@ cli = do
     , contextPrimitives = P.primitives }
 
   case inner of
-    ReplOptions prefixKey plain keymap -> repl context prefixKey keymap plain
+    ReplOptions prefixKey plain keymap -> repl context ugly prefixKey keymap plain
     FileOptions echo path -> do
       code <- F.readUtf8 path
-      void $ runCode echo path code context
+      void $ runCode echo ugly path code context
 
-runCode :: Bool -> String -> String -> Context -> IO Context
-runCode output file code context = do
+runCode :: Bool -> Bool -> String -> String -> Context -> IO Context
+runCode output ugly file code context = do
   (result, context') <- fmap fromRight' $ runResult $ flip runSt context $ runAndCatch $ run' file code
   case result of
     Panicked ex -> hPutStrLn stderr $ ansiRed $ show $ HaskellError $ displayException ex
     Thrown err -> hPutStrLn stderr $ ansiRed $ show err
     Succeeded res ->
       when output $ void $ runResult $ flip runSt context $ do
-        str <- showM res
+        str <- if ugly then showM res else runPretty defaultConfig res
         liftToSt $ putStrLn str
   pure context'
 
-
-repl :: Context -> Char -> Keymap -> Bool -> IO ()
-repl context _ _ True = let
+repl :: Context -> Bool -> Char -> Keymap -> Bool -> IO ()
+repl context ugly _ _ True = let
   go context = do
     line <- (Just <$> getLine) `catch` (\(_ :: SomeException) -> pure Nothing)
     case line of
       Nothing -> pure ()
-      Just line' -> runCode True "<repl>" line' context >>= go
+      Just line' -> runCode True ugly "<repl>" line' context >>= go
   in go context
-repl context prefixKey keymap False = let
+repl context ugly prefixKey keymap False = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
@@ -198,7 +205,7 @@ repl context prefixKey keymap False = let
     case line of
       Nothing -> pure ()
       Just "" -> pure ()
-      Just line' -> runCode True "<repl>" line' context >>= go el
+      Just line' -> runCode True ugly "<repl>" line' context >>= go el
   in do
     putStrLn "TinyAPL REPL, empty line to exit"
 #ifdef is_linux
