@@ -65,7 +65,7 @@ aDot⇇⎕Unicode⍳256 ⋄
 aCo⇇⊂⍬ ⋄
 EDot⇇∊ ⋄
 EcapDot⇇⍷ ⋄
-IDot⇇⍳ ⋄
+IDot⇇⍴˝⁖⍳ ⋄
 ICo⇇{-∘↓⍛1⊸⍪⍳⧺⍵}⁖(⍳⤺) ⋄
 IcapDot⇇⍸ ⋄
 JDot⇇⊕ ⋄
@@ -113,15 +113,15 @@ jPrimitives⇇⟨"a.": aDot ⋄ "a:": aCo⟩‿⟨
 ⋄ "!": Bang
 ⋄ "/:": SlashCo
 ⋄ "\:": BslashCo
-⋄ "[": Squarelf
+⋄ "［": Squarelf
 ⋄ "]": Squarert
-⋄ "{.": CurlylfDot
-⋄ "{:": CurlylfCo
-⋄ "{": Curlylf
+⋄ "﹛.": CurlylfDot
+⋄ "﹛:": CurlylfCo
+⋄ "﹛": Curlylf
 ⋄ "}.": CurlyrtDot
 ⋄ "}:": CurlyrtCo
-⋄ "⍘".": QuoteDot
-⋄ "⍘":": QuoteCo
+⋄ "＂.": QuoteDot
+⋄ "＂:": QuoteCo
 ⋄ "?": Query
 ⋄ "e.": EDot
 ⋄ "E.": EcapDot
@@ -140,14 +140,16 @@ jPrimitives⇇⟨"a.": aDot ⋄ "a:": aCo⟩‿⟨
 ⋄ "\": _Bslash
 ⋄ "]:": _SquarertCo
 ⟩‿⟨
-	"[.": _SquarelfDot_
-⋄ "].": _SquarertDot_
-⋄ "⍘"": _Quote_
+	"［.": _SquarelfDot_
+⋄ "［.": _SquarertDot_
+⋄ "＂": _Quote_
 ⋄ "@:": _AtCo_
 ⋄ "@": _At_
 ⋄ "&:": _AmpCo_
 ⋄ "&.:": _AmpDotCo_
 ⋄ "&": _Amp_
 ⋄ "L:": _LcapCo_ ⟩
+
+{⎕boxes←"+++++++++|----|+-+-"}⎊⍬⍬
 
 J⇇{⦃primitives←jPrimitives⦄⍎⍵}

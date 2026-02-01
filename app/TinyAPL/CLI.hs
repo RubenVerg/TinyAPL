@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, LambdaCase, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, LambdaCase, OverloadedStrings, ScopedTypeVariables, FlexibleContexts #-}
 
 #if defined(unix_HOST_OS) || defined(__unix___HOST_OS) || defined(__unix_HOST_OS) || defined(linux_HOST_OS) || defined(__linux___HOST_OS) || defined(__linux_HOST_OS) || defined(darwin_HOST_OS)
 #define is_linux 1
@@ -23,7 +23,7 @@ import TinyAPL.Quads.File (file)
 import TinyAPL.Quads.FFI (ffi, ffiStruct)
 #endif
 
-import Control.Monad (void, when)
+import Control.Monad (void, when, (>=>))
 import System.IO
 import Data.IORef
 import Data.List
@@ -32,8 +32,10 @@ import System.Exit
 import Control.DeepSeq
 import Control.Exception (displayException, SomeException, catch)
 import System.Directory
-import qualified Options.Applicative as Opts
 import Data.String
+import Data.Maybe
+import qualified Options.Applicative as Opts
+import System.IO.Unsafe (unsafePerformIO)
 #ifdef is_linux
 import TinyAPL.Highlighter
 import qualified System.Console.Edited as E
@@ -122,6 +124,28 @@ stdin = Nilad (Just $ let
         go $ ch : text
   in vector . fmap Character . reverse <$> go "") Nothing (G.quad : "stdin") Nothing
 
+prettyConfig :: IORef PrettyConfig
+prettyConfig = unsafePerformIO $ newIORef defaultConfig
+{-# NOINLINE prettyConfig #-}
+
+runPretty' :: PrettyPrint St PrettyConfig a => a -> St String
+runPretty' x = do
+  config <- liftToSt $ readIORef prettyConfig
+  runPretty config x
+
+boxes :: Nilad
+boxes = Nilad (Just $ do
+  PrettyConfig{ drawings = ds } <- liftToSt $ readIORef prettyConfig
+  pure $ dictionary $ map (\(k, v) -> (Number $ fromIntegral $ fromEnum k, Character v)) ds) (Just $ \x -> do
+  let err = DomainError "Boxes value must either be a character vector or a dictionary of naturals to characters"
+  pairs <- case x of {
+    arr@(Array _ _) -> zip [minBound..maxBound] <$> asString err arr ;
+    Dictionary ks vs -> do {
+      ks' <- mapM (asNumber err >=> asNat err) ks ;
+      vs' <- mapM (asCharacter err) vs ;
+      pure $ mapMaybe (\(k, v) -> if k > fromIntegral (fromEnum (maxBound :: BoxDrawing)) then Nothing else Just (toEnum $ fromIntegral k, v)) $ zip ks' vs' }}
+  liftToSt $ modifyIORef prettyConfig $ \config -> config{ drawings = pairs }) (G.quad : "boxes") Nothing
+
 ffiQuads :: Quads
 #ifdef wasm32_HOST_ARCH
 ffiQuads = mempty
@@ -148,7 +172,7 @@ cli = do
       contextScope = scope
     , contextQuads = core 
       <> (if allowedFFI allowed then ffiQuads else mempty)
-      <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, TinyAPL.CLI.stdin ] [] [] []
+      <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, TinyAPL.CLI.stdin, boxes ] [] [] []
       <> (if allowedFileSystem allowed then quadsFromReprs [ file ] [] [] [] else mempty)
       <> quadsFromReprs [] [ makeImport (if allowedFileImport allowed then Just readImportFile else Nothing) Nothing ] [] []
     , contextIn = liftToSt getLine
@@ -176,7 +200,7 @@ runCode output ugly file code context = do
     Thrown err -> hPutStrLn stderr $ ansiRed $ show err
     Succeeded res ->
       when output $ void $ runResult $ flip runSt context $ do
-        str <- if ugly then showM res else runPretty defaultConfig res
+        str <- if ugly then showM res else runPretty' res
         liftToSt $ putStrLn str
   pure context'
 

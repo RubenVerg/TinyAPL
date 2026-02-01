@@ -7,6 +7,7 @@ module TinyAPL.Pretty
   , render
   , PrettyPrint(..)
   , runPretty
+  , BoxDrawing(..)
   , PrettyConfig(..)
   , defaultConfig
   , boxed
@@ -106,29 +107,79 @@ class Monad m => PrettyPrint m s a | a -> s where
 runPretty :: (Monad m, PrettyPrint m s a) => s -> a -> m String
 runPretty s a = fmap render $ flip runReaderT s $ prettyM a
 
-data PrettyConfig = PrettyConfig { boxStyle :: B.BoxDrawingStyle, combineWith :: B.Drawing }
+data BoxDrawing
+  = TopLeft
+  | TopTee
+  | TopRight
+  | LeftTee
+  | Cross
+  | RightTee
+  | BottomLeft
+  | BottomTee
+  | BottomRight
+  | Vertical
+  | Horizontal
+  | Enclosed
+  | Wrapped
+  | Axis0
+  | Axis1
+  | Axis2
+  | Pairs
+  | Struct1
+  | Struct2
+  deriving (Eq, Ord, Enum, Bounded, Show)
+
+defaultBoxDrawings :: BoxDrawing -> Either B.Drawing Char
+defaultBoxDrawings TopLeft = Left B.cornerTL
+defaultBoxDrawings TopTee = Left B.intersectT
+defaultBoxDrawings TopRight = Left B.cornerTR
+defaultBoxDrawings LeftTee = Left B.intersectL
+defaultBoxDrawings Cross = Left B.intersectFull
+defaultBoxDrawings RightTee = Left B.intersectR
+defaultBoxDrawings BottomLeft = Left B.cornerBL
+defaultBoxDrawings BottomTee = Left B.intersectB
+defaultBoxDrawings BottomRight = Left B.cornerBR
+defaultBoxDrawings Vertical = Left B.vertical
+defaultBoxDrawings Horizontal = Left B.horizontal
+defaultBoxDrawings Enclosed = Right G.enclose
+defaultBoxDrawings Wrapped = Right G.wrap
+defaultBoxDrawings Axis0 = Right '→'
+defaultBoxDrawings Axis1 = Right '↓'
+defaultBoxDrawings Axis2 = Right '↘'
+defaultBoxDrawings Pairs = Right ':'
+defaultBoxDrawings Struct1 = Right $ fst G.struct
+defaultBoxDrawings Struct2 = Right $ snd G.struct
+
+data PrettyConfig = PrettyConfig { drawings :: [(BoxDrawing, Char)] }
 
 defaultConfig :: PrettyConfig
-defaultConfig = PrettyConfig{ boxStyle = B.unicode, combineWith = mempty }
+defaultConfig = PrettyConfig{ drawings = [] }
 
-renderBox :: MonadReader PrettyConfig m => B.Drawing -> m Char
+renderBox :: MonadReader PrettyConfig m => BoxDrawing -> m Char
 renderBox box = do
-  PrettyConfig{ boxStyle, combineWith } <- ask
-  pure $ B.render boxStyle $ combineWith <> box
+  ds <- asks drawings
+  pure $ case lookup box ds of
+    Just c -> c
+    Nothing -> case defaultBoxDrawings box of
+      Left b -> B.render B.unicode b
+      Right c -> c
 
-data Annot = Annot { top :: Maybe Char, side :: Maybe Char, corner :: Maybe Char }
+data Annot = Annot { top :: Maybe BoxDrawing, side :: Maybe BoxDrawing, corner :: Maybe BoxDrawing }
 
 annot :: Annot
 annot = Annot { top = Nothing, side = Nothing, corner = Nothing }
 
 boxed :: MonadReader PrettyConfig m => Annot -> Doc -> m Doc
-boxed Annot{ top, side, corner } doc = do
-  horiz <- renderBox B.horizontal
-  vert <- renderBox B.vertical
-  tl <- renderBox B.cornerTL
-  tr <- renderBox B.cornerTR
-  bl <- renderBox B.cornerBL
-  br <- renderBox B.cornerBR
+boxed Annot{ top = top', side = side', corner = corner' } doc = do
+  top <- mapM renderBox top'
+  side <- mapM renderBox side'
+  corner <- mapM renderBox corner'
+  horiz <- renderBox Horizontal
+  vert <- renderBox Vertical
+  tl <- renderBox TopLeft
+  tr <- renderBox TopRight
+  bl <- renderBox BottomLeft
+  br <- renderBox BottomRight
   let (w, h) = size doc
   let topLine = text $ fromMaybe horiz top : replicate (w-1) horiz
   let bottomLine = text $ replicate w horiz
@@ -138,26 +189,32 @@ boxed Annot{ top, side, corner } doc = do
   pure $ leftLine <|> vp <|> rightLine
 
 list :: MonadReader PrettyConfig m => Annot -> [Doc] -> m Doc
-list Annot{ top, side, corner } [] = do
-  horiz <- renderBox B.horizontal
-  vert <- renderBox B.vertical
-  tl <- renderBox B.cornerTL
-  tr <- renderBox B.cornerTR
-  bl <- renderBox B.cornerBL
-  br <- renderBox B.cornerBR
+list Annot{ top = top', side = side', corner = corner' } [] = do
+  top <- mapM renderBox top'
+  side <- mapM renderBox side'
+  corner <- mapM renderBox corner'
+  horiz <- renderBox Horizontal
+  vert <- renderBox Vertical
+  tl <- renderBox TopLeft
+  tr <- renderBox TopRight
+  bl <- renderBox BottomLeft
+  br <- renderBox BottomRight
   let topLine = text [fromMaybe tl corner, fromMaybe horiz top, tr]
   let middleLine = text [fromMaybe vert side, ' ', vert]
   let bottomLine = text [bl, horiz, br]
   pure $ topLine <-> middleLine <-> bottomLine
-list Annot{ top, side, corner } docs = do
-  horiz <- renderBox B.horizontal
-  vert <- renderBox B.vertical
-  tl <- renderBox B.cornerTL
-  tr <- renderBox B.cornerTR
-  bl <- renderBox B.cornerBL
-  br <- renderBox B.cornerBR
-  it <- renderBox B.intersectT
-  ib <- renderBox B.intersectB
+list Annot{ top = top', side = side', corner = corner' } docs = do
+  top <- mapM renderBox top'
+  side <- mapM renderBox side'
+  corner <- mapM renderBox corner'
+  horiz <- renderBox Horizontal
+  vert <- renderBox Vertical
+  tl <- renderBox TopLeft
+  tr <- renderBox TopRight
+  bl <- renderBox BottomLeft
+  br <- renderBox BottomRight
+  it <- renderBox TopTee
+  ib <- renderBox BottomTee
   let h = maximum $ map height docs
   let tb first doc = let {
     w = width doc ;
@@ -171,29 +228,35 @@ list Annot{ top, side, corner } docs = do
   pure $ leftLine <|> j <|> rightLine
 
 table :: MonadReader PrettyConfig m => Annot -> [[Doc]] -> m Doc
-table Annot{ top, side, corner } docss | docss == [] || docss == [[]] = do
-  horiz <- renderBox B.horizontal
-  vert <- renderBox B.vertical
-  tl <- renderBox B.cornerTL
-  tr <- renderBox B.cornerTR
-  bl <- renderBox B.cornerBL
-  br <- renderBox B.cornerBR
+table Annot{ top = top', side = side', corner = corner' } docss | docss == [] || docss == [[]] = do
+  top <- mapM renderBox top'
+  side <- mapM renderBox side'
+  corner <- mapM renderBox corner'
+  horiz <- renderBox Horizontal
+  vert <- renderBox Vertical
+  tl <- renderBox TopLeft
+  tr <- renderBox TopRight
+  bl <- renderBox BottomLeft
+  br <- renderBox BottomRight
   let topLine = text [fromMaybe tl corner, fromMaybe horiz top, tr]
   let middleLine = text [fromMaybe vert side, ' ', vert]
   let bottomLine = text [bl, horiz, br]
   pure $ topLine <-> middleLine <-> bottomLine
-table Annot{ top, side, corner } docss = do
-  horiz <- renderBox B.horizontal
-  vert <- renderBox B.vertical
-  tl <- renderBox B.cornerTL
-  tr <- renderBox B.cornerTR
-  bl <- renderBox B.cornerBL
-  br <- renderBox B.cornerBR
-  it <- renderBox B.intersectT
-  ib <- renderBox B.intersectB
-  il <- renderBox B.intersectL
-  ir <- renderBox B.intersectR
-  cross <- renderBox B.intersectFull
+table Annot{ top = top', side = side', corner = corner' } docss = do
+  top <- mapM renderBox top'
+  side <- mapM renderBox side'
+  corner <- mapM renderBox corner'
+  horiz <- renderBox Horizontal
+  vert <- renderBox Vertical
+  tl <- renderBox TopLeft
+  tr <- renderBox TopRight
+  bl <- renderBox BottomLeft
+  br <- renderBox BottomRight
+  it <- renderBox TopTee
+  ib <- renderBox BottomTee
+  il <- renderBox LeftTee
+  ir <- renderBox RightTee
+  cross <- renderBox Cross
   let hs = map (maximum . map height) docss
   let ws = map (maximum . map width) $ List.transpose docss
   let row first h docs = let {
@@ -210,19 +273,19 @@ table Annot{ top, side, corner } docss = do
 instance PrettyPrint Identity PrettyConfig ScalarValue where
   prettyM (Number x) = pure $ text $ showComplex x
   prettyM (Character x) = pure $ char x
-  prettyM (Box xs) = prettyM xs >>= boxed annot{ top = Just G.enclose }
-  prettyM (Wrap fn) = prettyM fn >>= boxed annot{ top = Just G.wrap }
-  prettyM (AdverbWrap adv) = prettyM adv >>= boxed annot{ top = Just G.wrap }
-  prettyM (ConjunctionWrap conj) = prettyM conj >>= boxed annot{ top = Just G.wrap }
+  prettyM (Box xs) = prettyM xs >>= boxed annot{ top = Just Enclosed }
+  prettyM (Wrap fn) = prettyM fn >>= boxed annot{ top = Just Wrapped }
+  prettyM (AdverbWrap adv) = prettyM adv >>= boxed annot{ top = Just Wrapped }
+  prettyM (ConjunctionWrap conj) = prettyM conj >>= boxed annot{ top = Just Wrapped }
   prettyM (Struct _) = pure $ text $ [fst G.struct] ++ "..." ++ [snd G.struct]
 
 instance PrettyPrint St PrettyConfig ScalarValue where
   prettyM (Number x) = pure $ text $ showComplex x
   prettyM (Character x) = pure $ char x
-  prettyM (Box xs) = prettyM xs >>= boxed annot{ top = Just G.enclose }
-  prettyM (Wrap fn) = prettyM fn >>= boxed annot{ top = Just G.wrap }
-  prettyM (AdverbWrap adv) = prettyM adv >>= boxed annot{ top = Just G.wrap }
-  prettyM (ConjunctionWrap conj) = prettyM conj >>= boxed annot{ top = Just G.wrap }
+  prettyM (Box xs) = prettyM xs >>= boxed annot{ top = Just Enclosed }
+  prettyM (Wrap fn) = prettyM fn >>= boxed annot{ top = Just Wrapped }
+  prettyM (AdverbWrap adv) = prettyM adv >>= boxed annot{ top = Just Wrapped }
+  prettyM (ConjunctionWrap conj) = prettyM conj >>= boxed annot{ top = Just Wrapped }
   prettyM (Struct ctx) = do
     scope <- lift $ readRef $ contextScope ctx
     dShow <- lift $ scopeLookupNoun False (G.delta : "show") scope
@@ -237,7 +300,7 @@ instance PrettyPrint St PrettyConfig ScalarValue where
         pairs <- flip mapM entries $ \(name, (typ, val)) -> (text name, ) . (text [' ', varArrow typ, ' '] <|>) <$> prettyM val
         let mnw = maximum $ map (width . fst) pairs
         let ps = map (\(n, r) -> toSize (mnw, height n) n <|> r) pairs
-        boxed annot{ corner = Just $ fst G.struct, top = Just $ snd G.struct } $ foldr (<->) empty ps
+        boxed annot{ corner = Just Struct1, top = Just Struct2 } $ foldr (<->) empty ps
 
 prettyElementM :: (Monad m, PrettyPrint m PrettyConfig ScalarValue, MonadShow m ScalarValue) => ScalarValue -> ReaderT PrettyConfig m Doc
 prettyElementM (Box xs) = prettyM xs
@@ -252,8 +315,8 @@ instance (Monad m, PrettyPrint m PrettyConfig ScalarValue, MonadShow m ScalarVal
   prettyM (Array sh []) = pure $ text $ (List.intercalate [G.tie] $ map show sh) ++ [G.rho, G.zilde]
   prettyM (Array [_] xs)
     | not (null xs) && all isCharacter xs = pure $ text $ xs >>= runIdentity . showM
-    | otherwise = mapM prettyElementM xs >>= list annot{ top = Just '→' }
-  prettyM arr@(Array [_, _] _) = mapM (mapM prettyElementM . arrayContents) (majorCells arr) >>= table annot{ top = Just '→', side = Just '↓' }
+    | otherwise = mapM prettyElementM xs >>= list annot{ top = Just Axis0 }
+  prettyM arr@(Array [_, _] _) = mapM (mapM prettyElementM . arrayContents) (majorCells arr) >>= table annot{ top = Just Axis0, side = Just Axis1 }
   prettyM (Dictionary [] []) = pure $ text [fst $ G.vector, G.guard, snd $ G.vector]
   prettyM (Dictionary ks vs) = do
     ks'' <- mapM prettyElementM ks
@@ -261,7 +324,7 @@ instance (Monad m, PrettyPrint m PrettyConfig ScalarValue, MonadShow m ScalarVal
     let ks' = map (\k -> reverseH $ toSize (mkw, height k) $ reverseH k) ks''
     vs' <- mapM prettyElementM vs
     let ps = zipWith (\k v -> k <|> text " : " <|> v) ks' vs'
-    boxed annot{ top = Just G.guard } $ foldr (<->) empty ps
+    boxed annot{ top = Just Pairs } $ foldr (<->) empty ps
   prettyM arr = fmap text $ lift $ showM arr
 
 -- copout
