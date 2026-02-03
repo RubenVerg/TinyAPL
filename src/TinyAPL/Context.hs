@@ -3,6 +3,7 @@
 module TinyAPL.Context
   ( VariableType(..)
   , Scope(..)
+  , scopeEntries
   , scopeShallowLookupNoun
   , scopeShallowLookupFunction
   , scopeShallowLookupAdverb
@@ -37,15 +38,18 @@ module TinyAPL.Context
   , createRef
   , readRef
   , writeRef
-  , modifyRef ) where
+  , modifyRef
+  , runPretty' ) where
 
 import TinyAPL.Noun
 import TinyAPL.Error
 import TinyAPL.Util
+import TinyAPL.Value
 import {-# SOURCE #-} TinyAPL.Adverb
 import {-# SOURCE #-} TinyAPL.Conjunction
 import {-# SOURCE #-} TinyAPL.Function
 import {-# SOURCE #-} TinyAPL.Quads
+import {-# SOURCE #-} TinyAPL.Pretty
 import qualified TinyAPL.Glyphs as G
 
 import Control.Monad.State.Strict
@@ -56,6 +60,7 @@ import qualified Data.IORef as IORef
 import Data.Functor.Identity (Identity(runIdentity))
 import GHC.Generics
 import Text.Printf
+import Data.Bifunctor
 
 data VariableType
   = VariableNormal
@@ -82,6 +87,9 @@ instance (Monad m, MonadShow m ScalarValue) => MonadShow m Scope where
 
 specialNames :: [String]
 specialNames = [[G.alpha], [G.omega], [G.alpha, G.alpha], [G.omega, G.omega], [G.alphaBar, G.alphaBar], [G.omegaBar, G.omegaBar], [G.del], [G.underscore, G.del], [G.underscore, G.del, G.underscore]]
+
+scopeEntries :: Scope -> [(String, (VariableType, Value))]
+scopeEntries sc = (second (second VNoun) <$> scopeNouns sc) ++ (second (second VFunction) <$> scopeFunctions sc) ++ (second (second VAdverb) <$> scopeAdverbs sc) ++ (second (second VConjunction) <$> scopeConjunctions sc)
 
 scopeShallowLookupNoun :: Bool -> String -> Scope -> Maybe Noun
 scopeShallowLookupNoun private name sc = case lookup name (scopeNouns sc) of
@@ -233,10 +241,12 @@ data Context = Context
   , contextErr :: String -> St ()
   , contextIncrementalId :: IORef Integer
   , contextDirectory :: FilePath
-  , contextPrimitives :: Primitives }
+  , contextPrimitives :: Primitives
+  , contextPretty :: IORef PrettyConfig
+  , contextUgly :: Bool }
 
 instance NFData Context where
-  rnf (Context s q i o e d r p) = rnf s `seq` rnf q `seq` rwhnf i `seq` rnf o `seq` rnf e `seq` rnf d `seq` rnf r `seq` rnf p `seq` ()
+  rnf (Context s q i o e d r p t g) = rnf s `seq` rnf q `seq` rwhnf i `seq` rnf o `seq` rnf e `seq` rnf d `seq` rnf r `seq` rnf p `seq` rnf t `seq` rnf g `seq` ()
 
 assignId :: St Integer
 assignId = do
@@ -285,6 +295,11 @@ writeRef = liftToSt .: IORef.writeIORef
 
 modifyRef :: IORef a -> (a -> a) -> St ()
 modifyRef = liftToSt .: IORef.modifyIORef
+
+runPretty' :: (MonadShow St a, PrettyPrint St PrettyConfig a) => a -> St String
+runPretty' x = do
+  ugly <- gets contextUgly
+  if ugly then showM x else gets contextPretty >>= readRef >>= flip runPretty x
 
 instance MonadShow St ScalarValue where
   showM (Struct ctx) = do

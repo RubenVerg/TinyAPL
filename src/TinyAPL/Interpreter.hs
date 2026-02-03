@@ -18,7 +18,6 @@ import TinyAPL.Util
 import Control.Applicative ((<|>))
 import Control.Monad.State
 import Control.Monad
-import Data.Bifunctor
 import Data.List
 import Data.List.NonEmpty (NonEmpty((:|)))
 import qualified Data.List.NonEmpty as NE
@@ -50,9 +49,6 @@ valueCategory (VNoun _) = CatArray
 valueCategory (VFunction _) = CatFunction
 valueCategory (VAdverb _) = CatAdverb
 valueCategory (VConjunction _) = CatConjunction
-
-scopeEntries :: Scope -> [(String, (VariableType, Value))]
-scopeEntries sc = (second (second VNoun) <$> scopeNouns sc) ++ (second (second VFunction) <$> scopeFunctions sc) ++ (second (second VAdverb) <$> scopeAdverbs sc) ++ (second (second VConjunction) <$> scopeConjunctions sc)
 
 scopeShallowLookup :: Bool -> String -> Scope -> Maybe Value
 scopeShallowLookup private name sc =
@@ -306,13 +302,13 @@ evalAssign shallow private name ty val
   | name == [G.quad] = if ty == AssignNormal then do
     arr <- unwrapNoun (DomainError "Cannot print non-array") val
     out <- gets contextOut
-    showM arr >>= out . (++ "\n")
+    runPretty' arr >>= out . (++ "\n")
     return val 
     else throwError $ DomainError "Can only assign normally to quads"
   | name == [G.quadQuote] = if ty == AssignNormal then do
     arr <- unwrapNoun (DomainError "Cannot print non-array") val
     err <- gets contextErr
-    showM arr >>= err
+    runPretty' arr >>= err
     return val
     else throwError $ DomainError "Can only assign normally to quads"
   | isPrefixOf [G.quad] name = if ty == AssignNormal then do

@@ -62,7 +62,7 @@ export type Quads = Record<string, Nilad | Fun | Adv | Conj>;
  * @param error Function providing standard error
  * @param quads Quad names available to the interpreter
  */
-export declare function newContext(input: () => PromiseLike<string>, output: (what: string) => PromiseLike<void>, error: (what: string) => PromiseLike<void>, quads: Quads, directory: string): Promise<number>;
+export declare function newContext(input: () => PromiseLike<string>, output: (what: string) => PromiseLike<void>, error: (what: string) => PromiseLike<void>, quads: Quads, directory: string, pretty?: boolean): Promise<number>;
 /**
  * Run code in a context
  * @param context Context ID
@@ -110,7 +110,7 @@ export declare const errors: Record<string, number>;
 /**
  * Turn a `Value` into a string
  */
-export declare function show(o: Err | Value): Promise<string>;
+export declare function show(o: Err | Value, pretty?: boolean): Promise<string>;
 /**
  * Turn a `Value` into a string that is more likely to be parseable again
  */
