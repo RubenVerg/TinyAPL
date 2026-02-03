@@ -20,6 +20,7 @@ import TinyAPL.StandardLibrary
 import TinyAPL.Util
 import TinyAPL.Primitives (withCoreExtraArgs1)
 import TinyAPL.CoreExtraArgs
+import TinyAPL.Pretty
 
 import Control.Monad.State
 import Data.Time
@@ -33,6 +34,7 @@ import qualified Math.NumberTheory.Primes as Primes
 import qualified Math.NumberTheory.ArithmeticFunctions as Arith
 import Data.Maybe
 import Data.IORef (IORef)
+import Control.Monad ((>=>))
 
 io = Nilad (Just $ pure $ scalar $ Number 0) Nothing (G.quad : "io") Nothing
 ct = Nilad (Just $ pure $ scalar $ Number $ comparisonTolerance :+ 0) Nothing (G.quad : "ct") Nothing
@@ -63,6 +65,18 @@ this = Nilad (Just $ do
   scopeRef <- getsContext contextScope
   str <- findStructParent scopeRef
   pure $ scalar $ Struct $ ctx{ contextScope = str }) Nothing (G.quad : "this") Nothing
+boxes :: Nilad
+boxes = Nilad (Just $ do
+  PrettyConfig{ drawings = ds } <- gets contextPretty >>= readRef
+  pure $ dictionary $ map (\(k, v) -> (Number $ fromIntegral $ fromEnum k, Character v)) ds) (Just $ \x -> do
+  let err = DomainError "Boxes value must either be a character vector or a dictionary of naturals to characters"
+  pairs <- case x of {
+    arr@(Array _ _) -> zip [minBound..maxBound] <$> asString err arr ;
+    Dictionary ks vs -> do {
+      ks' <- mapM (asNumber err >=> asNat err) ks ;
+      vs' <- mapM (asCharacter err) vs ;
+      pure $ mapMaybe (\(k, v) -> if k > fromIntegral (fromEnum (maxBound :: BoxDrawing)) then Nothing else Just (toEnum $ fromIntegral k, v)) $ zip ks' vs' }}
+  gets contextPretty >>= flip modifyRef (\p -> p{ drawings = pairs })) (G.quad : "boxes") Nothing
 
 exists = PrimitiveFunction (FunctionCalls (Just $ \_ y -> do
   var <- asString (DomainError "Exists argument must be a string") y
@@ -144,7 +158,7 @@ measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction
   end <- realToFrac <$> liftToSt getPOSIXTime
   pure $ scalar $ Number $ (end - start) :+ 0) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing) Nothing measure f) (G.quad : "_Measure") Nothing
 
-core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, {- this, -}math, regex, inspectNamespace ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF, primes ] [ measure ] []
+core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, {- this, -}math, regex, inspectNamespace, boxes ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF, primes ] [ measure ] []
 
 makeImport :: Maybe (FilePath -> St String) -> Maybe ([String] -> St String) -> Function
 makeImport read readStd = PrimitiveFunction (FunctionCalls (Just $ \_ x -> do

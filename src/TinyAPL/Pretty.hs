@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSynonyms, OverloadedStrings, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, UndecidableInstances, FunctionalDependencies, NamedFieldPuns, TupleSections #-}
+{-# LANGUAGE PatternSynonyms, OverloadedStrings, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, UndecidableInstances, FunctionalDependencies, NamedFieldPuns, TupleSections , DeriveGeneric, DeriveAnyClass #-}
 
 module TinyAPL.Pretty
   ( Doc
@@ -19,7 +19,7 @@ import TinyAPL.Adverb
 import TinyAPL.Conjunction
 import TinyAPL.Value
 import TinyAPL.Context
-import TinyAPL.Interpreter
+-- import TinyAPL.Interpreter
 import TinyAPL.Util
 import qualified TinyAPL.Glyphs as G
 
@@ -31,6 +31,8 @@ import qualified Data.Char.BoxDrawing as B
 import Control.Monad.Reader
 import Data.Text (Text)
 import qualified Data.Text as T
+import GHC.Generics
+import Control.DeepSeq
 
 newtype Doc = Doc' [Text] deriving (Eq)
 
@@ -127,7 +129,7 @@ data BoxDrawing
   | Pairs
   | Struct1
   | Struct2
-  deriving (Eq, Ord, Enum, Bounded, Show)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic, NFData)
 
 defaultBoxDrawings :: BoxDrawing -> Either B.Drawing Char
 defaultBoxDrawings TopLeft = Left B.cornerTL
@@ -150,7 +152,7 @@ defaultBoxDrawings Pairs = Right ':'
 defaultBoxDrawings Struct1 = Right $ fst G.struct
 defaultBoxDrawings Struct2 = Right $ snd G.struct
 
-data PrettyConfig = PrettyConfig { drawings :: [(BoxDrawing, Char)] }
+data PrettyConfig = PrettyConfig { drawings :: [(BoxDrawing, Char)] } deriving (Generic, NFData)
 
 defaultConfig :: PrettyConfig
 defaultConfig = PrettyConfig{ drawings = [] }

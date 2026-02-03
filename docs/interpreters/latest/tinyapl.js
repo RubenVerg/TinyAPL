@@ -26,8 +26,8 @@ await exports.hs_start();
  * @param error Function providing standard error
  * @param quads Quad names available to the interpreter
  */
-export async function newContext(input, output, error, quads, directory) {
-    return await exports.tinyapl_newContext(input, output, error, quads, directory);
+export async function newContext(input, output, error, quads, directory, pretty = true) {
+    return await exports.tinyapl_newContext(input, output, error, quads, directory, !pretty);
 }
 /**
  * Run code in a context
@@ -90,8 +90,8 @@ export const errors = Object.fromEntries(await Promise.all(Object.entries(instan
 /**
  * Turn a `Value` into a string
  */
-export async function show(o) {
-    return await exports.tinyapl_show(o);
+export async function show(o, pretty = true) {
+    return await exports.tinyapl_show(o, !pretty);
 }
 /**
  * Turn a `Value` into a string that is more likely to be parseable again

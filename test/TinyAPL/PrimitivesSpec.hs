@@ -13,6 +13,7 @@ import TinyAPL.Error
 import qualified TinyAPL.Glyphs as G
 import qualified TinyAPL.Primitives as P
 import TinyAPL.Util
+import TinyAPL.Pretty
 
 import Test.Hspec hiding (context)
 import Data.IORef
@@ -24,7 +25,9 @@ scope = unsafePerformIO $ newIORef $ Scope [] [] [] [] Nothing True
 {-# NOINLINE scope #-}
 idRef = unsafePerformIO $ newIORef (0 :: Integer)
 {-# NOINLINE idRef #-}
-context = Context scope core undefined undefined undefined idRef "" P.primitives
+prettyRef = unsafePerformIO $ newIORef defaultConfig
+{-# NOINLINE prettyRef #-}
+context = Context scope core undefined undefined undefined idRef "" P.primitives prettyRef False
 
 fmc :: [Noun] -> Noun
 fmc = fromRight' . fromMajorCells

@@ -219,7 +219,7 @@ async function fancyShow(result, depth = 0) {
         return fancyShow({ type: 'array', shape: [], contents: [v] }, depth + 1);
     };
     if (depth >= 8)
-        return document.createTextNode(await tinyapl.show(result));
+        return document.createTextNode(await tinyapl.show(result, false));
     if (result.type === 'array' && result.shape.length === 1 && result.contents.length !== 0 && !result.contents.every(x => typeof x === 'string')) {
         const table = document.createElement('table');
         table.className = 'vector';
@@ -250,7 +250,7 @@ async function fancyShow(result, depth = 0) {
         const tbody = document.createElement('tbody');
         table.appendChild(tbody);
         const allNumbers = result.contents.every(x => Array.isArray(x));
-        const allShown = await Promise.all(result.contents.map(e => tinyapl.show({ type: 'array', shape: [], contents: [e] })));
+        const allShown = await Promise.all(result.contents.map(e => tinyapl.show({ type: 'array', shape: [], contents: [e] }, false)));
         const maxLength = Math.max(...allShown.map(x => x.length));
         for (let y = 0; y < result.shape[0]; y++) {
             const tr = document.createElement('tr');
@@ -287,7 +287,7 @@ async function fancyShow(result, depth = 0) {
         const tbody = document.createElement('tbody');
         table.appendChild(tbody);
         const allNumbers = result.contents.every(x => Array.isArray(x));
-        const allShown = await Promise.all(result.contents.map(e => tinyapl.show({ type: 'array', shape: [], contents: [e] })));
+        const allShown = await Promise.all(result.contents.map(e => tinyapl.show({ type: 'array', shape: [], contents: [e] }, false)));
         const maxLength = Math.max(...allShown.map(x => x.length));
         for (let y = 0; y < a * b; y++) {
             const tr = document.createElement('tr');

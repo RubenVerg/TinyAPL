@@ -13,6 +13,7 @@ import {-# SOURCE #-} TinyAPL.Interpreter
 import TinyAPL.Random
 import TinyAPL.Util
 import TinyAPL.Glyphs (deltaBar)
+import TinyAPL.Pretty()
 import {-# SOURCE #-} qualified TinyAPL.Primitives as P
 
 import Control.Monad.Except (MonadError)
@@ -1590,10 +1591,10 @@ executeWith conf' code' = do
     (VNoun x) -> pure x
     _ -> throwError $ DomainError "Execute code must return a noun"
 
-format :: (MonadError Error m, MonadShow m ScalarValue) => Noun -> m String
-format x = showM x
+format :: Noun -> St String
+format x = runPretty' x
 
-format' :: (MonadError Error m, MonadShow m ScalarValue) => Noun -> m Noun
+format' :: Noun -> St Noun
 format' x = vector . fmap Character <$> format x
 
 find' :: MonadError Error m => CoreExtraArgs -> Noun -> Noun -> m Noun

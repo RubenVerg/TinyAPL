@@ -23,7 +23,7 @@ import TinyAPL.Quads.File (file)
 import TinyAPL.Quads.FFI (ffi, ffiStruct)
 #endif
 
-import Control.Monad (void, when, (>=>))
+import Control.Monad (void, when)
 import System.IO
 import Data.IORef
 import Data.List
@@ -33,9 +33,7 @@ import Control.DeepSeq
 import Control.Exception (displayException, SomeException, catch)
 import System.Directory
 import Data.String
-import Data.Maybe
 import qualified Options.Applicative as Opts
-import System.IO.Unsafe (unsafePerformIO)
 #ifdef is_linux
 import TinyAPL.Highlighter
 import qualified System.Console.Edited as E
@@ -124,28 +122,6 @@ stdin = Nilad (Just $ let
         go $ ch : text
   in vector . fmap Character . reverse <$> go "") Nothing (G.quad : "stdin") Nothing
 
-prettyConfig :: IORef PrettyConfig
-prettyConfig = unsafePerformIO $ newIORef defaultConfig
-{-# NOINLINE prettyConfig #-}
-
-runPretty' :: PrettyPrint St PrettyConfig a => a -> St String
-runPretty' x = do
-  config <- liftToSt $ readIORef prettyConfig
-  runPretty config x
-
-boxes :: Nilad
-boxes = Nilad (Just $ do
-  PrettyConfig{ drawings = ds } <- liftToSt $ readIORef prettyConfig
-  pure $ dictionary $ map (\(k, v) -> (Number $ fromIntegral $ fromEnum k, Character v)) ds) (Just $ \x -> do
-  let err = DomainError "Boxes value must either be a character vector or a dictionary of naturals to characters"
-  pairs <- case x of {
-    arr@(Array _ _) -> zip [minBound..maxBound] <$> asString err arr ;
-    Dictionary ks vs -> do {
-      ks' <- mapM (asNumber err >=> asNat err) ks ;
-      vs' <- mapM (asCharacter err) vs ;
-      pure $ mapMaybe (\(k, v) -> if k > fromIntegral (fromEnum (maxBound :: BoxDrawing)) then Nothing else Just (toEnum $ fromIntegral k, v)) $ zip ks' vs' }}
-  liftToSt $ modifyIORef prettyConfig $ \config -> config{ drawings = pairs }) (G.quad : "boxes") Nothing
-
 ffiQuads :: Quads
 #ifdef wasm32_HOST_ARCH
 ffiQuads = mempty
@@ -167,6 +143,8 @@ cli = do
 
   id <- newIORef 0
 
+  pretty <- newIORef defaultConfig
+
   Options allowed (CommonOptions ugly) inner <- Opts.execParser $ Opts.info (Opts.helper <*> options) Opts.fullDesc
   let context = Context {
       contextScope = scope
@@ -184,35 +162,37 @@ cli = do
       liftToSt $ hFlush stderr
     , contextIncrementalId = id
     , contextDirectory = cwd
-    , contextPrimitives = P.primitives }
+    , contextPrimitives = P.primitives
+    , contextPretty = pretty
+    , contextUgly = ugly }
 
   case inner of
-    ReplOptions prefixKey plain keymap -> repl context ugly prefixKey keymap plain
+    ReplOptions prefixKey plain keymap -> repl context prefixKey keymap plain
     FileOptions echo path -> do
       code <- F.readUtf8 path
-      void $ runCode echo ugly path code context
+      void $ runCode echo path code context
 
-runCode :: Bool -> Bool -> String -> String -> Context -> IO Context
-runCode output ugly file code context = do
+runCode :: Bool -> String -> String -> Context -> IO Context
+runCode output file code context = do
   (result, context') <- fmap fromRight' $ runResult $ flip runSt context $ runAndCatch $ run' file code
   case result of
     Panicked ex -> hPutStrLn stderr $ ansiRed $ show $ HaskellError $ displayException ex
     Thrown err -> hPutStrLn stderr $ ansiRed $ show err
     Succeeded res ->
       when output $ void $ runResult $ flip runSt context $ do
-        str <- if ugly then showM res else runPretty' res
+        str <- runPretty' res
         liftToSt $ putStrLn str
   pure context'
 
-repl :: Context -> Bool -> Char -> Keymap -> Bool -> IO ()
-repl context ugly _ _ True = let
+repl :: Context -> Char -> Keymap -> Bool -> IO ()
+repl context _ _ True = let
   go context = do
     line <- (Just <$> getLine) `catch` (\(_ :: SomeException) -> pure Nothing)
     case line of
       Nothing -> pure ()
-      Just line' -> runCode True ugly "<repl>" line' context >>= go
+      Just line' -> runCode True "<repl>" line' context >>= go
   in go context
-repl context ugly prefixKey keymap False = let
+repl context prefixKey keymap False = let
 #ifdef is_linux
   go :: E.Edited -> Context -> IO ()
 #else
@@ -229,7 +209,7 @@ repl context ugly prefixKey keymap False = let
     case line of
       Nothing -> pure ()
       Just "" -> pure ()
-      Just line' -> runCode True ugly "<repl>" line' context >>= go el
+      Just line' -> runCode True "<repl>" line' context >>= go el
   in do
     putStrLn "TinyAPL REPL, empty line to exit"
 #ifdef is_linux
