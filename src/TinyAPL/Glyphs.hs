@@ -310,6 +310,7 @@ inverse = '˝'
 onLeft = '⥽'
 onRight = '⥼'
 multisets = '⍦'
+mean = 'µ'
 
 adverbs =
   [ TinyAPL.Glyphs.selfie
@@ -335,7 +336,8 @@ adverbs =
   , TinyAPL.Glyphs.inverse
   , TinyAPL.Glyphs.onLeft
   , TinyAPL.Glyphs.onRight
-  , TinyAPL.Glyphs.multisets ]
+  , TinyAPL.Glyphs.multisets
+  , TinyAPL.Glyphs.mean ]
 
 -- * Conjunctions
 

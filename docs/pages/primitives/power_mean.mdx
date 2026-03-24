@@ -1,0 +1,12 @@
+---
+glyph: 'µ'
+pattern: 'r←(nµ)y'
+name: Power Mean
+---
+
+`n` is a numeric scalar. `r` is the `n`th power mean of the cells of `y`:
+
+* if `n` is `¯∞`, `r` is the minimum of `y`: `r←⌊/y`
+* if `n` is `∞`, `r` is the maximum of `y`: `r←⌈/y`
+* if `n` is `0`, `r` is the geometric mean of `y`: `r←⦅≢√×/⦆y`
+* otherwise, `r` is the `n`th root of the arithmetic mean of the `n`th power of `y`: `r←n√+/«÷»≢n↗y`
