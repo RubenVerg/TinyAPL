@@ -326,6 +326,11 @@ multisets = PrimitiveAdverb
   , adverbContext = Nothing
   , adverbOnNoun = Nothing
   , adverbOnFunction = Just $ const $ \f -> pure $ DerivedFunctionFunction (FunctionCalls (Just $ const $ F.onCounts $ callMonad f []) (Just $ const $ F.multisets $ callDyad f []) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing) Nothing multisets f }
+mean = PrimitiveAdverb
+  { adverbRepr = [G.mean]
+  , adverbContext = Nothing
+  , adverbOnNoun = Just $ const $ \x -> pure $ DerivedFunctionNoun (FunctionCalls (Just $ const $ F.powerMean' x) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing) Nothing mean x
+  , adverbOnFunction = Just $ const $ \f -> pure $ DerivedFunctionFunction (FunctionCalls (Just $ const $ F.fMean' (callMonad f []) (callUn f [])) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing) Nothing mean f }
 
 adverbs :: [(String, Adverb)]
 adverbs = (\x -> (adverbRepr x, x)) <$>
@@ -352,7 +357,8 @@ adverbs = (\x -> (adverbRepr x, x)) <$>
   , TinyAPL.Primitives.inverse
   , TinyAPL.Primitives.onLeft
   , TinyAPL.Primitives.onRight
-  , TinyAPL.Primitives.multisets ]
+  , TinyAPL.Primitives.multisets
+  , TinyAPL.Primitives.mean ]
 
 -- * Primitive conjunctions
 

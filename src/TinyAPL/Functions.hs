@@ -2196,3 +2196,21 @@ atArr n m y = do
     else throwError $ DomainError "At left operand must have the same shape as the right argument, or one less rank and same trailing shape"
   let map = Map.fromList $ zip ms ns
   fromMajorCells $ (\y -> fromMaybe y $ Map.lookup y map) <$> ys
+
+powerMean :: Complex Double -> [Noun] -> St Noun
+powerMean 0 xs = pure $ product xs ** (recip $ genericLength xs)
+powerMean p xs | p == ninf :+ 0 = pure $ minimum xs
+powerMean p xs | p == inf :+ 0 = pure $ maximum xs
+powerMean p xs = mapM (`pow'` scalar (Number p)) xs >>= reduce add' >>= (`divide'` scalar (Number $ genericLength xs)) >>= root' (scalar (Number p))
+
+powerMean' :: Noun -> Noun -> St Noun
+powerMean' x y = do
+  let err = DomainError "Mean array operand must be a scalar number"
+  p <- asScalar err x >>= asNumber err
+  powerMean p $ majorCells y
+
+fMean :: (Noun -> St Noun) -> (Noun -> St Noun) -> [Noun] -> St Noun
+fMean f unF xs = mapM f xs >>= reduce add' >>= (`divide'` scalar (Number $ genericLength xs)) >>= unF
+
+fMean' :: (Noun -> St Noun) -> (Noun -> St Noun) -> Noun -> St Noun
+fMean' f unF x = fMean f unF $ majorCells x
