@@ -18,7 +18,7 @@ jobs:
         uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: '9.10.1'
+          ghc-version: '9.12.2'
 
       - name: Dry run for cache key
         run: 'cabal build exe:tinyapl --dry-run'
@@ -59,7 +59,7 @@ jobs:
         uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: '9.10.1'
+          ghc-version: '9.12.2'
 
       - name: Dry run for cache key
         run: 'cabal build exe:tinyapl --dry-run'
@@ -107,7 +107,7 @@ jobs:
         uses: RubenVerg/haskell-actions-setup@42b5d480dd95619c4b7d327287f3557cabc6320b
         id: setup-haskell
         with:
-          ghc-version: '9.10.1'
+          ghc-version: '9.12.2'
           override-arch: 'x64'
 
       - name: Dry run for cache key
@@ -178,7 +178,7 @@ jobs:
         uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: '9.10.1'
+          ghc-version: '9.12.2'
 
       - name: Hack part 0
         run: 'rm -rf ./dist-newstyle/src'
@@ -237,7 +237,7 @@ jobs:
       - name: Setup GHC
         id: setup-haskell
         env:
-          FLAVOUR: '9.10'
+          FLAVOUR: '9.12'
         run: |
           curl https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta/-/raw/master/bootstrap.sh | sh
           ~/.ghc-wasm/add_to_github_path.sh

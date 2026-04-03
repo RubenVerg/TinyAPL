@@ -60,7 +60,7 @@ library
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.20.0.0
+    build-depends:    base ^>=4.21.0.0
                     , megaparsec ^>=9.6.1
                     , mtl ^>=2.3.1
                     , random ^>=1.2.1.2
@@ -83,7 +83,7 @@ library
                     , array ^>=0.5.7.0
                     , containers ^>=0.7
                     , arithmoi ^>=0.13.0.1
-                    , template-haskell ^>=2.22.0.0
+                    , template-haskell ^>=2.23.0.0
                     , char-boxdrawing ^>=1
     hs-source-dirs:   src
                     , gamma
@@ -94,7 +94,7 @@ library tinyapl-native-helpers
     exposed-modules:  TinyAPL.Files
                     , TinyAPL.Quads.FFI
                     , TinyAPL.Quads.File
-    build-depends:    base ^>=4.20.0.0
+    build-depends:    base ^>=4.21.0.0
                     , containers
                     , deepseq
                     , exceptions
@@ -120,7 +120,7 @@ executable tinyapl
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.20.0.0
+    build-depends:    base ^>=4.21.0.0
                     , optparse-applicative ^>=0.18.1.0
                     , mtl
                     , deepseq
@@ -139,8 +139,8 @@ executable tinyapl-js
 
     other-modules:    JSBridge
 
-    build-depends:    base ^>=4.20.0.0
-                    , ghc-experimental ==0.1.0.0 || ^>=9.1001.0 || ^>=9.1003.0
+    build-depends:    base ^>=4.21.0.0
+                    , ghc-experimental ==0.1.0.0 || ^>=9.1203.0
                     , deepseq
                     , tinyapl
     
@@ -162,7 +162,7 @@ test-suite tinyapl-tests
     other-modules:    TinyAPL.ArraySpec
                     , TinyAPL.ParserSpec
                     , TinyAPL.PrimitivesSpec
-    build-depends:    base ^>=4.20.0.0
+    build-depends:    base ^>=4.21.0.0
                     , hspec ^>=2.11.7
                     , hspec-discover ^>=2.11.7
                     , tinyapl
