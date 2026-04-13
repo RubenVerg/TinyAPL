@@ -1932,9 +1932,9 @@ under :: MonadError Error m => (Noun -> m Noun) -> (Noun -> m Noun) -> Noun -> m
 under f g arr@(Array _ _) = do
   let numsL = [1..fromIntegral $ product $ arrayShape arr]
   let nums = fromJust $ arrayReshaped (arrayShape arr) $ Number . (:+ 0) <$> numsL
-  pairs <- each2 pair arr nums
+  pairs <- onScalars2 defaultCoreExtraArgs (atop enclose' pair) arr nums
   rs <- g pairs
-  (nums'Sh, nums') <- liftA2 (,) arrayShape (fmap (\case { Number (x :+ 0) -> x; _ -> error "???" }) . arrayContents) <$> each1 (TinyAPL.Functions.last defaultCoreExtraArgs) rs
+  (nums'Sh, nums') <- liftA2 (,) arrayShape (fmap (\case { Number (x :+ 0) -> x; _ -> error "???" }) . arrayContents) <$> onScalars1 defaultCoreExtraArgs (TinyAPL.Functions.last defaultCoreExtraArgs `compose` first defaultCoreExtraArgs) rs
   res <- onScalars1 defaultCoreExtraArgs (first defaultCoreExtraArgs `compose` first defaultCoreExtraArgs) rs >>= f
   unless (distinct nums') $ throwError $ DomainError "Under right argument must return each element at most once"
   if isScalar res then do
