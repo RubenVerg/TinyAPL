@@ -309,6 +309,7 @@ squareRoot' :: Noun -> St Noun
 squareRoot' = scalarMonad squareRootS
 
 root :: MonadError Error m => ScalarValue -> ScalarValue -> m ScalarValue
+root (Number 1) (Number y) = pure $ Number y
 root (Number x) (Number y) = pure $ Number $ y ** recip x
 root _ _ = throwError expectedNumber
 
