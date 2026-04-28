@@ -13,4 +13,19 @@ P ⇇ { co⇇⍵≡⍬⍰⟨0⟩⍠,⍵ ⋄ Exp⇇{⍵=0:■''⋄⍵=1:■'x'⋄
 ⋄ ⍙Decrement ⇇ -∘1
 ⋄ ⍙Span      ⇇ 1«+»-
 ⋄ ⍙Not       ⇇ 1∘-
+⋄ At         ⇇ ⊥∘co
 ⦄ }
+
+PolyToken ⇇ {
+  exps←"⁰¹²³⁴⁵⁶⁷⁸⁹"
+⋄ i ← 0+/∧/\⍵∊⎕d⍪'¯.⏨ᴊ'
+⋄ 0=i: ■⍬
+⋄ c ← ⍎i↑⍵
+⋄ 'x'≠i⊇⎊0⍵: ■⍬
+⋄ j ← 0+/∧/\exps∊⍨1↓i↓⍵
+⋄ e ← j↑1↓i↓⍵
+⋄ p ← e≡""⍰1⍠10⊥exps⍳e
+⋄ ⟨⍵↑⍨i+j+1 ⋄ ⦃x←c×p↗P 1‿0⦄⟩
+}
+
+parsing ⇇ ⦃Token⇇PolyToken⦄

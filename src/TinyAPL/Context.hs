@@ -24,7 +24,7 @@ module TinyAPL.Context
   , scopeShallowModifyFunction
   , scopeShallowModifyAdverb
   , scopeShallowModifyConjunction
-  , Primitives
+  , ParsingInfo(..)
   , Context(..)
   , assignId
   , St
@@ -81,7 +81,7 @@ data Scope = Scope
   deriving (Generic, NFData)
 
 instance (Monad m, MonadShow m ScalarValue) => MonadShow m Scope where
-  showM (Scope nouns fns advs conjs parent str) = (printf "Scope { nouns = %s, functions = %s, adverbs = %s, conjunctions = %s, %s, is struct: %s }") <$> showM nouns <*> showM fns <*> showM advs <*> showM conjs <*> (pure $ case parent of
+  showM (Scope nouns fns advs conjs parent str) = printf "Scope { nouns = %s, functions = %s, adverbs = %s, conjunctions = %s, %s, is struct: %s }" <$> showM nouns <*> showM fns <*> showM advs <*> showM conjs <*> pure (case parent of
     Nothing -> "no parent"
     Just _ -> "a parent") <*> pure (show str)
 
@@ -128,28 +128,28 @@ scopeLookupNoun private name sc = case scopeShallowLookupNoun private name sc of
   Just x -> pure $ Just x
   Nothing -> if name `elem` specialNames then pure Nothing else case scopeParent sc of
     Nothing -> pure Nothing
-    Just p -> (liftToSt $ IORef.readIORef p) >>= scopeLookupNoun private name
+    Just p -> readRef p >>= scopeLookupNoun private name
 
 scopeLookupFunction :: Bool -> String -> Scope -> St (Maybe Function)
 scopeLookupFunction private name sc = case scopeShallowLookupFunction private name sc of
   Just x -> pure $ Just x
-  Nothing -> if name `elem` specialNames then pure $ Nothing else case scopeParent sc of
-    Nothing -> pure $ Nothing
-    Just p -> (liftToSt $ IORef.readIORef p) >>= scopeLookupFunction private name
+  Nothing -> if name `elem` specialNames then pure Nothing else case scopeParent sc of
+    Nothing -> pure Nothing
+    Just p -> readRef p >>= scopeLookupFunction private name
 
 scopeLookupAdverb :: Bool -> String -> Scope -> St (Maybe Adverb)
 scopeLookupAdverb private name sc = case scopeShallowLookupAdverb private name sc of
   Just x -> pure $ Just x
-  Nothing -> if name `elem` specialNames then pure $ Nothing else case scopeParent sc of
-    Nothing -> pure $ Nothing
-    Just p -> (liftToSt $ IORef.readIORef p) >>= scopeLookupAdverb private name
+  Nothing -> if name `elem` specialNames then pure Nothing else case scopeParent sc of
+    Nothing -> pure Nothing
+    Just p -> readRef p >>= scopeLookupAdverb private name
 
 scopeLookupConjunction :: Bool -> String -> Scope -> St (Maybe Conjunction)
 scopeLookupConjunction private name sc = case scopeShallowLookupConjunction private name sc of
   Just x -> pure $ Just x
-  Nothing -> if name `elem` specialNames then pure $ Nothing else case scopeParent sc of
-    Nothing -> pure $ Nothing
-    Just p -> (liftToSt $ IORef.readIORef p) >>= scopeLookupConjunction private name
+  Nothing -> if name `elem` specialNames then pure Nothing else case scopeParent sc of
+    Nothing -> pure Nothing
+    Just p -> readRef p >>= scopeLookupConjunction private name
 
 scopeUpdateNoun :: Bool ->  String -> VariableType -> Noun -> Scope -> St Scope
 scopeUpdateNoun private name ty val sc = case lookup name (scopeNouns sc) of
@@ -231,7 +231,13 @@ scopeShallowModifyConjunction private name val sc = if name `elem` specialNames 
   Just _ -> scopeUpdateConjunction private name VariableNormal val sc
   Nothing -> throwError $ DomainError "Modifying a non-existent variable"
 
-type Primitives = ([(String, Noun)], [(String, Function)], [(String, Adverb)], [(String, Conjunction)])
+data ParsingInfo = ParsingInfo
+  { parsingNouns :: [(String, Noun)]
+  , parsingFunctions :: [(String, Function)]
+  , parsingAdverbs :: [(String, Adverb)]
+  , parsingConjunctions :: [(String, Conjunction)]
+  , parsingCustomToken :: Maybe (String -> St (Maybe (String, Value))) }
+  deriving (Generic, NFData)
 
 data Context = Context
   { contextScope :: IORef Scope
@@ -241,7 +247,7 @@ data Context = Context
   , contextErr :: String -> St ()
   , contextIncrementalId :: IORef Integer
   , contextDirectory :: FilePath
-  , contextPrimitives :: Primitives
+  , contextParsingInfo :: ParsingInfo
   , contextPretty :: IORef PrettyConfig
   , contextUgly :: Bool }
 

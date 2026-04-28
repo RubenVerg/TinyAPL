@@ -162,7 +162,7 @@ cli = do
       liftToSt $ hFlush stderr
     , contextIncrementalId = id
     , contextDirectory = cwd
-    , contextPrimitives = P.primitives
+    , contextParsingInfo = case P.primitives of (n, f, a, c) -> ParsingInfo n f a c Nothing
     , contextPretty = pretty
     , contextUgly = ugly }
 

@@ -609,5 +609,5 @@ conjunctions = (\x -> (conjRepr x, x)) <$>
   , TinyAPL.Primitives.at
   , TinyAPL.Primitives.contextualUnder ]
 
-primitives :: Primitives
+primitives :: ([(String, Noun)], [(String, Function)], [(String, Adverb)], [(String, Conjunction)])
 primitives = (arrays, functions, adverbs, conjunctions)

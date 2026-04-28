@@ -1,9 +1,11 @@
-{-# LANGUAGE LambdaCase, BangPatterns, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, ViewPatterns #-}
 
 module TinyAPL.Parser where
 
 import TinyAPL.Complex
+import TinyAPL.Context
 import TinyAPL.Error
+import TinyAPL.Value
 import qualified TinyAPL.Glyphs as G
 import TinyAPL.Util
 
@@ -21,8 +23,10 @@ import Text.Parser.Combinators (sepByNonEmpty)
 import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Char (isSpace)
+import Control.Monad.Identity
+import Control.Monad.Trans
 
-type Parser = Parsec Void String
+type Parser = ParsecT Void String St
 
 data AssignType
   = AssignNormal
@@ -99,6 +103,7 @@ data Token
   | TokenExtraArgs [(NonEmpty Token, NonEmpty Token)] SourcePos
   | TokenSpreadExtraArgs (NonEmpty Token) SourcePos
   | TokenNothing SourcePos
+  | TokenCustom Value SourcePos
 
 instance Eq Token where
   (TokenNumber x _) == (TokenNumber y _) = x == y
@@ -150,6 +155,7 @@ instance Eq Token where
   (TokenExtraArgs xes _) == (TokenExtraArgs yes _) = xes == yes
   (TokenSpreadExtraArgs x _) == (TokenSpreadExtraArgs y _) = x == y
   (TokenNothing _) == (TokenNothing _) = True
+  (TokenCustom x _) == (TokenCustom y _) = x == y
   _ == _ = False
 
 instance Show Token where
@@ -189,9 +195,9 @@ instance Show Token where
   show (TokenVector xs _) = "(vector " ++ [fst G.vector, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . NE.toList . fmap show <$> xs) ++ [snd G.vector] ++ ")"
   show (TokenHighRank xs _) = "(high rank " ++ [fst G.highRank, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . NE.toList . fmap show <$> xs) ++ [snd G.highRank] ++ ")"
   show (TokenDictionary xs _) = "(dictionary " ++ [fst G.vector, ' '] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> show k ++ [G.guard] ++ show v) <$> xs) ++ [snd G.vector] ++ ")"
-  show (TokenTrain xs _) = "(train " ++ [fst G.train, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . fmap show <$> xs) ++ [snd G.train] ++ ")" where
-  show (TokenAdverbTrain xs _) = "(adverb train " ++ [G.underscore, fst G.train, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . fmap show <$> xs) ++ [snd G.train] ++ ")" where
-  show (TokenConjunctionTrain xs _) = "(conjunction train " ++ [G.underscore, fst G.train, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . fmap show <$> xs) ++ [snd G.train, G.underscore] ++ ")" where
+  show (TokenTrain xs _) = "(train " ++ [fst G.train, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . fmap show <$> xs) ++ [snd G.train] ++ ")"
+  show (TokenAdverbTrain xs _) = "(adverb train " ++ [G.underscore, fst G.train, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . fmap show <$> xs) ++ [snd G.train] ++ ")"
+  show (TokenConjunctionTrain xs _) = "(conjunction train " ++ [G.underscore, fst G.train, ' '] ++ intercalate [' ', G.separator, ' '] (unwords . fmap show <$> xs) ++ [snd G.train, G.underscore] ++ ")"
   show (TokenWrap x _) = "(wrap " ++ [G.wrap] ++ show x ++ ")"
   show (TokenUnwrap x _) = "(unwrap " ++ [G.unwrap] ++ show x ++ ")"
   show (TokenUnwrapAdverb x _) = "(unwrap adverb " ++ [G.underscore, G.unwrap] ++ show x ++ ")"
@@ -202,6 +208,7 @@ instance Show Token where
   show (TokenExtraArgs xs _) = "(extra args " ++ [fst G.extraArgs] ++ intercalate [' ', G.separator, ' '] ((\(k, v) -> unwords (NE.toList $ show <$> k) ++ [G.guard] ++ unwords (NE.toList $ show <$> v)) <$> xs) ++ [snd G.extraArgs] ++ ")"
   show (TokenSpreadExtraArgs x _) = "(spread extra args " ++ [fst G.extraArgs] ++ unwords (NE.toList $ show <$> x) ++ [snd G.extraArgs] ++ ")"
   show (TokenNothing _) = "(nothing)"
+  show (TokenCustom v _) = "(custom token: " ++ runIdentity (showM v) ++ ")"
 
 tokenPos :: Token -> SourcePos
 tokenPos (TokenNumber _ pos) = pos
@@ -253,6 +260,7 @@ tokenPos (TokenTernary _ _ _ pos) = pos
 tokenPos (TokenExtraArgs _ pos) = pos
 tokenPos (TokenSpreadExtraArgs _ pos) = pos
 tokenPos (TokenNothing pos) = pos
+tokenPos (TokenCustom _ pos) = pos
 
 emptyPos :: SourcePos
 emptyPos = SourcePos "<empty>" (mkPos 1) (mkPos 1)
@@ -275,8 +283,8 @@ makeParseErrors :: String -> ParseErrorBundle String Void -> Error
 makeParseErrors source es = case attachSourcePos errorOffset (bundleErrors es) (bundlePosState es) of
   (r :| rs, _) -> SyntaxError $ concatMap (uncurry $ flip $ prettyParseError source) $ r : rs
 
-tokenize :: ([String], [String], [String], [String]) -> String -> String -> Result [[Token]]
-tokenize (pN, pF, pA, pC) file source = first (makeParseErrors source) $ Text.Megaparsec.parse (sepBy1 bitsMaybe separator <* eof) file source where
+tokenize :: ParsingInfo -> String -> String -> St [[Token]]
+tokenize (ParsingInfo (map fst -> pN) (map fst -> pF) (map fst -> pA) (map fst -> pC) ct) file source = runParserT (sepBy1 bitsMaybe separator <* eof) file source >>= liftEither . first (makeParseErrors source) where
   withPos :: Parser (SourcePos -> a) -> Parser a
   withPos = (<**>) getSourcePos
 
@@ -501,11 +509,21 @@ tokenize (pN, pF, pA, pC) file source = first (makeParseErrors source) $ Text.Me
   separator :: Parser ()
   separator = void $ lexeme (char G.separator) <|> char '\n' <* some (char '\n')
 
+  custom :: Parser Token
+  custom = try $ withPos $ case ct of
+    Nothing -> failure Nothing mempty
+    Just ct' -> do
+      i <- getInput
+      r <- lift $ ct' i
+      case r of
+        Nothing -> failure Nothing mempty
+        Just (s, x) -> TokenCustom x <$ string s
+
   bit' :: Parser Token
-  bit' = lexeme $ bracketed <|> nothing <|> conjunction' <|> adverb' <|> function' <|> array'
+  bit' = lexeme $ custom <|> bracketed <|> nothing <|> conjunction' <|> adverb' <|> function' <|> array'
 
   bit :: Parser Token
-  bit = lexeme $ nothing <|> conjunction'' <|> adverb'' <|> function'' <|> array'' <|>
+  bit = lexeme $ custom <|> nothing <|> conjunction'' <|> adverb'' <|> function'' <|> array'' <|>
     maybeQualifiedTie
       TokenTie
       [ (TokenQualifiedConjunctionName, TokenQualifiedConjunctionAssign, try conjunctionName)
@@ -600,8 +618,8 @@ data Tree
   | HighRankAssignBranch { highRankAssignBranchNames :: [String], highRankAssignBranchType :: AssignType, highRankAssignBranchValue :: Tree }
   | StructAssignBranch { structAssignBranchNames :: [(String, Maybe (AssignType, String))], structAssignBranchType :: AssignType, structAssignBranchValue :: Tree }
   | DefinedBranch { definedBranchCategory :: Category, definedBranchStatements :: NonEmpty Tree }
-  | GuardBranch { guardBranchCheck :: Tree, guardBranchResult :: Tree }
-  | ExitBranch { exitBranchResult :: Tree }
+  | GuardBranch { guardBranchCheck :: Tree, guardBranchSt :: Tree }
+  | ExitBranch { exitBranchSt :: Tree }
   | VectorBranch { vectorBranchEntries :: [Tree] }
   | HighRankBranch { highRankBranchEntries :: [Tree] }
   | DictionaryBranch { dictionaryBranchEntries :: [(Tree, Tree)] }
@@ -695,7 +713,7 @@ compactTrainBindingMap = filter (\case
 pairs :: BindingMap -> [Tree] -> [(Int, Tree -> Tree -> Tree)]
 pairs map = mapAdjacent $ fromMaybe (0, undefined) .: (curry (`lookup` map) `on` treeCategory)
 
-bindPairMaybe :: BindingMap -> NonEmpty Tree -> Result (Maybe (NonEmpty Tree))
+bindPairMaybe :: BindingMap -> NonEmpty Tree -> St (Maybe (NonEmpty Tree))
 bindPairMaybe _ x@(_ :| []) = pure $ Just x
 bindPairMaybe map xs = let
   xs' = NE.toList xs
@@ -709,22 +727,28 @@ bindPairMaybe map xs = let
     else if idx == nextBind + 1 then Nothing
     else Just el) indexed
 
-bindPair :: NonEmpty Tree -> Result (NonEmpty Tree)
+bindPair :: NonEmpty Tree -> St (NonEmpty Tree)
 bindPair x = bindPairMaybe bindingMap x >>= (\case
   Nothing -> throwError $ SyntaxError "No binding found"
   Just x' -> pure x')
 
-bindAll :: NonEmpty Tree -> Result Tree
+bindAll :: NonEmpty Tree -> St Tree
 bindAll (x :| []) = pure x
 bindAll xs = bindPair xs >>= bindAll
 
-bindAllMultiple :: BindingMap -> NonEmpty Tree -> Result (NonEmpty Tree)
+bindAllMultiple :: BindingMap -> NonEmpty Tree -> St (NonEmpty Tree)
 bindAllMultiple _ (x :| []) = pure $ NE.singleton x
 bindAllMultiple map xs = bindPairMaybe map xs >>= (\case
   Nothing -> pure xs
   Just xs' -> bindAllMultiple map xs')
 
-categorize :: ([String], [String], [String], [String]) -> String -> String -> Result [[Tree]]
+valueCategory :: Value -> Category
+valueCategory (VNoun _) = CatArray
+valueCategory (VFunction _) = CatFunction
+valueCategory (VAdverb _) = CatAdverb
+valueCategory (VConjunction _) = CatConjunction
+
+categorize :: ParsingInfo -> String -> String -> St [[Tree]]
 categorize p name source = tokenize p name source >>= mapM (\xs -> case NE.nonEmpty xs of
   Nothing -> pure []
   Just xs -> NE.toList <$> categorizeTokens xs) where
@@ -732,44 +756,44 @@ categorize p name source = tokenize p name source >>= mapM (\xs -> case NE.nonEm
   orEmptyToken [] = TokenVector [] emptyPos :| []
   orEmptyToken xs = NE.fromList xs
 
-  categorizeTokens :: NonEmpty Token -> Result (NonEmpty Tree)
+  categorizeTokens :: NonEmpty Token -> St (NonEmpty Tree)
   categorizeTokens = mapM tokenToTree
 
-  categorizeAndBind :: NonEmpty Token -> Result Tree
+  categorizeAndBind :: NonEmpty Token -> St Tree
   categorizeAndBind = categorizeTokens >=> bindAll
 
-  categorizeAndBindMultiple :: BindingMap -> NonEmpty Token -> Result (NonEmpty Tree)
+  categorizeAndBindMultiple :: BindingMap -> NonEmpty Token -> St (NonEmpty Tree)
   categorizeAndBindMultiple map = categorizeTokens >=> bindAllMultiple map
 
-  requireOfCategory :: Category -> (Category -> Error) -> Tree -> Result Tree
+  requireOfCategory :: Category -> (Category -> Error) -> Tree -> St Tree
   requireOfCategory cat msg tree | treeCategory tree == cat = pure tree
                                  | otherwise                = throwError $ msg $ treeCategory tree
 
-  qualified :: Category -> Token -> NonEmpty String -> Result Tree
+  qualified :: Category -> Token -> NonEmpty String -> St Tree
   qualified cat h ns = QualifiedBranch cat <$> (tokenToTree h >>=
     requireOfCategory CatArray (\c -> makeSyntaxError (tokenPos h) source $ "Invalid qualified access to value of type " ++ show c)) <*> pure ns
 
-  defined :: Category -> String -> NonEmpty [Token] -> SourcePos -> Result Tree
+  defined :: Category -> String -> NonEmpty [Token] -> SourcePos -> St Tree
   defined cat name statements pos = do
     let statements' = orEmptyToken <$> statements
     ss <- mapM categorizeAndBind statements'
     if null ss then throwError $ makeSyntaxError pos source $ "Invalid empty " ++ name
     else if treeCategory (NE.last ss) /= CatArray then throwError $ makeSyntaxError (tokenPos $ NE.head $ NE.last statements') source $ "Invalid " ++ name ++ ": last statement must be an array"
-    else Right $ DefinedBranch cat ss
+    else pure $ DefinedBranch cat ss
 
-  assignment :: Category -> String -> AssignType -> NonEmpty Token -> SourcePos -> Result Tree
+  assignment :: Category -> String -> AssignType -> NonEmpty Token -> SourcePos -> St Tree
   assignment cat name ty ts pos = AssignBranch cat name ty <$> (categorizeAndBind ts >>=
     requireOfCategory cat (\c -> makeSyntaxError pos source $ "Invalid assignment of " ++ show c ++ " to " ++ show cat ++ " name"))
 
-  qualifiedAssignment :: Category -> Token -> NonEmpty String -> AssignType -> NonEmpty Token -> Result Tree
+  qualifiedAssignment :: Category -> Token -> NonEmpty String -> AssignType -> NonEmpty Token -> St Tree
   qualifiedAssignment cat h ns ty ts = liftA2 (\h' as -> QualifiedAssignBranch cat h' ns ty as) (tokenToTree h >>=
     requireOfCategory CatArray (\c -> makeSyntaxError (tokenPos h) source $ "Invalid qualified access to value of type " ++ show c)) (categorizeAndBind ts >>=
     requireOfCategory cat (\c -> makeSyntaxError (tokenPos $ NE.head ts) source $ "Invalid assignment of " ++ show c ++ " to " ++ show cat ++ " name"))
 
-  destructureAssignment :: ([String] -> AssignType -> Tree -> Tree) -> [String] -> AssignType -> NonEmpty Token -> SourcePos -> Result Tree
+  destructureAssignment :: ([String] -> AssignType -> Tree -> Tree) -> [String] -> AssignType -> NonEmpty Token -> SourcePos -> St Tree
   destructureAssignment h names ty ts pos = h names ty <$> (categorizeAndBind ts >>= requireOfCategory CatArray (\c -> makeSyntaxError pos source $ "Invalid destructure assignment of " ++ show c ++ ", array required"))
 
-  structAssignment :: [(String, Maybe (AssignType, String))] -> AssignType -> NonEmpty Token -> SourcePos -> Result Tree
+  structAssignment :: [(String, Maybe (AssignType, String))] -> AssignType -> NonEmpty Token -> SourcePos -> St Tree
   structAssignment names ty ts pos = do
     let ns = mapMaybe (\case { (_, Nothing) -> Nothing; (n, Just (_, n')) -> Just (n, n') }) names
     mapM_ (\(n, n') -> if not $
@@ -781,35 +805,35 @@ categorize p name source = tokenize p name source >>= mapM (\xs -> case NE.nonEm
       else pure ()) ns
     StructAssignBranch names ty <$> (categorizeAndBind ts >>= requireOfCategory CatArray (\c -> makeSyntaxError pos source $ "Invalid struct assignment of " ++ show c ++ ", array required"))
 
-  vector :: [NonEmpty Token] -> SourcePos -> Result Tree
+  vector :: [NonEmpty Token] -> SourcePos -> St Tree
   vector es _ = VectorBranch <$> mapM (\x -> categorizeAndBind x) es
 
-  highRank :: [NonEmpty Token] -> SourcePos -> Result Tree
+  highRank :: [NonEmpty Token] -> SourcePos -> St Tree
   highRank es _ = HighRankBranch <$> mapM (\x -> categorizeAndBind x >>=
     requireOfCategory CatArray (\c -> makeSyntaxError (tokenPos $ NE.head x) source $ "Invalid array entry of type " ++ show c ++ ", array required")) es
 
-  dictionary :: [(NonEmpty Token, NonEmpty Token)] -> SourcePos -> Result Tree
+  dictionary :: [(NonEmpty Token, NonEmpty Token)] -> SourcePos -> St Tree
   dictionary es _ = DictionaryBranch <$> mapM (\(k, v) -> liftA2 (,) (categorizeAndBind k) (categorizeAndBind v)) es
 
-  train :: Category -> [[Token]] -> SourcePos -> Result Tree
+  train :: Category -> [[Token]] -> SourcePos -> St Tree
   train cat es _ = TrainBranch cat <$> (mapM (\e -> case NE.nonEmpty e of
     Nothing -> return Nothing
     Just e' -> Just <$> categorizeAndBind e') es)
 
-  compactTrain :: Category -> NonEmpty Token -> SourcePos -> Result Tree
+  compactTrain :: Category -> NonEmpty Token -> SourcePos -> St Tree
   compactTrain cat es _ = TrainBranch cat . fmap Just . NE.toList <$> categorizeAndBindMultiple compactTrainBindingMap es
 
-  struct :: [NonEmpty Token] -> SourcePos -> Result Tree
+  struct :: [NonEmpty Token] -> SourcePos -> St Tree
   struct es _ = StructBranch <$> mapM (\x -> categorizeAndBind x) es
 
-  ternary :: NonEmpty Token -> NonEmpty Token -> NonEmpty Token -> Result Tree
+  ternary :: NonEmpty Token -> NonEmpty Token -> NonEmpty Token -> St Tree
   ternary h t f = do
     cond <- categorizeAndBind h >>= requireOfCategory CatArray (\c -> makeSyntaxError (tokenPos $ NE.head h) source $ "Invalid ternary condition of type " ++ show c ++ ", array required")
     true <- categorizeAndBind t >>= requireOfCategory CatArray (\c -> makeSyntaxError (tokenPos $ NE.head t) source $ "Invalid ternary true of type " ++ show c ++ ", array required")
     false <- categorizeAndBind f >>= requireOfCategory CatArray (\c -> makeSyntaxError (tokenPos $ NE.head f) source $ "Invalid ternary false of type " ++ show c ++ ", array required")
     pure $ TernaryBranch cond true false
 
-  tokenToTree :: Token -> Result Tree
+  tokenToTree :: Token -> St Tree
   tokenToTree num@(TokenNumber _ _)                         = return $ Leaf CatArray num
   tokenToTree ch@(TokenChar _ _)                            = return $ Leaf CatArray ch
   tokenToTree str@(TokenString _ _)                         = return $ Leaf CatArray str
@@ -868,8 +892,9 @@ categorize p name source = tokenize p name source >>= mapM (\xs -> case NE.nonEm
     CatArray -> pure $ UnboundExtraArgsBranch e
     _ -> throwError $ makeSyntaxError (tokenPos $ NE.head es) source $ "Extra args must be arrays")
   tokenToTree (TokenNothing pos)                            = pure $ Leaf CatNothing (TokenNothing pos)
+  tokenToTree (TokenCustom x pos)                           = pure $ Leaf (valueCategory x) (TokenCustom x pos)
 
-parse :: ([String], [String], [String], [String]) -> String -> String -> Result [Maybe Tree]
+parse :: ParsingInfo -> String -> String -> St [Maybe Tree]
 parse p name = categorize p name >=> mapM (\xs -> case NE.nonEmpty xs of
   Nothing -> pure Nothing
   Just xs -> Just <$> bindAll xs)

@@ -21,7 +21,7 @@ import qualified TinyAPL.Complex as Cx
 import TinyAPL.Complex ( Complex((:+)) )
 import Data.Char
 import Data.Maybe (fromJust, fromMaybe)
-import Data.List (elemIndex, genericLength, genericTake, genericDrop, genericReplicate, nub, genericIndex, sortOn, sort, find, singleton, nubBy, intercalate)
+import Data.List (elemIndex, genericLength, genericTake, genericDrop, genericReplicate, nub, genericIndex, sortOn, sort, find, singleton, nubBy, intercalate, isPrefixOf)
 import qualified Data.List.NonEmpty as NE
 import Numeric.Natural (Natural)
 import qualified Data.Bifunctor as Bi
@@ -30,7 +30,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Ord (Down(..))
 import qualified Data.Matrix as M
 import qualified TinyAPL.Gamma.Gamma as Gamma
-import Data.Foldable (foldlM, foldrM)
+import Data.Foldable (foldlM, foldrM, asum)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Math.NumberTheory.Primes (unPrime, UniqueFactorisation(factorise))
@@ -340,7 +340,7 @@ matrixDivide x y = (* x) <$> matrixInverse y
 matrixDivide' :: MonadError Error m => Noun -> Noun -> m Noun
 matrixDivide' = atRank2 defaultCoreExtraArgs (\x y -> do
   x' <- asMatrix (DomainError "") x >>= mapM (asNumber (DomainError "Matrix divide arguments must be numeric"))
-  y' <- asMatrix (DomainError "") y >>= mapM (asNumber (DomainError "Matrix divide arguments must be numeric")) 
+  y' <- asMatrix (DomainError "") y >>= mapM (asNumber (DomainError "Matrix divide arguments must be numeric"))
   matrix . fmap Number <$> matrixDivide x' y') (2, 2)
 
 floor :: MonadError Error m => CoreExtraArgs -> ScalarValue -> m ScalarValue
@@ -1562,17 +1562,8 @@ execute' code = do
   res <- mapM execute ss
   pure $ Array sh (toScalar <$> res)
 
-executeWith :: Noun -> Noun -> St Noun
-executeWith conf' code' = do
-  ctx <- getContext
-  code <- asString (DomainError "Execute code must be a string") code'
-  let confErr = DomainError "Execute left argument must be a struct"
-  conf <- asScalar confErr conf' >>= asStruct confErr >>= readRef . contextScope
-  scope <- scopeLookupNoun False "scope" conf >>= \case
-    Nothing -> createRef $ Scope [] [] [] [] Nothing True
-    Just sc -> do
-      let scErr = DomainError "Execute scope must be a struct"
-      contextScope <$> (asScalar scErr sc >>= asStruct scErr)
+getParsingInfo :: Scope -> St ParsingInfo
+getParsingInfo conf = do
   primitives <- scopeLookupNoun False "primitives" conf >>= \case
     Nothing -> pure P.primitives
     Just d -> do
@@ -1587,13 +1578,41 @@ executeWith conf' code' = do
       a <- zip (fst a') <$> mapM (asAdverbWrap $ DomainError "Execute primitives third entry values must be adverb wraps") (snd a')
       c <- zip (fst c') <$> mapM (asConjunctionWrap $ DomainError "Execute primitives fourth entry values must be conjunction wraps") (snd c')
       pure (n, f, a, c)
-  (res, _) <- (liftToSt $ runResult $ runSt (run' "<execute>" code) $ ctx { contextScope = scope, contextPrimitives = primitives }) >>= liftEither
+  customToken <- fmap (\f str -> do
+    let err = DomainError "Custom token parser must either return an empty vector or a pair of consumed string and result"
+    r <- callMonad f [] (vector $ Character <$> str) >>= asVector err
+    case r of
+      [] -> pure Nothing
+      [c, r] -> do
+        c' <- asString err $ fromScalar c
+        unless (c' `isPrefixOf` str) $ throwError $ DomainError "Custom token parser result consumed string is not at the beginning of the input"
+        r' <- asStruct err r >>= readRef . contextScope
+        u <- asum <$> sequence [fmap VNoun <$> scopeLookupNoun False "x" r', fmap VFunction <$> scopeLookupFunction False "F" r', fmap VAdverb <$> scopeLookupAdverb False "_A" r', fmap VConjunction <$> scopeLookupConjunction False "_C_" r']
+        case u of
+          Nothing -> throwError err
+          Just v -> pure $ Just (c', v)
+      _ -> throwError err) <$> scopeLookupFunction False "Token" conf
+  pure $ case primitives of (n, f, a, c) -> ParsingInfo n f a c customToken
+
+executeWith :: Noun -> Noun -> St Noun
+executeWith conf' code' = do
+  ctx <- getContext
+  code <- asString (DomainError "Execute code must be a string") code'
+  let confErr = DomainError "Execute left argument must be a struct"
+  conf <- asScalar confErr conf' >>= asStruct confErr >>= readRef . contextScope
+  pars <- getParsingInfo conf
+  scope <- scopeLookupNoun False "scope" conf >>= \case
+    Nothing -> createRef $ Scope [] [] [] [] Nothing True
+    Just sc -> do
+      let scErr = DomainError "Execute scope must be a struct"
+      contextScope <$> (asScalar scErr sc >>= asStruct scErr)
+  (res, _) <- liftToSt (runResult $ runSt (run' "<execute>" code) $ ctx { contextScope = scope, contextParsingInfo = pars }) >>= liftEither
   case res of
     (VNoun x) -> pure x
     _ -> throwError $ DomainError "Execute code must return a noun"
 
 format :: Noun -> St String
-format x = runPretty' x
+format = runPretty'
 
 format' :: Noun -> St Noun
 format' x = vector . fmap Character <$> format x
@@ -1666,7 +1685,7 @@ rightHook f g y = do
   y' <- g y
   f y y'
 
-fork1 :: MonadError Error m => (a -> m b) -> (b -> c -> m d) -> (a -> m c) -> a -> m d 
+fork1 :: MonadError Error m => (a -> m b) -> (b -> c -> m d) -> (a -> m c) -> a -> m d
 fork1 f g h x = do
   b <- h x
   a <- f x
