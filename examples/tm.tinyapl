@@ -1,0 +1,6 @@
+tm⇇"{int,int,int,int,int,int,int,int,int,long,str}" ⋄
+LocalTime⇇⊐(⎕FFI ("*"⍪tm)‿"localtime"‿"*u64") ⍝ u64 is probably large enough to cover all possible sizes of time_t
+
+now←'u64'⎕ffi→New⌊⎕unix ⋄
+⎕←⊃(LocalTime now)→Peek 0 ⋄
+⎕ffi→Free now

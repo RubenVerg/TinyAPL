@@ -25,6 +25,8 @@ category: FFI
 * `usize`: C `size_t` **see note**
 * `f32`: C `float`
 * `f64`: C `double`
+* `complex32`: C `_Complex float`
+* `complex64`: C `_Complex double`
 * `c8`: C `char8_t`
 * `c16`: C `char16_t`
 * `c32`: C `char32_t`
@@ -34,6 +36,7 @@ category: FFI
 * `str`: C `char*`
 * `[]x`: C `x[]`
 * `*x`: C `x*`
+* `{x,y,z,...}`: C `struct {x; y; z; ...}`, represented as a vector of the elements in order
 
 > **Note**: 64-bit integers don't necessarily fit in the 64-bit floating point type that TinyAPL uses. You won't be able to accurately pass nor be returned values with absolute value greater than `9007199254740991`.
 

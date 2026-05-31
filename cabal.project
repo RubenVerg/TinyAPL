@@ -1,4 +1,4 @@
-packages: .
+packages: . libffi
 
 source-repository-package
   type: git
