@@ -1,4 +1,7 @@
-tm⇇"{int,int,int,int,int,int,int,int,int,long,str}" ⋄
+tm⇇
+	⎕systemInfo→os≡'mingw32'⍰"{int,int,int,int,int,int,int,int,int}"⍠
+	⎕systemInfo→os≡'darwin' ⍰"{int,int,int,int,int,int,int,int,int,str,long}"⍠
+	                         "{int,int,int,int,int,int,int,int,int,long,str}"⋄
 LocalTime⇇⊐(⎕FFI ("*"⍪tm)‿"localtime"‿"*u64") ⍝ u64 is probably large enough to cover all possible sizes of time_t
 
 now←'u64'⎕ffi→New⌊⎕unix ⋄
