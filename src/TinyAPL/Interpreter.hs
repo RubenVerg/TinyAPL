@@ -44,12 +44,6 @@ asWraps err arr = do
     , functionContext = Nothing
     , unwrapFunctionArray = arr }
 
-valueCategory :: Value -> Category
-valueCategory (VNoun _) = CatArray
-valueCategory (VFunction _) = CatFunction
-valueCategory (VAdverb _) = CatAdverb
-valueCategory (VConjunction _) = CatConjunction
-
 scopeShallowLookup :: Bool -> String -> Scope -> Maybe Value
 scopeShallowLookup private name sc =
   VNoun <$> scopeShallowLookupNoun private name sc
@@ -88,18 +82,18 @@ inChildScope vals isStruct x parent = do
   ref <- foldrM (\(name, (t, val)) sc -> scopeUpdate True name t val sc) (Scope [] [] [] [] (Just $ contextScope parent) isStruct) vals >>= createRef
   runWithContext parent{ contextScope = ref } x
 
-interpret :: Primitives -> Tree -> Context -> ResultIO (Value, Context)
+interpret :: ParsingInfo -> Tree -> Context -> ResultIO (Value, Context)
 interpret p tree = runSt $ eval p tree
 
 forceTrees :: [Maybe Tree] -> [Tree]
 forceTrees = fmap $ fromMaybe $ VectorBranch []
 
-runWithPrimitives :: Primitives -> FilePath -> String -> Context -> ResultIO (Value, Context)
+runWithPrimitives :: ParsingInfo -> FilePath -> String -> Context -> ResultIO (Value, Context)
 runWithPrimitives p file src = runSt $ runWithPrimitives' p file src
 
-runWithPrimitives' :: Primitives -> FilePath -> String -> St Value
-runWithPrimitives' p@(pN, pF, pA, pC) file src = do
-  trees <- lift $ except (parse (fst <$> pN, fst <$> pF, fst <$> pA, fst <$> pC) file src)
+runWithPrimitives' :: ParsingInfo -> FilePath -> String -> St Value
+runWithPrimitives' p file src = do
+  trees <- parse p file src
   last <$> mapM (eval p) (forceTrees trees)
 
 run :: FilePath -> String -> Context -> ResultIO (Value, Context)
@@ -107,10 +101,10 @@ run file src = runSt $ run' file src
 
 run' :: FilePath -> String -> St Value
 run' file src = do
-  prims <- getsContext contextPrimitives
+  prims <- getsContext contextParsingInfo
   runWithPrimitives' prims file src
 
-eval :: Primitives -> Tree -> St Value
+eval :: ParsingInfo -> Tree -> St Value
 eval p (Leaf _ tok) = evalLeaf p tok
 eval p (QualifiedBranch _ h ns) = eval p h >>= flip evalQualified ns
 eval p (MonadCallBranch l r) = do
@@ -195,18 +189,18 @@ resolve ctx (name:ns) = do
     >>= asStruct (DomainError "Names of a qualified identifier should be structs")
     >>= flip resolve ns
 
-evalLeaf :: Primitives -> Token -> St Value
+evalLeaf :: ParsingInfo -> Token -> St Value
 evalLeaf _ (TokenNumber x _)                                                   = return $ VNoun $ scalar $ Number x
 evalLeaf _ (TokenChar [x] _)                                                   = return $ VNoun $ scalar $ Character x
 evalLeaf _ (TokenChar xs _)                                                    = return $ VNoun $ vector $ Character <$> xs
 evalLeaf _ (TokenString xs _)                                                  = return $ VNoun $ vector $ Character <$> xs
-evalLeaf (pN, _, _, _) (TokenPrimArray n _)                                    =
+evalLeaf ParsingInfo{ parsingNouns = pN } (TokenPrimArray n _)                 =
   lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive array " ++ n) $ VNoun <$> lookup n pN
-evalLeaf (_, pF, _, _) (TokenPrimFunction n _)                                 =
+evalLeaf ParsingInfo{ parsingFunctions = pF } (TokenPrimFunction n _)          =
   lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive function " ++ n) $ VFunction <$> lookup n pF
-evalLeaf (_, _, pA, _) (TokenPrimAdverb n _)                                   =
+evalLeaf ParsingInfo{ parsingAdverbs = pA } (TokenPrimAdverb n _)              =
   lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive adverb " ++ n) $ VAdverb <$> lookup n pA
-evalLeaf (_, _, _, pC) (TokenPrimConjunction n _)                              =
+evalLeaf ParsingInfo{ parsingConjunctions = pC } (TokenPrimConjunction n _)    =
   lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive conjunction " ++ n) $ VConjunction <$> lookup n pC
 evalLeaf p (TokenArrayName name _)
   | name == [G.quad]                                                           = do
@@ -216,7 +210,7 @@ evalLeaf p (TokenArrayName name _)
     code <- input
     context <- get
     (res, context') <- lift $ runWithPrimitives p [G.quad] code context
-    put $ context'
+    put context'
     return res
   | name == [G.quadQuote]                                                      = do
     input <- gets contextIn
@@ -257,13 +251,14 @@ evalLeaf _ (TokenConjunctionName name _)
       Nothing -> throwError $ SyntaxError $ "Unknown quad name " ++ name
   | otherwise                                                                  =
     gets contextScope >>= readRef >>= scopeLookupConjunction True name >>= (lift . except . maybeToEither (SyntaxError $ "Variable " ++ name ++ " does not exist") . fmap VConjunction)
+evalLeaf _ (TokenCustom v _)                                                   = pure v
 evalLeaf _ _                                                                   = throwError $ DomainError "Invalid leaf type in evaluation"
 
-evalLeafOrNothing :: Primitives -> Token -> St (Maybe Value)
+evalLeafOrNothing :: ParsingInfo -> Token -> St (Maybe Value)
 evalLeafOrNothing _ (TokenNothing _) = pure Nothing
 evalLeafOrNothing p tok = Just <$> evalLeaf p tok
 
-evalOrNothing :: Primitives -> Tree -> St (Maybe Value)
+evalOrNothing :: ParsingInfo -> Tree -> St (Maybe Value)
 evalOrNothing p (Leaf _ tok) = evalLeafOrNothing p tok
 evalOrNothing p t = Just <$> eval p t
 
@@ -381,7 +376,7 @@ evalStructAssign ns c val = do
     ; pure () }) ns
   pure val
 
-evalDefined :: Primitives -> NonEmpty Tree -> Category -> St Value
+evalDefined :: ParsingInfo -> NonEmpty Tree -> Category -> St Value
 evalDefined p statements cat = let
   ev :: Tree -> St (Value, Bool)
   ev (GuardBranch check result) = do
@@ -702,7 +697,7 @@ bindExtraArgsConjunction ea c = ExtraArgsConjunction
   , extraArgsConjunctionExtraArgs = ea
   , extraArgsConjunctionConjunction = c }
 
-evalTrain :: Primitives -> Category -> [Maybe Tree] -> St Value
+evalTrain :: ParsingInfo -> Category -> [Maybe Tree] -> St Value
 evalTrain p cat es = let
   makeValueAdverb :: (Value -> St Function) -> String -> Adverb
   makeValueAdverb a s = PrimitiveAdverb
@@ -889,7 +884,7 @@ evalTrain p cat es = let
       (CatConjunction, r@(VConjunction _)) -> pure r
       (exp, g) -> throwError $ DomainError $ "Expected train of category " ++ show exp ++ ", got a " ++ show (valueCategory g)
 
-evalStruct :: Primitives -> [Tree] -> St Value
+evalStruct :: ParsingInfo -> [Tree] -> St Value
 evalStruct p statements = do
   ctx <- get
   newScope <- createRef $ Scope [] [] [] [] (Just $ contextScope ctx) True

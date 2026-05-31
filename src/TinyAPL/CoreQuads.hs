@@ -21,6 +21,7 @@ import TinyAPL.Util
 import TinyAPL.Primitives (withCoreExtraArgs1)
 import TinyAPL.CoreExtraArgs
 import TinyAPL.Pretty
+import TinyAPL.Functions (getParsingInfo)
 
 import Control.Monad.State
 import Data.Time
@@ -65,7 +66,6 @@ this = Nilad (Just $ do
   scopeRef <- getsContext contextScope
   str <- findStructParent scopeRef
   pure $ scalar $ Struct $ ctx{ contextScope = str }) Nothing (G.quad : "this") Nothing
-boxes :: Nilad
 boxes = Nilad (Just $ do
   PrettyConfig{ drawings = ds } <- gets contextPretty >>= readRef
   pure $ dictionary $ map (\(k, v) -> (Number $ fromIntegral $ fromEnum k, Character v)) ds) (Just $ \x -> do
@@ -77,6 +77,11 @@ boxes = Nilad (Just $ do
       vs' <- mapM (asCharacter err) vs ;
       pure $ mapMaybe (\(k, v) -> if k > fromIntegral (fromEnum (maxBound :: BoxDrawing)) then Nothing else Just (toEnum $ fromIntegral k, v)) $ zip ks' vs' }}
   gets contextPretty >>= flip modifyRef (\p -> p{ drawings = pairs })) (G.quad : "boxes") Nothing
+parsing = Nilad Nothing (Just $ \y -> do
+  let err = DomainError "Use argument must be a struct"
+  conf <- asScalar err y >>= asStruct err >>= readRef . contextScope
+  pars <- getParsingInfo conf
+  modify' $ \s -> s{ contextParsingInfo = pars }) (G.quad : "parsing") Nothing
 
 exists = PrimitiveFunction (FunctionCalls (Just $ \_ y -> do
   var <- asString (DomainError "Exists argument must be a string") y
@@ -158,7 +163,7 @@ measure = PrimitiveAdverb Nothing (Just $ \_ f -> pure $ DerivedFunctionFunction
   end <- realToFrac <$> liftToSt getPOSIXTime
   pure $ scalar $ Number $ (end - start) :+ 0) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing) Nothing measure f) (G.quad : "_Measure") Nothing
 
-core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, {- this, -}math, regex, inspectNamespace, boxes ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF, primes ] [ measure ] []
+core = quadsFromReprs [ io, ct, u, l, d, seed, unix, ts, {- this, -}math, regex, inspectNamespace, boxes, parsing ] [ exists, repr, delay, type_, unicode, print_, errorPrint, inspectF, primes ] [ measure ] []
 
 makeImport :: Maybe (FilePath -> St String) -> Maybe ([String] -> St String) -> Function
 makeImport read readStd = PrimitiveFunction (FunctionCalls (Just $ \_ x -> do

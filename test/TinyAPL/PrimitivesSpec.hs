@@ -27,7 +27,7 @@ idRef = unsafePerformIO $ newIORef (0 :: Integer)
 {-# NOINLINE idRef #-}
 prettyRef = unsafePerformIO $ newIORef defaultConfig
 {-# NOINLINE prettyRef #-}
-context = Context scope core undefined undefined undefined idRef "" P.primitives prettyRef False
+context = Context scope core undefined undefined undefined idRef "" (case P.primitives of (n, f, a, c) -> ParsingInfo n f a c Nothing) prettyRef False
 
 fmc :: [Noun] -> Noun
 fmc = fromRight' . fromMajorCells

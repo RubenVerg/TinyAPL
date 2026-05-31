@@ -72,6 +72,9 @@ foreign export javascript "hs_start" main :: IO ()
 main :: IO ()
 main = return ()
 
+pars :: ParsingInfo
+pars = case primitives of (n, f, a, c) -> ParsingInfo n f a c Nothing
+
 foreign import javascript safe "return await fetch($1).then(x => x.text());" fetchStr :: JSString -> IO JSString
 
 readImportUrl :: String -> St String
@@ -152,7 +155,7 @@ newContext input output error quads cwd ugly = do
   let error' = liftToSt . callOutput error . toJSString
   id <- newIORef 0
   pretty <- newIORef defaultConfig
-  let qpc = Context emptyScope core input' output' error' id cwd' primitives pretty ugly
+  let qpc = Context emptyScope core input' output' error' id cwd' pars pretty ugly
   qs <- fromRight' . second fst <$> (runResult $ runSt (mapM (secondM fromJSValSt) $ valToObject quads) qpc )
   nilads <- secondM (\x -> fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) qpc)) `mapM` filter (isArrayName . fst) qs
   functions <- secondM (\x -> fromRight' . second fst <$> (runResult $ runSt (fromJSValSt x) qpc)) `mapM` filter (isFunctionName . fst) qs
@@ -170,7 +173,7 @@ newContext input output error quads cwd ugly = do
     , contextErr = error'
     , contextIncrementalId = id
     , contextDirectory = cwd'
-    , contextPrimitives = primitives
+    , contextParsingInfo = pars
     , contextPretty = pretty
     , contextUgly = ugly }])
   modifyIORef lasts (++ [Nothing])
@@ -312,7 +315,7 @@ showJS val ugly = do
   scope <- newIORef $ Scope [] [] [] [] Nothing True
   id <- newIORef 0
   pretty <- newIORef defaultConfig
-  r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME runPretty') (Context scope mempty undefined undefined undefined id "" primitives pretty ugly)) :: IO (Either Error String)
+  r <- fromRight' . second fst <$> (runResult $ runSt ((fromJSValSt val :: St (Either Error Value)) >>= secondME runPretty') (Context scope mempty undefined undefined undefined id "" pars pretty ugly)) :: IO (Either Error String)
   pure $ toJSString $ case r of
     Left err -> show err
     Right val -> val
@@ -324,10 +327,10 @@ reprJS val = do
   scope <- newIORef $ Scope [] [] [] [] Nothing True
   id <- newIORef 0
   pretty <- newIORef defaultConfig
-  r <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt val) (Context scope mempty undefined undefined undefined id "" primitives pretty True))
+  r <- fromRight' . second fst <$> (runResult $ runSt (fromJSValSt val) (Context scope mempty undefined undefined undefined id "" pars pretty True))
   toJSString <$> case r of
-    VNoun arr -> fromRight' . second fst <$> (runResult $ runSt (showM $ Repr arr) (Context scope mempty undefined undefined undefined id "" primitives pretty True))
-    o -> fromRight' . second fst <$> (runResult $ runSt (showM o) (Context scope mempty undefined undefined undefined id "" primitives pretty True))
+    VNoun arr -> fromRight' . second fst <$> (runResult $ runSt (showM $ Repr arr) (Context scope mempty undefined undefined undefined id "" pars pretty True))
+    o -> fromRight' . second fst <$> (runResult $ runSt (showM o) (Context scope mempty undefined undefined undefined id "" pars pretty True))
 
 varArrow :: VariableType -> Char
 varArrow VariableNormal = assign
