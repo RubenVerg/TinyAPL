@@ -1,9 +1,14 @@
 tm⇇
 	⎕systemInfo→os≡'mingw32'⍰"{int,int,int,int,int,int,int,int,int}"⍠
-	⎕systemInfo→os≡'darwin' ⍰"{int,int,int,int,int,int,int,int,int,str,long}"⍠
 	                         "{int,int,int,int,int,int,int,int,int,long,str}"⋄
 LocalTime⇇⊐(⎕FFI ("*"⍪tm)‿"localtime"‿"*u64") ⍝ u64 is probably large enough to cover all possible sizes of time_t
 
+tmNamed⇇
+	⎕systemInfo→os≡'mingw32'⍰"⦃sec←int,min←int,hour←int,mday←int,mon←int,year←int,wday←int,yday←int,isdst←int⦄"⍠
+	                         "⦃sec←int,min←int,hour←int,mday←int,mon←int,year←int,wday←int,yday←int,isdst←int,offset←long,zone←str⦄"⋄
+LocalTimeNamed⇇⊐(⎕FFI ("*"⍪tmNamed)‿"localtime"‿"*u64")
+
 now←'u64'⎕ffi→New⌊⎕unix ⋄
 ⎕←⊃(LocalTime now)→Peek 0 ⋄
+⎕←⊃(LocalTimeNamed now)→Peek 0 ⋄
 ⎕ffi→Free now

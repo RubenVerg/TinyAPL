@@ -25,6 +25,7 @@ import Control.Monad.Catch
 import Data.List
 import Data.Maybe
 import Data.Bifunctor
+import Data.Char
 import qualified Data.Complex as Cx
 import Numeric (showHex)
 import Data.Functor hiding (unzip)
@@ -65,6 +66,7 @@ data FFIType
   | FFIString
   | FFIPointerTo FFIType
   | FFIStructOf [FFIType] (Ptr FFI.CType) (St ()) (Int, Int) [Int] Noun
+  | FFINamedStructOf [(String, FFIType)] (Ptr FFI.CType) (St ()) (Int, Int) [Int] Noun
 
 ffiCType :: FFIType -> Ptr FFI.CType
 ffiCType FFIVoid = FFI.ffi_type_void
@@ -95,6 +97,7 @@ ffiCType (FFIArrayOf _) = FFI.ffi_type_pointer
 ffiCType FFIString = FFI.ffi_type_pointer
 ffiCType (FFIPointerTo _) = FFI.ffi_type_pointer
 ffiCType (FFIStructOf _ t _ _ _ _) = t
+ffiCType (FFINamedStructOf _ t _ _ _ _) = t
 
 structType :: [FFIType] -> St (Ptr FFI.CType, St (), (Int, Int), [Int], Noun)
 structType types = do
@@ -195,6 +198,18 @@ ffiArg (FFIStructOf typs cTyp _ (size, alignment) offsets _) arr = do
       mapM_ (\(off, temp, typ) -> copyBytes (ptr `plusPtr` off) temp (ffiSize typ)) $ zip3 offsets temps typs
       withArg cTyp $ castPtr ptr
     undefined, sequence_ cleanup)
+ffiArg (FFINamedStructOf typs cTyp _ (size, alignment) offsets _) arr = do
+  let err = DomainError "FFI named struct not a struct, or has wrong keys"
+  scope <- asScalar err arr >>= asStruct err >>= readRef . contextScope
+  vec <- forM typs $ \(nam, _) -> scopeLookupNoun False nam scope >>= \case
+    Just r -> pure r
+    Nothing -> throwError err
+  (temps, cleanup) <- unzip <$> zipWithM ffiNew (snd <$> typs) vec
+  pure (FFI.Arg $ \withArg -> do  
+    allocaBytesAligned size alignment $ \ptr -> do
+      mapM_ (\(off, temp, (_, typ)) -> copyBytes (ptr `plusPtr` off) temp (ffiSize typ)) $ zip3 offsets temps typs
+      withArg cTyp $ castPtr ptr
+    undefined, sequence_ cleanup)
 
 ffiPeekIntegral :: forall a m p. (MonadError Error m, MonadIO m) => (Integral a, Storable a) => Ptr p -> m Noun
 ffiPeekIntegral ptr = do
@@ -254,6 +269,11 @@ ffiPeek (FFIPointerTo typ) ptr = do
   pointerObj <- pointer typ ptrPtr
   pure $ scalar pointerObj
 ffiPeek (FFIStructOf typs _ _ _ offsets _) ptr = vector . map box <$> zipWithM (\off typ -> ffiPeek typ $ ptr `plusPtr` off) offsets typs
+ffiPeek (FFINamedStructOf typs _ _ _ offsets _) ptr = do
+  vec <- zipWithM (\off typ -> ffiPeek typ $ ptr `plusPtr` off) offsets $ snd <$> typs
+  scope <- createRef $ Scope (zipWith (\v (nam, _) -> (nam, (VariableNormal, v))) vec typs) [] [] [] Nothing True
+  ctx <- getContext
+  pure $ scalar $ Struct $ ctx{ contextScope = scope }
 
 ffiPeekArrayLenIntegral :: forall a m p. (MonadError Error m, MonadIO m) => (Integral a, Storable a) => Ptr p -> Int -> m Noun
 ffiPeekArrayLenIntegral ptr len = do
@@ -310,6 +330,7 @@ ffiPeekArrayLen (FFIPointerTo typ) ptr len = do
   pointerObjs <- mapM (pointer typ) ptrPtrs
   pure $ vector pointerObjs
 ffiPeekArrayLen typ@(FFIStructOf _ _ _ (size, _) _ _) ptr len = fmap vector $ forM [0..(len - 1)] $ \idx -> fmap box $ ffiPeek typ $ ptr `plusPtr` (size * idx)
+ffiPeekArrayLen typ@(FFINamedStructOf _ _ _ (size, _) _ _) ptr len = fmap vector $ forM [0..(len - 1)] $ \idx -> fmap box $ ffiPeek typ $ ptr `plusPtr` (size * idx)
 
 ffiPeekArrayEndIntegral :: forall a m p. (MonadError Error m, MonadIO m) => (Integral a, Bounded a, Storable a) => String -> Ptr p -> Noun -> m Noun
 ffiPeekArrayEndIntegral name ptr end = do
@@ -377,6 +398,11 @@ ffiPeekArrayEnd typ@(FFIStructOf _ _ _ (size, _) _ _) ptr end = do
     r <- ffiPeek typ $ ptr `plusPtr` (size * idx);
     if r == end then pure (reverse acc) else go (r : acc) (idx + 1) }
   vector . map box <$> go [] 0
+ffiPeekArrayEnd typ@(FFINamedStructOf _ _ _ (size, _) _ _) ptr end = do
+  let go acc idx = do {
+    r <- ffiPeek typ $ ptr `plusPtr` (size * idx);
+    if r == end then pure (reverse acc) else go (r : acc) (idx + 1) }
+  vector . map box <$> go [] 0
 
 ffiPeekArray0Integral :: forall a m p. (MonadError Error m, MonadIO m) => (Integral a, Bounded a, Storable a) => Ptr p -> m Noun
 ffiPeekArray0Integral ptr = do
@@ -433,6 +459,11 @@ ffiPeekArray0 (FFIPointerTo typ) ptr = do
   pointerObjs <- mapM (pointer typ) ptrPtrs
   pure $ vector pointerObjs
 ffiPeekArray0 typ@(FFIStructOf _ _ _ (size, _) _ zero) ptr = do
+  let go acc idx = do {
+    r <- ffiPeek typ $ ptr `plusPtr` (size * idx);
+    if r == zero then pure (reverse acc) else go (r : acc) (idx + 1) }
+  vector . map box <$> go [] 0
+ffiPeekArray0 typ@(FFINamedStructOf _ _ _ (size, _) _ zero) ptr = do
   let go acc idx = do {
     r <- ffiPeek typ $ ptr `plusPtr` (size * idx);
     if r == zero then pure (reverse acc) else go (r : acc) (idx + 1) }
@@ -497,6 +528,13 @@ ffiPoke (FFIStructOf typs _ _ _ offsets _) ptr arr = do
   vec <- map fromScalar <$> asVector err arr
   when (length vec /= length typs) $ throwError err
   mapM_ (\(off, typ, elem) -> ffiPoke typ (ptr `plusPtr` off) elem) $ zip3 offsets typs vec
+ffiPoke (FFINamedStructOf typs _ _ _ offsets _) ptr arr = do
+  let err = DomainError "FFI named struct not a struct, or has wrong keys"
+  scope <- asScalar err arr >>= asStruct err >>= readRef . contextScope
+  vec <- forM typs $ \(nam, _) -> scopeLookupNoun False nam scope >>= \case
+    Just r -> pure r
+    Nothing -> throwError err
+  mapM_ (\(off, (_, typ), elem) -> ffiPoke typ (ptr `plusPtr` off) elem) $ zip3 offsets typs vec
 
 ffiPokeArrayIntegral :: forall a m p. (MonadError Error m, MonadIO m) => (Integral a, Bounded a, Storable a) => String -> Ptr p -> Noun -> m ()
 ffiPokeArrayIntegral name ptr arr = do
@@ -550,10 +588,13 @@ ffiPokeArray FFIString ptr arr = do
 ffiPokeArray (FFIPointerTo _) ptr arr = do
   ptrs <- asVector (DomainError "FFI poke array must be vector") arr >>= mapM pointerGet
   liftIO $ pokeArray (castPtr ptr) ptrs
-ffiPokeArray typ@(FFIStructOf typs _ _ (size, _) _ _) ptr arr = do
-  let err = DomainError "FFI poke struct must be a vector of the correct length"
+ffiPokeArray typ@(FFIStructOf _ _ _ (size, _) _ _) ptr arr = do
+  let err = DomainError "FFI poke array must be a vector"
   vec <- map fromScalar <$> asVector err arr
-  when (length vec /= length typs) $ throwError err
+  zipWithM_ (\idx elem -> ffiPoke typ (ptr `plusPtr` (size * idx)) elem) [0..(length vec - 1)] vec
+ffiPokeArray typ@(FFINamedStructOf _ _ _ (size, _) _ _) ptr arr = do
+  let err = DomainError "FFI poke array must be a vector"
+  vec <- map fromScalar <$> asVector err arr
   zipWithM_ (\idx elem -> ffiPoke typ (ptr `plusPtr` (size * idx)) elem) [0..(length vec - 1)] vec
 
 ffiPokeArrayEndIntegral :: forall a m p. (MonadError Error m, MonadIO m) => (Integral a, Bounded a, Storable a) => String -> Ptr p -> Noun -> Noun -> m ()
@@ -614,10 +655,14 @@ ffiPokeArrayEnd (FFIPointerTo _) ptr end arr = do
   ePtr <- asScalar (DomainError "FFI poke array string zero must be pointer object (manually allocate!)") end >>= pointerGet
   ptrs <- asVector (DomainError "FFI poke array must be vector") arr >>= mapM pointerGet
   liftIO $ pokeArray0 ePtr (castPtr ptr) ptrs
-ffiPokeArrayEnd typ@(FFIStructOf typs _ _ (size, _) _ _) ptr end arr = do
-  let err = DomainError "FFI poke struct must be a vector of the correct length"
+ffiPokeArrayEnd typ@(FFIStructOf _ _ _ (size, _) _ _) ptr end arr = do
+  let err = DomainError "FFI poke struct must be vector"
   vec <- map fromScalar <$> asVector err arr
-  when (length vec /= length typs) $ throwError err
+  zipWithM_ (\idx elem -> ffiPoke typ (ptr `plusPtr` (size * idx)) elem) [0..(length vec - 1)] vec
+  ffiPoke typ (ptr `plusPtr` (size * length vec)) end
+ffiPokeArrayEnd typ@(FFINamedStructOf _ _ _ (size, _) _ _) ptr end arr = do
+  let err = DomainError "FFI poke struct must be vector"
+  vec <- map fromScalar <$> asVector err arr
   zipWithM_ (\idx elem -> ffiPoke typ (ptr `plusPtr` (size * idx)) elem) [0..(length vec - 1)] vec
   ffiPoke typ (ptr `plusPtr` (size * length vec)) end
 
@@ -676,10 +721,14 @@ ffiPokeArray0 FFIString ptr arr = do
 ffiPokeArray0 (FFIPointerTo _) ptr arr = do
   ptrs <- asVector (DomainError "FFI poke array must be vector") arr >>= mapM pointerGet
   liftIO $ pokeArray0 storableZero (castPtr ptr) ptrs
-ffiPokeArray0 typ@(FFIStructOf typs _ _ (size, _) _ zero) ptr arr = do
-  let err = DomainError "FFI poke struct must be a vector of the correct length"
+ffiPokeArray0 typ@(FFIStructOf _ _ _ (size, _) _ zero) ptr arr = do
+  let err = DomainError "FFI poke struct must be vector"
   vec <- map fromScalar <$> asVector err arr
-  when (length vec /= length typs) $ throwError err
+  zipWithM_ (\idx elem -> ffiPoke typ (ptr `plusPtr` (size * idx)) elem) [0..(length vec - 1)] vec
+  ffiPoke typ (ptr `plusPtr` (size * length vec)) zero
+ffiPokeArray0 typ@(FFINamedStructOf _ _ _ (size, _) _ zero) ptr arr = do
+  let err = DomainError "FFI poke struct must be vector"
+  vec <- map fromScalar <$> asVector err arr
   zipWithM_ (\idx elem -> ffiPoke typ (ptr `plusPtr` (size * idx)) elem) [0..(length vec - 1)] vec
   ffiPoke typ (ptr `plusPtr` (size * length vec)) zero
 
@@ -746,6 +795,15 @@ ffiNew typ@(FFIStructOf typs _ _ (size, _) _ _) arr = do
   let err = DomainError "FFI new struct must be a vector of the correct length"
   vec <- map fromScalar <$> asVector err arr
   when (length vec /= length typs) $ throwError err
+  ptr <- liftIO $ mallocBytes size
+  ffiPoke typ ptr arr
+  pure (ptr, liftIO (free ptr))
+ffiNew typ@(FFINamedStructOf typs _ _ (size, _) _ _) arr = do
+  let err = DomainError "FFI named struct not a struct, or has wrong keys"
+  scope <- asScalar err arr >>= asStruct err >>= readRef . contextScope
+  forM_ typs $ \(nam, _) -> scopeLookupNoun False nam scope >>= \case
+    Just r -> pure r
+    Nothing -> throwError err
   ptr <- liftIO $ mallocBytes size
   ffiPoke typ ptr arr
   pure (ptr, liftIO (free ptr))
@@ -823,7 +881,13 @@ ffiNewArray (FFIPointerTo _) arr = do
   ptr <- liftIO $ newArray ptrs
   pure (castPtr ptr, liftIO $ free ptr)
 ffiNewArray typ@(FFIStructOf _ _ _ (size, _) _ _) arr = do
-  let err = DomainError "FFI struct arraym must be vector"
+  let err = DomainError "FFI struct array must be vector"
+  vec <- map fromScalar <$> asVector err arr
+  ptr <- liftIO $ mallocBytes $ size * length vec
+  ffiPokeArray typ ptr arr
+  pure (ptr, liftIO (free ptr))
+ffiNewArray typ@(FFINamedStructOf _ _ _ (size, _) _ _) arr = do
+  let err = DomainError "FFI named struct array must be vector"
   vec <- map fromScalar <$> asVector err arr
   ptr <- liftIO $ mallocBytes $ size * length vec
   ffiPokeArray typ ptr arr
@@ -973,7 +1037,13 @@ ffiNewArray0 (FFIPointerTo _) arr = do
   ptr <- liftIO $ newArray0 storableZero ptrs
   pure (castPtr ptr, liftIO $ free ptr)
 ffiNewArray0 typ@(FFIStructOf _ _ _ (size, _) _ _) arr = do
-  let err = DomainError "FFI struct arraym must be vector"
+  let err = DomainError "FFI struct array must be vector"
+  vec <- map fromScalar <$> asVector err arr
+  ptr <- liftIO $ mallocBytes $ size * (length vec + 1)
+  ffiPokeArray0 typ ptr arr
+  pure (ptr, liftIO (free ptr))
+ffiNewArray0 typ@(FFINamedStructOf _ _ _ (size, _) _ _) arr = do
+  let err = DomainError "FFI named struct array must be vector"
   vec <- map fromScalar <$> asVector err arr
   ptr <- liftIO $ mallocBytes $ size * (length vec + 1)
   ffiPokeArray0 typ ptr arr
@@ -1011,6 +1081,7 @@ ffiSize (FFIArrayOf _) = ffiSizeStorable @(Ptr ())
 ffiSize FFIString = ffiSizeStorable @(Ptr ())
 ffiSize (FFIPointerTo _) = ffiSizeStorable @(Ptr ())
 ffiSize (FFIStructOf _ _ _ (size, _) _ _) = size
+ffiSize (FFINamedStructOf _ _ _ (size, _) _ _) = size
 
 ffiReturnInteger :: MonadError Error m => Integral a => FFI.RetType a -> FFI.RetType (m Noun)
 ffiReturnInteger ret = pure . scalar . Number . (:+ 0) . fromIntegral <$> ret
@@ -1057,6 +1128,14 @@ ffiReturn (FFIStructOf typs cTyp _ (size, _) offsets _) = (\ptr -> bracket (pure
   p <- callocBytes size
   write cTyp p
   pure p)
+ffiReturn (FFINamedStructOf typs cTyp _ (size, _) offsets _) = (\ptr -> bracket (pure ptr) (liftIO . free) $ const $ do
+  vec <- zipWithM (\off (_, typ) -> ffiPeek typ $ ptr `plusPtr` off) offsets typs
+  scope <- createRef $ Scope (zipWith (\v (nam, _) -> (nam, (VariableNormal, v))) vec typs) [] [] [] Nothing True
+  ctx <- getContext
+  pure $ scalar $ Struct $ ctx{ contextScope = scope }) <$> (FFI.RetType $ \write -> do
+  p <- callocBytes size
+  write cTyp p
+  pure p)
 
 ffiFunc :: FunPtr a -> [FFIType] -> FFIType -> [Noun] -> St Noun
 ffiFunc fun params ret args = do
@@ -1089,11 +1168,11 @@ openDynLib = liftIO . loadLibrary
 openDynLib file = liftIO $ dlopen file [RTLD_NOW]
 #endif
 
-dynLibSym :: MonadIO m => DynLib -> String -> m (FunPtr a)
+dynLibSym :: MonadIO m => DynLib -> String -> m (Ptr a)
 #if defined(MIN_VERSION_Win32)
-dynLibSym lib sym = liftIO $ castPtrToFunPtr <$> getProcAddress lib sym
+dynLibSym lib sym = liftIO $ getProcAddress lib sym
 #else
-dynLibSym lib sym = liftIO $ dlsym lib sym
+dynLibSym lib sym = liftIO $ castFunPtrToPtr <$> dlsym lib sym
 #endif
 
 parseFFI :: String -> St (Maybe FFIType)
@@ -1107,7 +1186,7 @@ parseFFI str = case p str of
   p str | "{" `isPrefixOf` str = do
     let pTys acc s = case p s of {
       Nothing -> pure (acc, s) ;
-      Just (ty, rest) -> if "," `isPrefixOf` rest then pTys (ty : acc) (drop (length ",") rest) else pure (ty : acc, rest)}
+      Just (ty, rest) -> if "," `isPrefixOf` rest then pTys (ty : acc) (drop (length ",") rest) else pure (ty : acc, rest) }
     (tys, rest) <- first (sequence . reverse) <$> pTys [] (drop (length "{") str)
     if "}" `isPrefixOf` rest then pure
       ( do
@@ -1115,6 +1194,21 @@ parseFFI str = case p str of
         (cType, free, sizeAlignment, offsets, zero) <- structType tys'
         pure $ FFIStructOf tys' cType free sizeAlignment offsets zero
       , drop (length "}") rest
+      )
+    else Nothing
+  p str | "⦃" `isPrefixOf` str = do
+    let pTys acc s = case span isAlpha s of {
+      (ns@(n:_), r) | isLower n -> if "←" `isPrefixOf` r then case p $ drop (length "←") r of {
+        Nothing -> pure (acc, s) ;
+        Just (ty, rest) -> if "," `isPrefixOf` rest then pTys ((ns, ty) : acc) (drop (length ",") rest) else pure ((ns, ty) : acc, rest) } else pure (acc, s);
+      _ -> pure (acc, s) }
+    (tys, rest) <- first (fmap (uncurry zip) . sequence . second sequence . unzip . reverse) <$> pTys [] (drop (length "⦃") str)
+    if "⦄" `isPrefixOf` rest then pure
+      ( do
+        tys' <- tys
+        (cType, free, sizeAlignment, offsets, zero) <- structType $ snd <$> tys'
+        pure $ FFINamedStructOf tys' cType free sizeAlignment offsets zero
+      , drop (length "t") rest
       )
     else Nothing
   p str | "void" `isPrefixOf` str = pure (pure FFIVoid, drop (length "void") str)
@@ -1150,18 +1244,25 @@ doFFI libName args' = do
   args <- asStrings (DomainError "FFI right argument must be a vector of strings") args'
   when (length args < 2) $ throwError $ LengthError "FFI right argument must be at least length 2"
   let (ret : name : params) = args
-  sym <- dynLibSym lib name
-  ret' <- parseFFI ret >>= \case
-    Just typ -> pure typ
-    Nothing -> throwError $ DomainError "Invalid return type"
-  params' <- forM params $ parseFFI >=> \case
-    Just typ -> pure typ
-    Nothing -> throwError $ DomainError "Invalid parameter type"
-  pure $ scalar $ Wrap $ PrimitiveFunction (FunctionCalls (Just $ const $ \y -> do
-    args <- fmap fromScalar <$> asVector (DomainError "FFI arguments must be a vector") y
-    ffiFunc sym params' ret' args) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing) (case libName of
-    Just path -> "<" ++ ret ++ " " ++ path ++ ":" ++ name ++ "(" ++ intercalate ", " params ++ ")>"
-    Nothing -> "<" ++ ret ++ " " ++ name ++ "(" ++ intercalate ", " params ++ ")>") Nothing
+  if "&" `isPrefixOf` name then do
+    sym <- dynLibSym lib $ drop 1 name
+    typ <- parseFFI ret >>= \case
+      Just typ -> pure typ
+      Nothing -> throwError $ DomainError "Invalid type of global variable"
+    scalar <$> pointer typ sym
+  else do
+    sym <- castPtrToFunPtr <$> dynLibSym lib name
+    ret' <- parseFFI ret >>= \case
+      Just typ -> pure typ
+      Nothing -> throwError $ DomainError "Invalid return type"
+    params' <- forM params $ parseFFI >=> \case
+      Just typ -> pure typ
+      Nothing -> throwError $ DomainError "Invalid parameter type"
+    pure $ scalar $ Wrap $ PrimitiveFunction (FunctionCalls (Just $ const $ \y -> do
+      args <- fmap fromScalar <$> asVector (DomainError "FFI arguments must be a vector") y
+      ffiFunc sym params' ret' args) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing) (case libName of
+      Just path -> "<" ++ ret ++ " " ++ path ++ ":" ++ name ++ "(" ++ intercalate ", " params ++ ")>"
+      Nothing -> "<" ++ ret ++ " " ++ name ++ "(" ++ intercalate ", " params ++ ")>") Nothing
 
 ffi :: Function
 ffi = PrimitiveFunction (FunctionCalls (Just $ const $ doFFI Nothing) (Just $ const $ \x y -> do
