@@ -1170,7 +1170,7 @@ openDynLib file = liftIO $ dlopen file [RTLD_NOW]
 
 dynLibSym :: MonadIO m => DynLib -> String -> m (Ptr a)
 #if defined(MIN_VERSION_Win32)
-dynLibSym lib sym = liftIO $ getProcAddress lib sym
+dynLibSym lib sym = liftIO $ castPtr <$> getProcAddress lib sym
 #else
 dynLibSym lib sym = liftIO $ castFunPtrToPtr <$> dlsym lib sym
 #endif
