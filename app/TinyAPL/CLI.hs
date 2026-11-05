@@ -23,8 +23,10 @@ import TinyAPL.Quads.File (file)
 import TinyAPL.Quads.FFI (ffi, ffiStruct)
 #endif
 
+import Prelude hiding (getLine, putStr, putStrLn)
 import Control.Monad (void, when)
-import System.IO
+import System.IO hiding (getLine, putStr, putStrLn, hPutStr, hPutStrLn)
+import qualified System.IO
 import Data.IORef
 import Data.List
 import System.Info
@@ -37,6 +39,65 @@ import qualified Options.Applicative as Opts
 #ifdef is_linux
 import TinyAPL.Highlighter
 import qualified System.Console.Edited as E
+#endif
+#if defined(mingw32_HOST_OS)
+import Foreign.C
+import Foreign.Ptr
+import Foreign.Marshal.Utils
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Encoding.Error as T
+import qualified Data.ByteString.Char8 as BS
+#endif
+
+#if defined(mingw32_HOST_OS)
+foreign import ccall "tinyapl_setup" platformSetup :: IO ()
+foreign import ccall "tinyapl_read" read_ :: FunPtr (CString -> CSize -> IO ()) -> IO ()
+foreign import ccall "tinyapl_write" write_ :: CString -> CSize -> CBool -> IO ()
+foreign import ccall "wrapper" mkReadCallback :: (CString -> CSize -> IO ()) -> IO (FunPtr (CString -> CSize -> IO ()))
+
+getLine :: IO String
+getLine = do
+  str <- newIORef (nullPtr, 0)
+  cb <- mkReadCallback $ \ptr sz -> writeIORef str (ptr, fromIntegral sz)
+  read_ cb
+  bs <- BS.packCStringLen =<< readIORef str
+  pure $ T.unpack $ T.decodeUtf8With T.lenientDecode bs
+
+putStrOf :: Bool -> String -> IO ()
+putStrOf err str = do
+  let bs = T.encodeUtf8 $ T.pack str
+  BS.useAsCStringLen bs $ \(ptr, sz) -> write_ ptr (fromIntegral sz) (fromBool err)
+
+putStr :: String -> IO ()
+putStr = putStrOf False
+
+putStrLn :: String -> IO ()
+putStrLn = putStrOf False . (++ "\n")
+
+ePutStr :: String -> IO ()
+ePutStr = putStrOf True
+
+ePutStrLn :: String -> IO ()
+ePutStrLn = putStrOf True . (++ "\n")
+#else
+platformSetup :: IO ()
+platformSetup = pure ()
+
+getLine :: IO String
+getLine = System.IO.getLine
+
+putStr :: String -> IO ()
+putStr = System.IO.putStr
+
+putStrLn :: String -> IO ()
+putStrLn = System.IO.putStrLn
+
+ePutStr :: String -> IO ()
+ePutStr = System.IO.hPutStr stderr
+
+ePutStrLn :: String -> IO ()
+ePutStrLn = System.IO.hPutStrLn stderr
 #endif
 
 data Allowed
@@ -134,6 +195,8 @@ ansiRed str = "\x1b[31m" ++ str ++ "\x1b[0m"
 
 cli :: IO ()
 cli = do
+  platformSetup
+
   hSetEncoding stdout utf8
   hSetEncoding stderr utf8
 
@@ -158,7 +221,7 @@ cli = do
       liftToSt $ putStr str
       liftToSt $ hFlush stdout
     , contextErr = \str -> do
-      liftToSt $ hPutStr stderr str
+      liftToSt $ ePutStr str
       liftToSt $ hFlush stderr
     , contextIncrementalId = id
     , contextDirectory = cwd
@@ -176,8 +239,8 @@ runCode :: Bool -> String -> String -> Context -> IO Context
 runCode output file code context = do
   (result, context') <- fmap fromRight' $ runResult $ flip runSt context $ runAndCatch $ run' file code
   case result of
-    Panicked ex -> hPutStrLn stderr $ ansiRed $ show $ HaskellError $ displayException ex
-    Thrown err -> hPutStrLn stderr $ ansiRed $ show err
+    Panicked ex -> ePutStrLn $ ansiRed $ show $ HaskellError $ displayException ex
+    Thrown err -> ePutStrLn $ ansiRed $ show err
     Succeeded res ->
       when output $ void $ runResult $ flip runSt context $ do
         str <- runPretty' res
@@ -216,7 +279,7 @@ repl context prefixKey keymap False = let
     (singleCharacters, doubleCharacters) <- case liftA2 (,) (singleChars keymap) (doubleChars keymap) of
                              Just c -> pure c
                              Nothing -> (do
-                                hPutStrLn stderr "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
+                                ePutStrLn "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
                                 die "Keymap exists but is not implemented")
     el <- E.edited "TinyAPL"
     E.setEditor el E.Emacs

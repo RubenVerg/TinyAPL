@@ -129,6 +129,9 @@ executable tinyapl
                     , tinyapl-native-helpers
     if os(linux) || os(darwin)
         build-depends:edited
+    if os(windows)
+        c-sources:    cbits/windows/io.c
+        build-depends:text, bytestring
 
     hs-source-dirs:   app
     default-language: Haskell2010
