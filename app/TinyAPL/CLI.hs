@@ -1,11 +1,10 @@
-{-# LANGUAGE CPP, LambdaCase, OverloadedStrings, ScopedTypeVariables, FlexibleContexts #-}
-
-#if defined(unix_HOST_OS) || defined(__unix___HOST_OS) || defined(__unix_HOST_OS) || defined(linux_HOST_OS) || defined(__linux___HOST_OS) || defined(__linux_HOST_OS) || defined(darwin_HOST_OS)
-#define is_linux 1
-#endif
+{-# LANGUAGE CPP, LambdaCase, OverloadedStrings, ScopedTypeVariables, FlexibleContexts, MagicHash #-}
 
 module TinyAPL.CLI where
 
+#if !defined(TINYAPL_NO_REPLXX) && defined(wasm32_HOST_ARCH)
+#define TINYAPL_NO_REPLXX "wasm"
+#endif
 import TinyAPL.Noun
 import TinyAPL.Context
 import TinyAPL.Quads
@@ -24,10 +23,11 @@ import TinyAPL.Quads.FFI (ffi, ffiStruct)
 #endif
 
 import Prelude hiding (getLine, putStr, putStrLn)
-import Control.Monad (void, when)
+import Control.Monad (void, when, unless)
 import System.IO hiding (getLine, putStr, putStrLn, hPutStr, hPutStrLn)
 import qualified System.IO
 import Data.IORef
+import Data.Maybe
 import Data.List
 import System.Info
 import System.Exit
@@ -36,15 +36,15 @@ import Control.Exception (displayException, SomeException, catch)
 import System.Directory
 import Data.String
 import qualified Options.Applicative as Opts
-#ifdef is_linux
 import TinyAPL.Highlighter
-import qualified System.Console.Edited as E
+import qualified Data.Text as T
+#if !defined(TINYAPL_NO_REPLXX)
+import qualified System.Console.ReplXX as XX
 #endif
 #if defined(mingw32_HOST_OS)
 import Foreign.C
 import Foreign.Ptr
 import Foreign.Marshal.Utils
-import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Encoding.Error as T
 import qualified Data.ByteString.Char8 as BS
@@ -82,7 +82,9 @@ ePutStrLn :: String -> IO ()
 ePutStrLn = putStrOf True . (++ "\n")
 #else
 platformSetup :: IO ()
-platformSetup = pure ()
+platformSetup = do
+  hSetEncoding stdout utf8
+  hSetEncoding stderr utf8
 
 getLine :: IO String
 getLine = System.IO.getLine
@@ -195,11 +197,6 @@ ansiRed str = "\x1b[31m" ++ str ++ "\x1b[0m"
 
 cli :: IO ()
 cli = do
-  platformSetup
-
-  hSetEncoding stdout utf8
-  hSetEncoding stderr utf8
-
   cwd <- getCurrentDirectory
 
   scope <- newIORef $ Scope [] [] [] [] Nothing True
@@ -216,7 +213,10 @@ cli = do
       <> quadsFromReprs [ makeSystemInfo os arch False bigEndian, TinyAPL.CLI.stdin, boxes ] [] [] []
       <> (if allowedFileSystem allowed then quadsFromReprs [ file ] [] [] [] else mempty)
       <> quadsFromReprs [] [ makeImport (if allowedFileImport allowed then Just readImportFile else Nothing) Nothing ] [] []
-    , contextIn = liftToSt getLine
+    , contextIn = \pr _ -> do
+      liftToSt $ ePutStr pr
+      liftToSt $ hFlush stderr
+      liftToSt getLine
     , contextOut = \str -> do
       liftToSt $ putStr str
       liftToSt $ hFlush stdout
@@ -232,6 +232,7 @@ cli = do
   case inner of
     ReplOptions prefixKey plain keymap -> repl context prefixKey keymap plain
     FileOptions echo path -> do
+      platformSetup
       code <- F.readUtf8 path
       void $ runCode echo path code context
 
@@ -247,6 +248,16 @@ runCode output file code context = do
         liftToSt $ putStrLn str
   pure context'
 
+#if !defined(TINYAPL_NO_REPLXX)
+charInserted :: XX.ReplXX -> Bool -> Char -> IO ()
+charInserted xx replace' ch = do
+  (XX.State t0 pos) <- XX.getState xx
+  let replace = if pos == 0 then False else replace'
+  let (bef, aft) = T.splitAt (if replace then fromIntegral pos - 1 else fromIntegral pos) t0
+  let t1 = bef <> T.cons ch (if replace then T.drop 1 aft else aft)
+  XX.setState xx $ XX.State t1 $ if replace then pos else pos + 1
+#endif
+
 repl :: Context -> Char -> Keymap -> Bool -> IO ()
 repl context _ _ True = let
   go context = do
@@ -254,90 +265,61 @@ repl context _ _ True = let
     case line of
       Nothing -> pure ()
       Just line' -> runCode True "<repl>" line' context >>= go
-  in go context
+  in platformSetup *> go context
 repl context prefixKey keymap False = let
-#ifdef is_linux
-  go :: E.Edited -> Context -> IO ()
+#if !defined(TINYAPL_NO_REPLXX)
+  go :: XX.ReplXX -> Context -> IO ()
 #else
-  go :: Int -> Context -> IO ()
+  go :: () -> Context -> IO ()
 #endif
-  go el context = do
-#ifdef is_linux
-    line <- E.getString el
+  go xx context = do
+#if !defined(TINYAPL_NO_REPLXX)
+    line <- T.unpack <$> XX.input xx "      "
 #else
     putStr "      "
-    hFlush stdout
-    line <- Just <$> getLine
+    line <- getLine
 #endif
-    case line of
-      Nothing -> pure ()
-      Just "" -> pure ()
-      Just line' -> runCode True "<repl>" line' context >>= go el
+    unless (null line) $ runCode True "<repl>" line context >>= go xx
   in do
     putStrLn "TinyAPL REPL, empty line to exit"
-#ifdef is_linux
+#if !defined(TINYAPL_NO_REPLXX)
     (singleCharacters, doubleCharacters) <- case liftA2 (,) (singleChars keymap) (doubleChars keymap) of
                              Just c -> pure c
                              Nothing -> (do
                                 ePutStrLn "You've attempted to use an existing, yet unimplemented keymap! This should not be possible. Please report this as a bug."
                                 die "Keymap exists but is not implemented")
-    el <- E.edited "TinyAPL"
-    E.setEditor el E.Emacs
-    E.setPrompt' el "      "
-    E.addFunction el "prefix" "Prefix for entering TinyAPL glyphs" $ \_ _ -> do
-      chM <- E.getOneChar el
-      case chM of
-        Nothing -> pure E.EOF
-        Just ch | ch == prefixKey -> do
-          ch2M <- E.getOneChar el
-          case ch2M of
-            Nothing -> pure E.EOF
-            Just ch2 -> case lookup ch2 doubleCharacters of
-              Just replacement -> do
-                E.insertString el [replacement]
-                pure E.Refresh
-              Nothing -> do
-                E.insertString el [ch2]
-                pure E.RefreshBeep
-        Just ch -> case lookup ch singleCharacters of
-          Just replacement -> do
-            E.insertString el [replacement]
-            pure E.Refresh
-          Nothing -> do
-            E.insertString el [ch]
-            pure E.RefreshBeep
-    E.addBind el (singleton prefixKey) "prefix"
-    E.setUseStyle el True
-    E.setStyleFunc el $ \_ str -> pure $ (\case
-      CNumber -> E.EditedStyle E.Red E.Unset False False False False
-      CString -> E.EditedStyle E.Cyan E.Unset False False False False
-      CStringEscape -> E.EditedStyle E.Blue E.Unset False False False False
-      CArrayName -> E.EditedStyle E.Red E.Unset False False False False
-      CPrimArray -> E.EditedStyle E.Red E.Unset False False False False
-      CFunctionName -> E.EditedStyle E.Green E.Unset False False False False
-      CPrimFunction -> E.EditedStyle E.Green E.Unset False False False False
-      CAdverbName -> E.EditedStyle E.Magenta E.Unset False False False False
-      CPrimAdverb -> E.EditedStyle E.Magenta E.Unset False False False False
-      CConjunctionName -> E.EditedStyle E.Yellow E.Unset False False False False
-      CPrimConjunction -> E.EditedStyle E.Yellow E.Unset False False False False
-      CComment -> E.EditedStyle E.Unset E.Unset False True False False
-      _ -> E.EditedStyleReset) <$> highlight str
-    E.addBind el "\\e[1~" "ed-move-to-beg"
-    E.addBind el "\\e[4~" "ed-move-to-end"
-    E.addBind el "\\e[7~" "ed-move-to-beg"
-    E.addBind el "\\e[8~" "ed-move-to-end"
-    E.addBind el "\\e[H" "ed-move-to-beg"
-    E.addBind el "\\e[F" "ed-move-to-end"
-    E.addBind el "\\e[3~" "ed-delete-next-char"
-    E.addBind el "\\e[2~" "em-toggle-overwrite"
-    E.addBind el "\\e[1;5C" "em-next-word"
-    E.addBind el "\\e[1;5D" "ed-prev-word"
-    E.addBind el "\\e[5C" "em-next-word"
-    E.addBind el "\\e[5D" "ed-prev-word"
-    E.addBind el "\\e\\e[C" "em-next-word"
-    E.addBind el "\\e\\e[D" "ed-prev-word"
+    xx <- XX.new
+    XX.bindKey xx (fromIntegral $ fromEnum prefixKey) $ const $ do
+      ch <- XX.unsafeReadChar xx
+      if ch == prefixKey then do
+        ch2 <- XX.unsafeReadChar xx
+        charInserted xx False $ fromMaybe ch2 $ lookup ch2 doubleCharacters
+      else charInserted xx False $ fromMaybe ch $ lookup ch singleCharacters
+      pure XX.Continue
+    let hlc t = pure $ (\case {
+      CNumber -> XX.Style Nothing (Just XX.Red) False False ;
+      CString -> XX.Style Nothing (Just XX.Cyan) False False ;
+      CStringEscape -> XX.Style Nothing (Just XX.Blue) False False ;
+      CArrayName -> XX.Style Nothing (Just XX.Red) False False ;
+      CPrimArray -> XX.Style Nothing (Just XX.Red) False False ;
+      CFunctionName -> XX.Style Nothing (Just XX.Green) False False ;
+      CPrimFunction -> XX.Style Nothing (Just XX.Green) False False ;
+      CAdverbName -> XX.Style Nothing (Just XX.Magenta) False False ;
+      CPrimAdverb -> XX.Style Nothing (Just XX.Magenta) False False ;
+      CConjunctionName -> XX.Style Nothing (Just XX.Yellow) False False ;
+      CPrimConjunction -> XX.Style Nothing (Just XX.Yellow) False False ;
+      CComment -> XX.Style Nothing (Just XX.Gray) False False ;
+      _ -> XX.Style Nothing Nothing False False }) <$> highlight (T.unpack t)
+    XX.setHighlighterCallback xx hlc
+    go xx context
+      { contextIn = \pr hl -> liftToSt $ do
+        unless hl $ XX.clearHighlighterCallback xx
+        i <- T.unpack <$> XX.input xx (T.pack pr)
+        unless hl $ XX.setHighlighterCallback xx hlc
+        pure i
+      , contextOut = liftToSt . XX.write xx . T.pack
+      , contextErr = liftToSt . XX.write xx . T.pack
+      }
 #else
-    let el = 0
+    go () context
 #endif
-    
-    go el context

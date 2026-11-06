@@ -224,15 +224,22 @@ jobs:
         run: 'rm -rf ./dist-newstyle/src'
         shell: bash
 
-      - name: Prepare artifact
-        run: 'cp $(cabal list-bin tinyapl | tail -n 1) ./tinyapl.exe'
+      - name: Copy DLLs and executable
+        run: |
+          ROOT="$(dirname $(ghcup whereis ghc 9.12.2 --directory | tail -n 1))/mingw/bin"
+          cp "$ROOT/libc++.dll" ./libc++.dll
+          cp "$ROOT/libunwind.dll" ./libunwind.dll
+          cp $(cabal list-bin tinyapl | tail -n 1) ./tinyapl.exe
         shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 'tinyapl.exe'
-          path: './tinyapl.exe'
+          name: 'tinyapl-windows.zip'
+          path: |
+            ./tinyapl.exe
+            ./libc++.dll
+            ./libunwind.dll
 
   wasm:
     name: WASM

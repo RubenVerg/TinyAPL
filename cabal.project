@@ -1,4 +1,4 @@
-packages: . libffi
+packages: . libffi replxx
 
 source-repository-package
   type: git

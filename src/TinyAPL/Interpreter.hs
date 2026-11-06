@@ -204,17 +204,15 @@ evalLeaf ParsingInfo{ parsingConjunctions = pC } (TokenPrimConjunction n _)    =
   lift $ except $ maybeToEither (SyntaxError $ "Unknown primitive conjunction " ++ n) $ VConjunction <$> lookup n pC
 evalLeaf p (TokenArrayName name _)
   | name == [G.quad]                                                           = do
-    err <- gets contextErr
     input <- gets contextIn
-    err $ G.quad : ": "
-    code <- input
+    code <- input (G.quad : ": ") True
     context <- get
     (res, context') <- lift $ runWithPrimitives p [G.quad] code context
     put context'
     return res
   | name == [G.quadQuote]                                                      = do
     input <- gets contextIn
-    str <- input
+    str <- input "" False
     return $ VNoun $ vector $ Character <$> str
   | [G.quad] `isPrefixOf` name                                                 = do
     quads <- gets contextQuads
