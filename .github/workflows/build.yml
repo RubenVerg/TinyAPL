@@ -93,28 +93,20 @@ jobs:
           path: './tinyapl'
 
   macos_intel:
-    name: MacOS Latest (x86_64)
-    runs-on: macos-latest
-
-    defaults:
-      run:
-        shell: arch -x86_64 bash --noprofile --norc -eo pipefail {0}
+    name: MacOS 26 (x86_64)
+    runs-on: macos-26-intel
 
     steps:
-      - name: Hi!
-        run: echo hi arch x86_64
-
       - name: Clone repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
       
       - name: Setup GHC
-        uses: RubenVerg/haskell-actions-setup@42b5d480dd95619c4b7d327287f3557cabc6320b
+        uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: '9.12.2'
-          override-arch: 'x64'
 
       - name: Dry run for cache key
         run: 'cabal build exe:tinyapl --dry-run'
