@@ -9,7 +9,7 @@ category: System
 build-type: Simple
 
 common warnings
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall -Werror -Wno-inconsistent-flags
 
 library
   import: warnings
