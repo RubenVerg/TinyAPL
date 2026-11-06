@@ -1,0 +1,35 @@
+cabal-version: 3.4
+name: replxx
+version: 0.1.0.0
+synopsis: Bindings to replxx
+license: MIT
+author: RubenVerg
+maintainer: me@rubenverg.com
+category: System
+build-type: Simple
+
+common warnings
+  ghc-options: -Wall -Werror
+
+library
+  import: warnings
+  exposed-modules: System.Console.ReplXX
+  build-depends: base >=4.20.0.0, text
+  hs-source-dirs: src
+  default-language: Haskell2010
+  cxx-sources:
+      replxx/src/conversion.cxx
+    , replxx/src/ConvertUTF.cpp
+    , replxx/src/escape.cxx
+    , replxx/src/history.cxx
+    , replxx/src/prompt.cxx
+    , replxx/src/replxx_impl.cxx
+    , replxx/src/replxx.cxx
+    , replxx/src/terminal.cxx
+    , replxx/src/util.cxx
+    , replxx/src/wcwidth.cpp
+    , replxx/src/windows.cxx
+  cxx-options: -std=c++11 -Wno-inconsistent-dllimport
+  include-dirs: replxx/include replxx/src
+  install-includes: replxx.h replxx.hxx
+  extra-libraries: stdc++

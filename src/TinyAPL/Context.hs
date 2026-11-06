@@ -242,7 +242,7 @@ data ParsingInfo = ParsingInfo
 data Context = Context
   { contextScope :: IORef Scope
   , contextQuads :: Quads
-  , contextIn :: St String
+  , contextIn :: String -> Bool -> St String
   , contextOut :: String -> St ()
   , contextErr :: String -> St ()
   , contextIncrementalId :: IORef Integer
